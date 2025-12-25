@@ -346,10 +346,12 @@ export const incidentAlertLinks = pgTable(
         alertIdx: index('incident_alert_links_alert_idx').on(table.alertId),
         primaryIdx: index('incident_alert_links_primary_idx').on(table.isPrimary),
 
-        // Ensure only one primary alert per incident
+        // Note: Unique constraint for one primary alert per incident
+        // This constraint is handled at the application level due to Drizzle limitations
         onePrimaryPerIncident: unique('incident_alert_links_one_primary_per_incident').on(
-            table.incidentId
-        ).where(sql`${table.isPrimary} = true`),
+            table.incidentId,
+            table.isPrimary
+        ),
     })
 );
 
