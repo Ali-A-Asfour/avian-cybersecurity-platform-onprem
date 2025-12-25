@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 
-import { TenantForm } from '@/components/admin/tenants/TenantForm';
+import { TenantForm, TenantFormData } from '@/components/admin/tenants/TenantForm';
 import { TenantMetrics } from '@/components/admin/tenants/TenantMetrics';
 import { SystemHealthDashboard } from '@/components/admin/system/SystemHealthDashboard';
 import { AuditLogViewer } from '@/components/admin/audit/AuditLogViewer';
@@ -61,7 +61,7 @@ export default function AdminPage() {
     setShowTenantModal(true);
   };
 
-  const handleTenantSaved = async (formData: Record<string, unknown>) => {
+  const handleTenantSaved = async (formData: TenantFormData) => {
     try {
       const url = selectedTenant ? `/api/tenants/${selectedTenant.id}` : '/api/tenants';
       const method = selectedTenant ? 'PUT' : 'POST';
