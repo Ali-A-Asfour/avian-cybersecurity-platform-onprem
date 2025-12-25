@@ -146,18 +146,16 @@ export async function seedDevelopmentData() {
     console.log(`✅ Created ${demoUsers.length} demo users`);
 
     // Create sample tickets
-    const sampleTickets = await db
-      .insert(tickets)
-      .values([
-        {
-          tenant_id: demoTenant.id,
-          requester: 'user@demo.avian-platform.com',
-          assignee: 'analyst@demo.avian-platform.com',
-          title: 'Suspicious Email Attachment Detected',
-          description:
-            'User received an email with a suspicious attachment that was flagged by our email security system.',
-          category: TicketCategory.SECURITY_INCIDENT,
-          severity: TicketSeverity.HIGH,
+    const ticketData = [
+      {
+        tenant_id: demoTenant.id,
+        requester: 'user@demo.avian-platform.com',
+        assignee: 'analyst@demo.avian-platform.com',
+        title: 'Suspicious Email Attachment Detected',
+        description:
+          'User received an email with a suspicious attachment that was flagged by our email security system.',
+        category: TicketCategory.SECURITY_INCIDENT,
+        severity: TicketSeverity.HIGH,
           priority: TicketPriority.HIGH,
           status: TicketStatus.IN_PROGRESS,
           tags: ['email', 'malware', 'phishing'],
@@ -189,7 +187,11 @@ export async function seedDevelopmentData() {
           status: TicketStatus.AWAITING_RESPONSE,
           tags: ['access', 'database', 'financial'],
         },
-      ])
+      ];
+
+    const sampleTickets = await db
+      .insert(tickets)
+      .values(ticketData)
       .returning();
 
     console.log(`✅ Created ${sampleTickets.length} sample tickets`);
