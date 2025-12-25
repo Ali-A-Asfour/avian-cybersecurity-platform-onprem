@@ -22,6 +22,10 @@ import {
 export async function seedDevelopmentData() {
   console.log('🌱 Seeding development data...');
 
+  if (!db) {
+    throw new Error('Database connection not available');
+  }
+
   try {
     // Create system settings
     await db.insert(systemSettings).values([
