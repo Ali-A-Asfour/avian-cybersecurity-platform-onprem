@@ -5,13 +5,16 @@ import { tenantMiddleware } from '@/middleware/tenant.middleware';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params in Next.js 16
+    const { id } = await params;
+    
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
     if (authResult instanceof NextResponse) {
@@ -24,7 +27,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { user, tenant } = tenantResult;
-    const _agentId = params.id;
+    const _agentId = id;
 
     // Only Super Admins and Tenant Admins can install tools
     if (!['super_admin', 'tenant_admin'].includes(user.role)) {
