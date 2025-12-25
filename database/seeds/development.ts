@@ -149,6 +149,7 @@ export async function seedDevelopmentData() {
     const ticketData = [
       {
         tenant_id: demoTenant.id,
+        created_by: demoUser.id,
         requester: 'user@demo.avian-platform.com',
         assignee: 'analyst@demo.avian-platform.com',
         title: 'Suspicious Email Attachment Detected',
@@ -163,6 +164,7 @@ export async function seedDevelopmentData() {
         },
         {
           tenant_id: demoTenant.id,
+          created_by: demoUser.id,
           requester: 'analyst@demo.avian-platform.com',
           title: 'Quarterly Vulnerability Assessment',
           description:
@@ -176,6 +178,7 @@ export async function seedDevelopmentData() {
         },
         {
           tenant_id: demoTenant.id,
+          created_by: demoUser.id,
           requester: 'user@demo.avian-platform.com',
           assignee: 'tenant.admin@demo.avian-platform.com',
           title: 'Access Request for Financial Database',
