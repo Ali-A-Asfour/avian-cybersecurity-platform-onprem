@@ -5,7 +5,7 @@ import { authMiddleware } from '@/middleware/auth.middleware';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await authMiddleware(request);

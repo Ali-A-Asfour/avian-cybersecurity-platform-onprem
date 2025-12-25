@@ -26,9 +26,11 @@ import { UserRole } from '@/types';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+    // Await params in Next.js 16
+    const { id } = await params;
         // Apply authentication middleware FIRST (before any other checks)
         const authResult = await authMiddleware(request);
         if (!authResult.success || !authResult.user) {
@@ -75,7 +77,7 @@ export async function GET(
             );
         }
 
-        const deviceId = params.id;
+        const deviceId = id;
 
         // Validate UUID format
         const uuidRegex =

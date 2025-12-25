@@ -5,9 +5,11 @@ import { tenantMiddleware } from '@/middleware/tenant.middleware';
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+    // Await params in Next.js 16
+    const { id } = await params;
         // Apply authentication and tenant middleware
         const authResult = await authMiddleware(request);
         if (authResult instanceof NextResponse) {
@@ -21,7 +23,7 @@ export async function POST(
 
         const { tenant } = tenantResult;
         const user = authResult.user!;
-        const notificationId = params.id;
+        const notificationId = id;
 
         // Mark notification as read
         const success = await NotificationService.markAsRead(

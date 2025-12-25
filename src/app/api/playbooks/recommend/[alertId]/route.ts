@@ -6,7 +6,7 @@ import { authMiddleware } from '@/middleware/auth.middleware';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { alertId: string } }
+  { params }: { params: Promise<{ alertId: string }> }
 ) {
   try {
     const authResult = await authMiddleware(request);

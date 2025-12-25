@@ -5,7 +5,7 @@ import { authMiddleware } from '@/middleware/auth.middleware';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; stepId: string } }
+  { params }: { params: Promise<{ id: string; stepId: string }> }
 ) {
   try {
     const authResult = await authMiddleware(request);

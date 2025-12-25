@@ -19,7 +19,7 @@ import { eq, and } from 'drizzle-orm';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { cveId: string } }
+    { params }: { params: Promise<{ cveId: string }> }
 ) {
     try {
         // Apply authentication middleware FIRST (before any other checks)

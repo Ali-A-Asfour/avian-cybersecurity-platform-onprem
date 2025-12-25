@@ -6,13 +6,15 @@ import { tenantMiddleware } from '@/middleware/tenant.middleware';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: {
-    id: string;
+  params: Promise<{
+    id: string; }>
   };
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params in Next.js 16
+    const { id } = await params;
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
     if (authResult instanceof NextResponse) {
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { user, tenant } = tenantResult;
-    const assetId = params.id;
+    const assetId = id;
 
     // Only Security Analysts, Tenant Admins, and Super Admins can initiate scans
     if (!['super_admin', 'tenant_admin', 'security_analyst'].includes(user.role)) {
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch {
-    logger.error('Failed to scan asset', { error, assetId: params.id });
+    logger.error('Failed to scan asset', { error, assetId: id });
     
     const response: ApiResponse = {
       success: false,

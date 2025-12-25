@@ -21,9 +21,11 @@ import { UserRole } from '@/types';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { deviceId: string } }
+    { params }: { params: Promise<{ deviceId: string }> }
 ) {
     try {
+    // Await params in Next.js 16
+    const { deviceId } = await params;
         // Check database connection
         if (!db) {
             return NextResponse.json(
@@ -70,7 +72,7 @@ export async function GET(
             );
         }
 
-        const deviceId = params.deviceId;
+        const deviceId = deviceId;
 
         // Validate UUID format
         const uuidRegex =

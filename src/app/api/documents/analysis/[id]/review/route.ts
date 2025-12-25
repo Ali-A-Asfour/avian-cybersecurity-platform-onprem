@@ -4,10 +4,12 @@ import { ReviewerFeedback } from '@/types';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const analysisId = params.id;
+    // Await params in Next.js 16
+    const { id } = await params;
+    const analysisId = id;
     const _tenantId = request.headers.get('x-tenant-id');
     
     if (!tenantId) {
@@ -94,6 +96,8 @@ export async function PUT(
 // Machine Learning Feedback Processing
 async function processMachineLearningFeedback(analysisId: string, feedback: ReviewerFeedback) {
   try {
+    // Await params in Next.js 16
+    const { id } = await params;
     // In a real implementation, this would:
     // 1. Extract training data from the feedback
     // 2. Update ML model weights based on accuracy ratings
@@ -179,10 +183,12 @@ async function updateModelWeights(trainingData: any) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const analysisId = params.id;
+    // Await params in Next.js 16
+    const { id } = await params;
+    const analysisId = id;
     const _tenantId = request.headers.get('x-tenant-id');
     
     if (!tenantId) {

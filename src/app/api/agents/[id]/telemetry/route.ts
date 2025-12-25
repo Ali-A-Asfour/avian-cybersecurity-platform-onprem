@@ -4,20 +4,23 @@ import { authMiddleware } from '@/middleware/auth.middleware';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params in Next.js 16
+    const { id } = await params;
+    
     // Apply authentication middleware
     const authResult = await authMiddleware(request);
     if (authResult instanceof NextResponse) {
       return authResult;
     }
 
-    const _agentId = params.id;
+    const _agentId = id;
     const _telemetryData = await request.json();
 
     // Validate telemetry data structure
@@ -74,13 +77,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params in Next.js 16
+    const { id } = await params;
+    
     // Apply authentication middleware
     const authResult = await authMiddleware(request);
     if (authResult instanceof NextResponse) {
       return authResult;
     }
 
-    const _agentId = params.id;
+    const _agentId = id;
     const { searchParams } = new URL(request.url);
     const _timeRange = searchParams.get('time_range') || '24h';
     const dataTypes = searchParams.get('data_types')?.split(',') || [];

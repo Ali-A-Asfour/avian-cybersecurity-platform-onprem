@@ -4,13 +4,15 @@ import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
 
 interface RouteParams {
-  params: {
-    id: string;
+  params: Promise<{
+    id: string; }>
   };
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // Await params in Next.js 16
+    const { id } = await params;
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
     if (!authResult.success) {
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { tenant } = tenantResult;
-    const analysisId = params.id;
+    const analysisId = id;
 
     const _result = await documentAnalysisService.getAnalysis(tenant.id, analysisId);
 

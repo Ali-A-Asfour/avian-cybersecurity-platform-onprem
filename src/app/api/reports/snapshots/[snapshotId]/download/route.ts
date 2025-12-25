@@ -19,7 +19,7 @@ import { UserRole } from '@/types';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { snapshotId: string } }
+    { params }: { params: Promise<{ snapshotId: string }> }
 ) {
     try {
         // Apply authentication middleware
