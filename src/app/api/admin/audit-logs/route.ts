@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-// import { db } from '@/lib/database';
+import { db } from '@/lib/database';
 import { authAuditLogs, users } from '../../../../../database/schemas/main';
 import { eq, and, gte, lte, desc, or, ilike } from 'drizzle-orm';
 import { extractTokenFromCookie, verifyToken } from '@/lib/jwt';
