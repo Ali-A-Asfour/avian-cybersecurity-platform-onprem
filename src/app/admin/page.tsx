@@ -44,7 +44,7 @@ export default function AdminPage() {
         const usersData = await usersResponse.json();
         setUsers(usersData.data.users || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load admin data:', error);
     } finally {
       setLoading(false);
