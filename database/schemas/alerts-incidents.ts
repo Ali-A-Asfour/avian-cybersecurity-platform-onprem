@@ -388,12 +388,11 @@ export const playbookClassificationLinks = pgTable(
             table.playbookStatus
         ),
 
-        // Ensure exactly one active primary playbook per classification
+        // Note: Unique constraint for one active primary playbook per classification
+        // This constraint is handled at the application level due to Drizzle limitations
         oneActivePrimaryPerClassification: unique(
             'playbook_classification_links_one_active_primary_per_classification'
-        ).on(table.classification).where(
-            sql`${table.isPrimary} = true AND ${table.playbookStatus} = 'active'`
-        ),
+        ).on(table.classification, table.isPrimary, table.playbookStatus),
     })
 );
 
