@@ -130,24 +130,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Create DynamoDB session
             // TODO: Move session creation to server-side API
             // const sessionId = await DynamoSessionService.createSession(
-                cognitoUser.id,
-                {
-                    email: cognitoUser.email,
-                    name: cognitoUser.name,
-                    role: cognitoUser.role,
-                    tenantId: cognitoUser.tenantId,
-                },
-                {
-                    rememberMe,
-                    metadata: {
-                        cognitoTokens: {
-                            accessToken: cognitoUser.accessToken,
-                            refreshToken: cognitoUser.refreshToken,
-                            idToken: cognitoUser.idToken,
-                        }
-                    }
-                }
-            );
+            //     cognitoUser.id,
+            //     {
+            //         email: cognitoUser.email,
+            //         name: cognitoUser.name,
+            //         role: cognitoUser.role,
+            //         tenantId: cognitoUser.tenantId,
+            //     },
+            //     {
+            //         rememberMe,
+            //         metadata: {
+            //             cognitoTokens: {
+            //                 accessToken: cognitoUser.accessToken,
+            //                 refreshToken: cognitoUser.refreshToken,
+            //                 idToken: cognitoUser.idToken,
+            //             }
+            //         }
+            //     }
+            // );
+            const sessionId = 'temp-session-id'; // Temporary until server-side implementation
 
             setUser(authUser);
             

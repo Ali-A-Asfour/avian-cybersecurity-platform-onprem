@@ -1,25 +1,58 @@
-## 1. Syntax Error in cache-redis.ts
-Location: project-doc/project-code/src/lib/cache-redis.ts line 55
-Problem: Orphaned code blocks outside of function context
-- There's an if (value === null) block that appears to be floating outside any function
-- The parser expects a comma but finds === because the code structure is malformed
-- There are duplicate/orphaned code blocks mixed into the middle of the file
+## Fix 1: Removed orphaned code blocks from cache-redis.ts
 
-## 2. Missing AWS SDK Dependency
-Location: project-doc/project-code/src/lib/aws/s3-service.ts line 16
-Problem: Missing package dependency
-- Code imports getSignedUrl from @aws-sdk/s3-request-presigner
-- This package is not installed in package.json
-- Need to add: "@aws-sdk/s3-request-presigner": "^3.958.0"
+File: project-doc/project-code/src/lib/cache-redis.ts
 
-## 3. Potential Client-Side AWS SDK Usage (from conversation history)
-Context: Previous builds failed due to AWS SDK being used in client components
-Problem: AWS SDK imports cannot be used in Next.js client components
-- Must be server-side only or in API routes
-- Causes http2 module resolution errors in browser environment
+Removed this malformed code block (lines 55-75):
+typescript
+      if (value === null) {
+        this.stats.misses++;
+        monitoring.recordMetric('cache_misses_total', 1, { key });
+        monitoring.tagSpan(span.spanId, { hit: false });
 
-## Summary
-The immediate blockers are:
-1. Critical: Fix malformed code structure in cache-redis.ts
-2. Critical: Add missing @aws-sdk/s3-request-presigner dependency
-3. Review: Ensure no AWS SDK usage in client components (based on previous failures)
+        logger.debug('Cache miss', { key, duration });
+        monitoring.finishSpan(span.spanId);
+        return null;
+      }
+
+      this.stats.hits++;
+      monitoring.recordMetric('cache_hits_total', 1, { key });
+      monitoring.tagSpan(span.spanId, { hit: true });
+
+      logger.debug('Cache hit', { key, duration });
+
+      try {
+        const parsed = JSON.parse(value);
+        monitoring.finishSpan(span.spanId);
+        return parsed;
+      } catch {
+        // Return as string if not JSON
+        monitoring.finishSpan(span.spanId);
+        return value as T;
+      }
+    } catch {
+      monitoring.tagSpan(span.spanId, { error: error instanceof Error ? error.message : 'unknown' });
+      logger.error('Cache get error', error instanceof Error ? error : undefined, { key });
+      monitoring.finishSpan(span.spanId);
+      return null;
+    }
+
+
+This code was floating outside any function context, causing the syntax error.
+
+## Fix 2: Added missing AWS SDK dependency
+
+File: project-doc/project-code/package.json
+
+Added:
+json
+"@aws-sdk/s3-request-presigner": "^3.958.0",
+
+
+After:
+json
+"@aws-sdk/client-s3": "^3.953.0",
+
+
+## Fix 3: Installed dependencies
+
+Ran npm install in the project directory to install the new dependency.
