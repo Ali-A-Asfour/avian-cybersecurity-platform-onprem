@@ -3,10 +3,10 @@
 import React from 'react';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AgentDeployment } from '@/components/agents/AgentDeployment';
-import { useTenantContext } from '@/contexts/TenantContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export default function AgentDeployPage() {
-  const { selectedTenant } = useTenantContext();
+  const { selectedTenant } = useTenant();
 
   return (
     <ClientLayout>
