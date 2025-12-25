@@ -72,8 +72,6 @@ export async function GET(
             );
         }
 
-        const deviceId = deviceId;
-
         // Validate UUID format
         const uuidRegex =
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

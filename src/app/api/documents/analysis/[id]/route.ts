@@ -5,8 +5,8 @@ import { tenantMiddleware } from '@/middleware/tenant.middleware';
 
 interface RouteParams {
   params: Promise<{
-    id: string; }>
-  };
+    id: string;
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {

@@ -7,7 +7,8 @@ import { ApiResponse } from '@/types';
 
 interface RouteParams {
   params: Promise<{
-    id: string; }>
+    id: string;
+  }>;
   };
 }
 

@@ -6,7 +6,8 @@ import { AnalysisType, ProcessingOptions } from '@/types';
 
 interface RouteParams {
   params: Promise<{
-    id: string; }>
+    id: string;
+  }>;
   };
 }
 

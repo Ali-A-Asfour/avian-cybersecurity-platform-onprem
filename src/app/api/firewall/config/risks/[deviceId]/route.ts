@@ -73,7 +73,6 @@ export async function GET(
         }
 
         // Validate deviceId parameter
-        const deviceId = deviceId;
         if (!deviceId || typeof deviceId !== 'string' || deviceId.trim() === '') {
             return NextResponse.json(
                 {
