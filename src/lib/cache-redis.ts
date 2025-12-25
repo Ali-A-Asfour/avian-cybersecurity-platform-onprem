@@ -52,23 +52,6 @@ class CacheService {
     }
   }
 
-      try {
-        const parsed = JSON.parse(value);
-        monitoring.finishSpan(span.spanId);
-        return parsed;
-      } catch {
-        // Return as string if not JSON
-        monitoring.finishSpan(span.spanId);
-        return value as T;
-      }
-    } catch {
-      monitoring.tagSpan(span.spanId, { error: error instanceof Error ? error.message : 'unknown' });
-      logger.error('Cache get error', error instanceof Error ? error : undefined, { key });
-      monitoring.finishSpan(span.spanId);
-      return null;
-    }
-  }
-
   /**
    * Set value in cache
    */
