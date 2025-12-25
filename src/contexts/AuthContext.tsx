@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authenticateUser, getCurrentUser, signOutUser, CognitoUser } from '@/lib/aws/cognito-auth';
-import { DynamoSessionService } from '@/lib/aws/dynamodb-sessions';
 
 /**
  * Auth Context for managing authentication state
@@ -66,7 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Validate session with DynamoDB
-            const sessionResult = await DynamoSessionService.validateSession(sessionId);
+            // TODO: Move session validation to server-side API
+            // const sessionResult = await DynamoSessionService.validateSession(sessionId);
             if (!sessionResult.valid || !sessionResult.user) {
                 setUser(null);
                 localStorage.removeItem('session-id');
@@ -87,7 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Extend session if it needs refresh
             if (sessionResult.needsRefresh) {
-                await DynamoSessionService.extendSession(sessionId);
+                // TODO: Move session extension to server-side API
+                // await DynamoSessionService.extendSession(sessionId);
             }
 
             return true;
@@ -127,7 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
 
             // Create DynamoDB session
-            const sessionId = await DynamoSessionService.createSession(
+            // TODO: Move session creation to server-side API
+            // const sessionId = await DynamoSessionService.createSession(
                 cognitoUser.id,
                 {
                     email: cognitoUser.email,
@@ -176,12 +178,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             // Delete DynamoDB session
             if (sessionId) {
-                await DynamoSessionService.deleteSession(sessionId);
+                // TODO: Move session deletion to server-side API
+                // await DynamoSessionService.deleteSession(sessionId);
             }
 
             // Get Cognito tokens from session metadata if available
             if (sessionId) {
-                const session = await DynamoSessionService.getSession(sessionId);
+                // TODO: Move session retrieval to server-side API
+                // const session = await DynamoSessionService.getSession(sessionId);
                 if (session?.metadata?.cognitoTokens?.accessToken) {
                     await signOutUser(session.metadata.cognitoTokens.accessToken);
                 }
