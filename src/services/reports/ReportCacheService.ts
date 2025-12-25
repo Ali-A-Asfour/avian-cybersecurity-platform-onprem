@@ -8,7 +8,8 @@
  */
 
 import { logger } from '@/lib/logger';
-import { cache, CacheOptions, TenantCache } from '@/lib/cache';
+import { cache, CacheOptions } from '@/lib/cache';
+import { TenantCache } from '@/lib/cache-redis';
 import { monitoring } from '@/lib/monitoring';
 import {
     WeeklyReport,
