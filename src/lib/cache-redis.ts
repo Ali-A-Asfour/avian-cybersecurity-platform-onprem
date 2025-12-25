@@ -52,22 +52,6 @@ class CacheService {
     }
   }
 
-      if (value === null) {
-        this.stats.misses++;
-        monitoring.recordMetric('cache_misses_total', 1, { key });
-        monitoring.tagSpan(span.spanId, { hit: false });
-
-        logger.debug('Cache miss', { key, duration });
-        monitoring.finishSpan(span.spanId);
-        return null;
-      }
-
-      this.stats.hits++;
-      monitoring.recordMetric('cache_hits_total', 1, { key });
-      monitoring.tagSpan(span.spanId, { hit: true });
-
-      logger.debug('Cache hit', { key, duration });
-
       try {
         const parsed = JSON.parse(value);
         monitoring.finishSpan(span.spanId);

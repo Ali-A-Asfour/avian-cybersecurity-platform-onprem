@@ -1,0 +1,25 @@
+## 1. Syntax Error in cache-redis.ts
+Location: project-doc/project-code/src/lib/cache-redis.ts line 55
+Problem: Orphaned code blocks outside of function context
+- There's an if (value === null) block that appears to be floating outside any function
+- The parser expects a comma but finds === because the code structure is malformed
+- There are duplicate/orphaned code blocks mixed into the middle of the file
+
+## 2. Missing AWS SDK Dependency
+Location: project-doc/project-code/src/lib/aws/s3-service.ts line 16
+Problem: Missing package dependency
+- Code imports getSignedUrl from @aws-sdk/s3-request-presigner
+- This package is not installed in package.json
+- Need to add: "@aws-sdk/s3-request-presigner": "^3.958.0"
+
+## 3. Potential Client-Side AWS SDK Usage (from conversation history)
+Context: Previous builds failed due to AWS SDK being used in client components
+Problem: AWS SDK imports cannot be used in Next.js client components
+- Must be server-side only or in API routes
+- Causes http2 module resolution errors in browser environment
+
+## Summary
+The immediate blockers are:
+1. Critical: Fix malformed code structure in cache-redis.ts
+2. Critical: Add missing @aws-sdk/s3-request-presigner dependency
+3. Review: Ensure no AWS SDK usage in client components (based on previous failures)
