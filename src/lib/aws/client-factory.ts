@@ -5,6 +5,8 @@
  * for connection pooling, timeouts, and retry behavior
  */
 
+import 'server-only';
+
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { S3Client } from '@aws-sdk/client-s3';
 import { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
