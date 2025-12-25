@@ -1,0 +1,58 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: WAN Down: Primary WAN Interface Offline
+Date: Mon, 08 Dec 2025 16:30:22 -0500
+Message-ID: <wan-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Interface Alert
+==========================
+
+Alert Type: WAN Interface Status
+Severity: CRITICAL
+Timestamp: 2025-12-08 16:30:22 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Interface Details:
+------------------
+Interface: X1 (Primary WAN)
+Zone: WAN
+Status: DOWN
+Previous Status: UP
+Link Speed: N/A (No Link)
+Last Status Change: 2025-12-08 16:30:20 EST
+
+Impact:
+-------
+- Internet connectivity lost
+- Remote access unavailable
+- VPN tunnels may be affected
+- Cloud services unreachable
+
+Possible Causes:
+----------------
+- ISP outage or maintenance
+- Cable disconnected
+- Hardware failure
+- Configuration error
+
+Immediate Actions:
+------------------
+1. Check physical cable connections
+2. Verify ISP service status
+3. Test with alternate connection if available
+4. Contact ISP support if issue persists
+
+Failover Status:
+----------------
+Secondary WAN (X2): Not configured
+HA Status: Standalone
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

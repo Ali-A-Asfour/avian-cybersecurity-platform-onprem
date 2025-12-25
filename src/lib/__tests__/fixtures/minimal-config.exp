@@ -1,0 +1,23 @@
+# SonicWall Configuration Export - MINIMAL CONFIGURATION
+# This is a bare minimum configuration with only essential settings
+# Tests parser handling of sparse configurations
+
+# System Settings
+firmware version 7.0.1-5050
+hostname "Minimal-FW"
+
+# Interface Configuration
+interface X0 zone WAN ip 203.0.113.1
+interface X1 zone LAN ip 192.168.1.1
+
+# Security Features
+ips enable
+gateway-av enable
+
+# Admin Settings
+admin username "admin"
+
+# Firewall Access Rules
+access-rule name "Default-Outbound" from LAN to WAN source any destination any service any action allow
+
+# End of Configuration

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVIAN Platform - Demo User Setup</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9fafb;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+
+        .user-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .user-card:hover {
+            border-color: #3b82f6;
+            background-color: #f8fafc;
+        }
+
+        .user-card.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .user-role {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 5px;
+        }
+
+        .role-super_admin {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .role-tenant_admin {
+            background: #faf5ff;
+            color: #9333ea;
+        }
+
+        .role-security_analyst {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .role-it_helpdesk_analyst {
+            background: #fff7ed;
+            color: #ea580c;
+        }
+
+        .role-user {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .user-email {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .setup-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .setup-btn:hover {
+            background: #2563eb;
+        }
+
+        .setup-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .status.success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .current-user {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>AVIAN Platform - Demo User Setup</h1>
+        <p class="subtitle">Select a demo user to authenticate as for testing the help desk system</p>
+
+        <div id="currentUser" class="current-user" style="display: none;">
+            <strong>Current User:</strong> <span id="currentUserName"></span> (<span id="currentUserRole"></span>)
+        </div>
+
+        <div id="userList"></div>
+
+        <button id="setupBtn" class="setup-btn" disabled>Select a user to continue</button>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const DEMO_USERS = [
+            {
+                id: '1',
+                name: 'Abdullah Asfour',
+                email: 'abdullah.asfour@acmecorp.com',
+                role: 'super_admin',
+                tenantId: 'platform-admin',
+                description: 'Platform Super Administrator - manages all tenants and system-wide settings'
+            },
+            {
+                id: '2',
+                name: 'Anita V',
+                email: 'anita.v@acmecorp.com',
+                role: 'tenant_admin',
+                tenantId: 'acme-corp',
+                description: 'Tenant Administrator - manages ACME Corp tenant, users, and configurations'
+            },
+            {
+                id: '3',
+                name: 'Ali Asfour',
+                email: 'ali.asfour@acmecorp.com',
+                role: 'security_analyst',
+                tenantId: 'acme-corp',
+                description: 'Security Analyst - handles security tickets, alerts, and compliance tasks'
+            },
+            {
+                id: '4',
+                name: 'Sarah Mitchell',
+                email: 'sarah.mitchell@acmecorp.com',
+                role: 'it_helpdesk_analyst',
+                tenantId: 'acme-corp',
+                description: 'IT Helpdesk Analyst - handles IT support tickets and technical assistance requests'
+            },
+            {
+                id: '5',
+                name: 'Mr Linux',
+                email: 'mr.linux@acmecorp.com',
+                role: 'user',
+                tenantId: 'acme-corp',
+                description: 'End User - can create tickets and view basic security information'
+            }
+        ];
+
+        let selectedUser = null;
+
+        function getRoleLabel(role) {
+            const labels = {
+                'super_admin': 'Super Admin',
+                'tenant_admin': 'Tenant Admin',
+                'security_analyst': 'Security Analyst',
+                'it_helpdesk_analyst': 'IT Helpdesk Analyst',
+                'user': 'User'
+            };
+            return labels[role] || role;
+        }
+
+        function checkCurrentUser() {
+            const authUser = localStorage.getItem('auth-user');
+            if (authUser) {
+                try {
+                    const user = JSON.parse(authUser);
+                    document.getElementById('currentUserName').textContent = user.name;
+                    document.getElementById('currentUserRole').textContent = getRoleLabel(user.role);
+                    document.getElementById('currentUser').style.display = 'block';
+                } catch (e) {
+                    console.error('Failed to parse current user:', e);
+                }
+            }
+        }
+
+        function renderUsers() {
+            const userList = document.getElementById('userList');
+            userList.innerHTML = '';
+
+            DEMO_USERS.forEach(user => {
+                const userCard = document.createElement('div');
+                userCard.className = 'user-card';
+                userCard.onclick = () => selectUser(user);
+
+                userCard.innerHTML = `
+                    <div class="user-name">${user.name}</div>
+                    <div class="user-role role-${user.role}">${getRoleLabel(user.role)}</div>
+                    <div class="user-email">${user.email}</div>
+                    <div style="font-size: 13px; color: #6b7280; margin-top: 8px;">${user.description}</div>
+                `;
+
+                userList.appendChild(userCard);
+            });
+        }
+
+        function selectUser(user) {
+            selectedUser = user;
+
+            // Update UI
+            document.querySelectorAll('.user-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            document.getElementById('setupBtn').disabled = false;
+            document.getElementById('setupBtn').textContent = `Set up as ${user.name}`;
+        }
+
+        function setupUser() {
+            if (!selectedUser) return;
+
+            const authUser = {
+                id: selectedUser.id,
+                name: selectedUser.name,
+                email: selectedUser.email,
+                role: selectedUser.role,
+                tenantId: selectedUser.tenantId
+            };
+
+            localStorage.setItem('auth-user', JSON.stringify(authUser));
+
+            const status = document.getElementById('status');
+            status.className = 'status success';
+            status.style.display = 'block';
+            status.innerHTML = `
+                <strong>Success!</strong> You are now authenticated as ${selectedUser.name}.<br>
+                <a href="/help-desk" style="color: #16a34a; text-decoration: underline;">Go to Help Desk →</a>
+            `;
+
+            checkCurrentUser();
+        }
+
+        // Initialize
+        checkCurrentUser();
+        renderUsers();
+        document.getElementById('setupBtn').onclick = setupUser;
+    </script>
+</body>
+
+</html>

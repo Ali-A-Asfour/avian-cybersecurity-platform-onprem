@@ -1,0 +1,80 @@
+# SonicWall Configuration Export - MALFORMED CONFIGURATION
+# This configuration contains syntax errors and malformed entries
+# Tests parser error handling and resilience
+
+# System Settings
+firmware version 7.0.1-5050
+hostname "Malformed-FW"
+timezone "UTC"
+
+# NTP Configuration
+ntp-server 0.pool.ntp.org
+
+# Interface Configuration - Some malformed entries
+interface X0 zone WAN ip 203.0.113.1 netmask 255.255.255.0
+interface X1 zone LAN ip 192.168.1.1
+interface X2 zone GUEST ip 172.16.0.1 netmask
+interface X3 zone DMZ ip netmask 255.255.255.0
+
+# Security Features - Mixed valid and invalid
+ips enable
+gateway-av
+dpi-ssl enable invalid-option
+app-control disable
+content-filter enable
+botnet
+
+# Admin Settings - Some incomplete
+admin username "security-admin"
+admin username
+mfa enable
+https admin port
+ssh enable
+
+# Address Objects - Some malformed
+address-object name "Server1" ip 192.168.1.100 zone LAN
+address-object name "Server2" ip zone LAN
+address-object name ip 192.168.1.102 zone LAN
+address-object name "Network1" network 192.168.0.0/24
+address-object name "BadNetwork" network 192.168.0.0/ zone LAN
+
+# Service Objects - Some incomplete
+service-object name "HTTP" protocol tcp port 80
+service-object name "HTTPS" protocol tcp
+service-object name "SSH" protocol port 22
+service-object name protocol tcp port 25
+
+# Firewall Access Rules - Various malformed entries
+access-rule name "Valid-Rule" from LAN to WAN source any destination any service HTTP action allow comment "Valid rule"
+access-rule name "Missing-Action" from LAN to WAN source any destination any service HTTP
+access-rule name "Missing-Zones" source any destination any service HTTP action allow
+access-rule from LAN to WAN source any destination any service HTTP action allow
+access-rule name "Incomplete-Rule" from LAN to WAN
+
+# Lines with unexpected format
+this is not a valid configuration line
+random text here
+interface X5 zone
+
+# NAT Policies - Some malformed
+nat-policy original-source 192.168.1.0/24 translated-source 203.0.113.1 interface X0
+nat-policy original-source translated-source 203.0.113.2 interface X0
+nat-policy original-source 192.168.2.0/24 interface X0
+
+# VPN Configuration - Some incomplete
+vpn policy "Valid-VPN" encryption aes256 auth certificate
+vpn policy "Incomplete-VPN" encryption auth certificate
+vpn policy encryption aes256 auth psk
+vpn tunnel "Tunnel1" encryption authentication certificate
+
+# Duplicate entries
+interface X0 zone WAN ip 203.0.113.50 netmask 255.255.255.0
+admin username "security-admin"
+
+# Empty lines and comments
+
+
+# More random text
+### Multiple hash marks
+
+# End of Configuration

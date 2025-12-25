@@ -1,0 +1,82 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: Botnet: Command & Control Communication Blocked
+Date: Mon, 08 Dec 2025 12:18:33 -0500
+Message-ID: <botnet-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Botnet Filter Alert
+==============================
+
+Alert Type: Botnet Command & Control Detection
+Severity: HIGH
+Timestamp: 2025-12-08 12:18:33 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Threat Details:
+---------------
+Botnet Family: Emotet
+Threat Category: Command & Control (C2)
+Detection Method: IP Reputation + Behavior Analysis
+Confidence Level: High
+
+Connection Details:
+-------------------
+Source IP: 10.0.2.78 (Internal)
+Source Hostname: DESKTOP-WKS042
+Destination IP: 203.0.113.89 (External)
+Destination Country: Unknown
+Protocol: HTTPS
+Port: 443
+Direction: Outbound
+Attempts: 15 (last 10 minutes)
+
+Action Taken:
+-------------
+- All connection attempts blocked
+- Source IP flagged for investigation
+- Repeated attempts logged
+- Security team notified
+
+Indicators of Compromise:
+-------------------------
+- Periodic connection attempts to known C2 server
+- Encrypted traffic to suspicious destination
+- Non-standard user agent string
+- Connection pattern matches botnet behavior
+
+CRITICAL - Infected Device Detected:
+------------------------------------
+The source computer (10.0.2.78 / DESKTOP-WKS042) appears to be infected
+with malware and is attempting to communicate with a botnet command and
+control server.
+
+Immediate Actions Required:
+---------------------------
+1. ISOLATE the infected computer from network immediately
+2. Disconnect from network (disable network adapter)
+3. Run full antivirus/antimalware scan
+4. Check for additional infected systems
+5. Review recent user activity and file downloads
+6. Consider reimaging the system if infection persists
+7. Update all endpoint security software
+8. Review network for lateral movement
+
+Additional Recommendations:
+---------------------------
+- Scan all systems in same subnet (10.0.2.0/24)
+- Review firewall logs for similar patterns
+- Check for data exfiltration attempts
+- Notify security team and management
+- Document incident for compliance
+
+This is a CRITICAL security incident requiring immediate attention.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

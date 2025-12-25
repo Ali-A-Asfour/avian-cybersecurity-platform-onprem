@@ -1,0 +1,95 @@
+# SonicWall Configuration Export - ALL RISKS COMBINED
+# This configuration contains EVERY possible risk for comprehensive testing
+# Tests all 30 risk detection rules in one file
+
+# System Settings
+# MEDIUM RISK: Outdated firmware
+firmware version 6.5.0-1000
+hostname "All-Risks-FW"
+timezone "UTC"
+
+# LOW RISK: NO NTP CONFIGURED
+# ntp-server 0.pool.ntp.org
+
+# Interface Configuration
+# CRITICAL RISK: DHCP server enabled on WAN interface
+interface X0 zone WAN ip 203.0.113.1 netmask 255.255.255.0 dhcp server enable
+interface X1 zone LAN ip 192.168.1.1 netmask 255.255.255.0
+interface X2 zone GUEST ip 172.16.0.1 netmask 255.255.255.0
+
+# Security Features - MULTIPLE DISABLED
+# CRITICAL RISK: IPS disabled
+ips disable
+
+# CRITICAL RISK: Gateway Anti-Virus disabled
+gateway-av disable
+
+# MEDIUM RISK: DPI-SSL disabled
+dpi-ssl disable
+
+# HIGH RISK: Botnet Filter disabled
+botnet disable
+
+# MEDIUM RISK: Application Control disabled
+app-control disable
+
+# MEDIUM RISK: Content Filtering disabled
+content-filter disable
+
+# Admin Settings - MULTIPLE RISKS
+# CRITICAL RISK: WAN management enabled
+wan management enable
+
+# HIGH RISK: MFA not enabled
+# mfa enable
+
+# MEDIUM RISK: Default admin usernames
+admin username "admin"
+admin username "root"
+admin username "administrator"
+
+# LOW RISK: Default HTTPS admin port
+https admin port 443
+
+# HIGH RISK: SSH enabled on WAN interface
+ssh enable
+ssh wan-interface X0 enable
+
+# Address Objects
+address-object name "LAN-Network" network 192.168.1.0/24 zone LAN
+address-object name "Guest-Network" network 172.16.0.0/24 zone GUEST
+address-object name "Server1" ip 192.168.1.100 zone LAN
+
+# Service Objects
+service-object name "HTTP" protocol tcp port 80
+service-object name "HTTPS" protocol tcp port 443
+
+# Firewall Access Rules - MULTIPLE RISKS
+# CRITICAL RISK: WAN to LAN with any destination
+access-rule name "CRITICAL-WAN-TO-LAN-ANY" from WAN to LAN source any destination any service any action allow
+
+# HIGH RISK: Any-to-any rule
+access-rule name "HIGH-ANY-TO-ANY" from any to any source any destination any service any action allow
+
+# HIGH RISK: Guest zone routing to LAN
+access-rule name "GUEST-TO-LAN-ROUTE" from GUEST to LAN source Guest-Network destination LAN-Network service any action allow
+
+# LOW RISK: Rules without descriptions
+access-rule name "No-Desc-1" from LAN to WAN source any destination any service HTTP action allow
+access-rule name "No-Desc-2" from LAN to WAN source any destination any service HTTPS action allow
+access-rule name "No-Desc-3" from LAN to DMZ source any destination any service any action allow
+
+# NAT Policies
+nat-policy original-source 192.168.1.0/24 translated-source 203.0.113.1 interface X0
+
+# VPN Configuration - MULTIPLE RISKS
+# HIGH RISK: DES encryption (very weak)
+vpn policy "Very-Weak-VPN" encryption des auth psk
+
+# HIGH RISK: 3DES encryption (weak)
+vpn policy "Weak-VPN" encryption 3des auth psk
+
+# MEDIUM RISK: PSK-only authentication
+vpn policy "PSK-Only-VPN" encryption aes256 auth psk
+
+# End of Configuration

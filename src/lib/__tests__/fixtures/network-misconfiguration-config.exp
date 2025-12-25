@@ -1,0 +1,62 @@
+# SonicWall Configuration Export - NETWORK MISCONFIGURATIONS
+# This configuration focuses on network-related risks
+# Tests: WAN-to-LAN, any-to-any, guest isolation, DHCP on WAN
+
+# System Settings
+firmware version 7.0.1-5050
+hostname "Network-Misconfig-FW"
+timezone "UTC"
+
+# NTP Configuration
+ntp-server 0.pool.ntp.org
+
+# Interface Configuration
+# CRITICAL RISK: DHCP server enabled on WAN interface
+interface X0 zone WAN ip 203.0.113.1 netmask 255.255.255.0 dhcp server enable
+interface X1 zone LAN ip 192.168.1.1 netmask 255.255.255.0
+interface X2 zone GUEST ip 172.16.0.1 netmask 255.255.255.0
+
+# Security Features - All enabled
+ips enable
+gateway-av enable
+dpi-ssl enable
+app-control enable
+content-filter enable
+botnet enable
+
+# Admin Settings
+admin username "netadmin"
+mfa enable
+https admin port 8443
+
+# Address Objects
+address-object name "LAN-Network" network 192.168.1.0/24 zone LAN
+address-object name "Guest-Network" network 172.16.0.0/24 zone GUEST
+
+# Service Objects
+service-object name "HTTP" protocol tcp port 80
+service-object name "HTTPS" protocol tcp port 443
+
+# Firewall Access Rules
+# CRITICAL RISK: WAN to LAN with any destination
+access-rule name "CRITICAL-WAN-TO-LAN-ANY" from WAN to LAN source any destination any service any action allow comment "Dangerous inbound rule"
+
+# HIGH RISK: Any-to-any rule
+access-rule name "HIGH-ANY-TO-ANY" from any to any source any destination any service any action allow comment "Overly permissive rule"
+
+# HIGH RISK: Guest zone routing to LAN
+access-rule name "GUEST-TO-LAN-ROUTE" from GUEST to LAN source Guest-Network destination LAN-Network service any action allow comment "Guest can access internal network"
+
+# Additional guest isolation issue
+access-rule name "GUEST-TO-LAN-HTTP" from GUEST to LAN source any destination any service HTTP action allow comment "Guest HTTP to LAN"
+
+# Normal rules
+access-rule name "Allow-Outbound" from LAN to WAN source any destination any service any action allow comment "Normal outbound traffic"
+
+# NAT Policies
+nat-policy original-source 192.168.1.0/24 translated-source 203.0.113.1 interface X0
+
+# VPN Configuration
+vpn policy "Site-VPN" encryption aes256 auth certificate
+
+# End of Configuration

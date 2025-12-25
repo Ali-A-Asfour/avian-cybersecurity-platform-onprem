@@ -1,0 +1,16 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: Alert from SonicWall
+Date: Mon, 08 Dec 2025 18:00:00 -0500
+Message-ID: <minimal-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Alert
+
+A security event has occurred on your firewall.
+
+Serial: C0EAE4B2C3F1
+
+Please check your firewall logs for details.
+
+This is an automated message.

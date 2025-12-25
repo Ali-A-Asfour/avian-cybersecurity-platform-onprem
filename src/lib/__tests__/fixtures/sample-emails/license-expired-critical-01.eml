@@ -1,0 +1,74 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: License Expired: Gateway Anti-Virus License Has Expired
+Date: Mon, 08 Dec 2025 00:05:00 -0500
+Message-ID: <license-expired-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall License Expiration Alert
+===================================
+
+Alert Type: License Expired
+Severity: CRITICAL
+Timestamp: 2025-12-08 00:05:00 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+License Details:
+----------------
+Service: Gateway Anti-Virus (GAV)
+Status: EXPIRED
+Expiration Date: 2025-12-07
+Days Expired: 1
+
+CRITICAL IMPACT:
+----------------
+- Gateway Anti-Virus protection is now DISABLED
+- Virus signature updates have stopped
+- Network is vulnerable to malware threats
+- Files are no longer scanned for viruses
+- Email attachments are not being inspected
+- Compliance requirements may be violated
+
+Security Risk:
+--------------
+Your network is now exposed to malware, viruses, and other threats
+that would normally be blocked by Gateway Anti-Virus. This creates
+a significant security risk for your organization.
+
+IMMEDIATE ACTION REQUIRED:
+--------------------------
+Renew your Gateway Anti-Virus license immediately to restore protection.
+
+To renew:
+1. Visit MySonicWall portal: https://mysonicwall.com
+2. Navigate to License Management
+3. Select device serial number: C0EAE4B2C3F1
+4. Purchase or activate GAV license renewal
+5. License will activate automatically within 15 minutes
+
+Alternative:
+Contact your SonicWall partner or reseller for immediate assistance.
+
+Temporary Mitigation:
+---------------------
+Until license is renewed:
+- Ensure all endpoints have updated antivirus
+- Restrict file downloads where possible
+- Monitor network traffic closely
+- Consider blocking high-risk file types
+- Increase user security awareness
+
+Compliance Notice:
+------------------
+If your organization is subject to compliance requirements (HIPAA,
+PCI-DSS, etc.), an expired security license may constitute a
+compliance violation. Document this incident and renewal actions.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

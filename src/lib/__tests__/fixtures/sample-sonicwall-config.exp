@@ -1,0 +1,116 @@
+# SonicWall Configuration Export (.exp format)
+# Sample configuration for testing purposes
+# Generated: 2024-01-15
+
+# System Settings
+firmware version 7.0.1-5050
+hostname "Corporate-Firewall-01"
+timezone "America/New_York"
+system-name "CORP-FW-01"
+
+# NTP Configuration
+ntp-server 0.pool.ntp.org
+ntp-server 1.pool.ntp.org
+ntp server time.nist.gov
+
+# DNS Configuration
+dns-server 8.8.8.8
+dns-server 8.8.4.4
+nameserver 1.1.1.1
+
+# Interface Configuration
+interface X0 zone WAN ip 203.0.113.1 netmask 255.255.255.0
+interface X1 zone LAN ip 192.168.1.1 netmask 255.255.255.0
+interface X2 zone DMZ ip 10.0.0.1 netmask 255.255.255.0
+interface X3 zone GUEST ip 172.16.0.1 netmask 255.255.255.0 dhcp server enable
+
+# Security Features
+ips enable
+gateway-av enable
+dpi-ssl enable
+app-control enable
+content-filter enable
+botnet enable
+geo-ip enable
+anti-spyware enable
+
+# Admin Settings
+admin username "admin"
+admin username "john.doe"
+admin user "security-admin"
+mfa enable
+https admin port 8443
+ssh enable
+
+# WAN Management (CRITICAL RISK)
+# wan management enable
+
+# Address Objects
+address-object name "WebServer" ip 192.168.1.100 zone LAN
+address-object name "MailServer" ip 192.168.1.101 zone LAN
+address-object name "DMZ-Network" network 10.0.0.0/24 zone DMZ
+address-object name "Internal-Network" network 192.168.0.0/16 zone LAN
+
+# Service Objects
+service-object name "HTTP" protocol tcp port 80
+service-object name "HTTPS" protocol tcp port 443
+service-object name "SSH" protocol tcp port 22
+service-object name "DNS" protocol udp port 53
+service-object name "SMTP" protocol tcp port 25
+
+# Firewall Access Rules
+access-rule name "Allow-Outbound-Web" from LAN to WAN source any destination any service HTTP action allow comment "Allow web browsing"
+access-rule name "Allow-Outbound-HTTPS" from LAN to WAN source any destination any service HTTPS action allow comment "Allow secure web"
+access-rule name "Allow-DMZ-Web" from WAN to DMZ source any destination WebServer service HTTP action allow comment "Public web server"
+access-rule name "Deny-Guest-to-LAN" from GUEST to LAN source any destination any service any action deny comment "Isolate guest network"
+access-rule name "Allow-VPN-Access" from VPN to LAN source any destination any service any action allow
+
+# CRITICAL RISK: WAN to LAN any rule (should be detected)
+# access-rule name "DANGEROUS-RULE" from WAN to LAN source any destination any service any action allow
+
+# HIGH RISK: Any-to-any rule (should be detected)
+# access-rule name "ANY-ANY-RULE" from any to any source any destination any service any action allow
+
+# Rule without description (LOW RISK)
+access-rule name "No-Description-Rule" from LAN to WAN source any destination any service any action allow
+
+# Disabled rule
+access-rule name "Disabled-Rule" from LAN to WAN source any destination any service any action allow disable
+
+# NAT Policies
+nat-policy original-source 192.168.1.0/24 translated-source 203.0.113.1 interface X0
+nat-policy original-destination 203.0.113.10 translated-destination 192.168.1.100 interface X1
+nat-policy original-source 10.0.0.0/24 translated-source 203.0.113.2 interface X0
+
+# VPN Configuration
+vpn policy "Site-to-Site-HQ" encryption aes256 auth certificate
+vpn policy "Remote-Access-VPN" encryption aes128 auth psk
+vpn tunnel "Branch-Office" encryption aes256 authentication certificate
+
+# MEDIUM RISK: Weak VPN encryption (should be detected)
+# vpn policy "Weak-VPN" encryption 3des auth psk
+
+# HIGH RISK: Very weak VPN encryption (should be detected)
+# vpn policy "Very-Weak-VPN" encryption des auth psk
+
+# License Information (would come from API, not config file)
+# ips license expires 2024-12-31
+# gateway-av license expires 2024-12-31
+# atp license expires 2024-06-30
+
+# High Availability Configuration
+ha enable
+ha role primary
+ha peer 203.0.113.2
+
+# Logging Configuration
+logging enable
+syslog server 192.168.1.50 port 514
+log-level info
+
+# SNMP Configuration
+snmp enable
+snmp community "public" read-only
+snmp trap-host 192.168.1.60
+
+# End of Configuration

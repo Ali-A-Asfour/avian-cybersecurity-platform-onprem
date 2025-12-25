@@ -1,0 +1,39 @@
+{
+  "teamCollaboration": {
+    "enabled": true,
+    "autoSync": true,
+    "backgroundFetch": true,
+    "autoSetup": true,
+    "fetchInterval": 1800,
+    "notifications": {
+      "onBreakingChanges": true,
+      "onSpecUpdates": true,
+      "onDatabaseChanges": true,
+      "onDependencyChanges": true,
+      "onTypeChanges": true
+    },
+    "autoActions": {
+      "pullNonConflicting": true,
+      "installDependencies": true,
+      "runMigrations": false,
+      "refreshTypes": true
+    }
+  },
+  "codeGeneration": {
+    "followProjectPatterns": true,
+    "maintainTypeConsistency": true,
+    "updateRelatedFiles": true
+  },
+  "testing": {
+    "runOnSave": false,
+    "runOnCommit": true,
+    "coverageThreshold": 80
+  },
+  "hooks": {
+    "onWorkspaceOpen": ["./scripts/auto-setup.sh"],
+    "onFileChange": {
+      "package.json": ["npm install"],
+      "database/migrations/*.sql": ["echo 'New migration detected - run npm run db:migrate'"]
+    }
+  }
+}

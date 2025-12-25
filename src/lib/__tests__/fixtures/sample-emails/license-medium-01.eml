@@ -1,0 +1,49 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: License Expiring: IPS License Expires in 15 Days
+Date: Mon, 08 Dec 2025 09:00:00 -0500
+Message-ID: <license-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall License Notification
+===============================
+
+Alert Type: License Expiration Warning
+Severity: MEDIUM
+Timestamp: 2025-12-08 09:00:00 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+License Details:
+----------------
+Service: Intrusion Prevention Service (IPS)
+Current Status: Active
+Expiration Date: 2025-12-23
+Days Remaining: 15
+
+Impact if Expired:
+------------------
+- IPS protection will be disabled
+- Signature updates will stop
+- Network will be vulnerable to known attacks
+- Compliance requirements may be violated
+
+Action Required:
+----------------
+Please renew your IPS license before expiration to maintain continuous protection.
+
+To renew:
+1. Visit MySonicWall portal
+2. Navigate to License Management
+3. Select device serial number: C0EAE4B2C3F1
+4. Purchase or activate IPS license renewal
+
+Contact your SonicWall partner or reseller for assistance.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

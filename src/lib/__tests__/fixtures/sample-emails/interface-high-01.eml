@@ -1,0 +1,60 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: Interface Down: X3 LAN Interface Disconnected
+Date: Mon, 08 Dec 2025 11:15:33 -0500
+Message-ID: <interface-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Interface Alert
+==========================
+
+Alert Type: Network Interface Status
+Severity: HIGH
+Timestamp: 2025-12-08 11:15:33 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Interface Details:
+------------------
+Interface: X3
+Zone: LAN
+IP Address: 10.0.3.1/24
+Status: DOWN
+Previous Status: UP
+Link Speed: N/A (No Link)
+Last Status Change: 2025-12-08 11:15:30 EST
+
+Connected Network:
+------------------
+VLAN: Engineering Department
+Subnet: 10.0.3.0/24
+Affected Hosts: ~45 devices
+
+Impact:
+-------
+- Engineering department network offline
+- Users unable to access network resources
+- Printers and shared devices unavailable
+
+Possible Causes:
+----------------
+- Switch failure or power loss
+- Cable disconnected
+- Port configuration issue
+- Hardware failure
+
+Recommended Actions:
+--------------------
+1. Check switch power and status
+2. Verify cable connections
+3. Test with known good cable
+4. Check switch port configuration
+5. Review recent configuration changes
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

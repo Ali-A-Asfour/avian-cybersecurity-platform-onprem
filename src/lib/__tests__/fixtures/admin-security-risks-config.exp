@@ -1,0 +1,59 @@
+# SonicWall Configuration Export - ADMIN SECURITY RISKS
+# This configuration focuses on administrative security issues
+# Tests: WAN management, MFA disabled, default usernames, SSH on WAN, default ports
+
+# System Settings
+firmware version 7.0.1-5050
+hostname "Admin-Risk-FW"
+timezone "UTC"
+
+# NTP Configuration
+ntp-server 0.pool.ntp.org
+
+# Interface Configuration
+interface X0 zone WAN ip 203.0.113.1 netmask 255.255.255.0
+interface X1 zone LAN ip 192.168.1.1 netmask 255.255.255.0
+
+# Security Features - All enabled
+ips enable
+gateway-av enable
+dpi-ssl enable
+app-control enable
+content-filter enable
+botnet enable
+
+# Admin Settings - MULTIPLE RISKS
+# CRITICAL RISK: WAN management enabled
+wan management enable
+
+# HIGH RISK: MFA not enabled (commented out = disabled)
+# mfa enable
+
+# MEDIUM RISK: Default admin usernames
+admin username "admin"
+admin username "root"
+admin username "administrator"
+
+# LOW RISK: Default HTTPS admin port
+https admin port 443
+
+# HIGH RISK: SSH enabled on WAN interface
+ssh enable
+ssh wan-interface X0 enable
+
+# Address Objects
+address-object name "Server1" ip 192.168.1.100 zone LAN
+
+# Service Objects
+service-object name "HTTP" protocol tcp port 80
+
+# Firewall Access Rules
+access-rule name "Allow-Outbound" from LAN to WAN source any destination any service any action allow comment "Normal outbound"
+
+# NAT Policies
+nat-policy original-source 192.168.1.0/24 translated-source 203.0.113.1 interface X0
+
+# VPN Configuration
+vpn policy "Site-VPN" encryption aes256 auth certificate
+
+# End of Configuration

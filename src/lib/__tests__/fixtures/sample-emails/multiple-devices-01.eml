@@ -1,0 +1,43 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: VPN Tunnel Down: Multiple Sites Affected
+Date: Mon, 08 Dec 2025 19:15:30 -0500
+Message-ID: <multi-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall VPN Alert - Multiple Sites
+=====================================
+
+Alert Type: VPN Tunnel Status
+Severity: CRITICAL
+Timestamp: 2025-12-08 19:15:30 EST
+
+Primary Device:
+---------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Affected Tunnels:
+-----------------
+1. HQ-to-Branch1 (Remote: 198.51.100.50)
+2. HQ-to-Branch2 (Remote: 198.51.100.51)
+3. HQ-to-Branch3 (Remote: 198.51.100.52)
+
+All three VPN tunnels have disconnected simultaneously.
+
+Possible Cause:
+---------------
+Primary site internet connectivity issue or ISP outage.
+
+Impact:
+-------
+All branch offices unable to reach headquarters resources.
+
+Immediate Action Required:
+--------------------------
+Check primary site WAN connectivity.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

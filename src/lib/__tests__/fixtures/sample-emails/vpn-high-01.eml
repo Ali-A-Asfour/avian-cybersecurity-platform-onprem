@@ -1,0 +1,45 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: VPN Down: Site-to-Site Tunnel Disconnected
+Date: Mon, 08 Dec 2025 15:45:12 -0500
+Message-ID: <vpn-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall VPN Alert
+===================
+
+Alert Type: VPN Tunnel Status
+Severity: HIGH
+Timestamp: 2025-12-08 15:45:12 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+VPN Details:
+------------
+Tunnel Name: HQ-to-Branch-Office
+Remote Gateway: 198.51.100.50
+Status: DOWN
+Last Connected: 2025-12-08 12:30:00 EST
+Disconnection Time: 2025-12-08 15:45:10 EST
+
+Possible Causes:
+----------------
+- Remote gateway unreachable
+- Network connectivity issues
+- Authentication failure
+- Configuration mismatch
+
+Recommendation:
+---------------
+1. Verify remote gateway is online and reachable
+2. Check network connectivity between sites
+3. Review VPN configuration on both endpoints
+4. Contact remote site administrator if issue persists
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

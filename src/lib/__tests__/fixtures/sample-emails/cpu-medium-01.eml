@@ -1,0 +1,62 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: High CPU: CPU Usage at 87%
+Date: Mon, 08 Dec 2025 13:42:18 -0500
+Message-ID: <cpu-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Resource Alert
+=========================
+
+Alert Type: High CPU Usage
+Severity: MEDIUM
+Timestamp: 2025-12-08 13:42:18 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Resource Metrics:
+-----------------
+Current CPU Usage: 87%
+Average CPU (5 min): 82%
+Average CPU (15 min): 75%
+Threshold: 80%
+Duration Above Threshold: 8 minutes
+
+System Status:
+--------------
+Memory Usage: 68%
+Active Connections: 12,450
+Connection Rate: 850/sec
+Uptime: 45 days, 12 hours
+
+Possible Causes:
+----------------
+- High traffic volume
+- DPI-SSL inspection overhead
+- Active security scanning
+- VPN encryption load
+- Botnet filter processing
+
+Impact:
+-------
+- Potential performance degradation
+- Increased latency
+- Connection delays possible
+
+Recommended Actions:
+--------------------
+1. Monitor traffic patterns
+2. Review active connections
+3. Check for unusual traffic spikes
+4. Consider load balancing if persistent
+5. Review security service configuration
+
+Performance will be monitored. Alert will clear when CPU usage drops below 75%.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

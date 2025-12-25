@@ -1,0 +1,506 @@
+/**
+ * AVIAN Reports Module Type Definitions
+ * 
+ * This file contains all TypeScript interfaces and types for the reports module,
+ * including reports, slides, snapshots, and data models as specified in the design document.
+ */
+
+// ============================================================================
+// Enhanced Date Range with Timezone Support
+// ============================================================================
+
+export interface EnhancedDateRange {
+    startDate: Date;
+    endDate: Date;
+    timezone: string; // IANA timezone (e.g., "America/Toronto")
+    weekStart: 'monday'; // Locked to Monday start for ISO week
+}
+
+// ============================================================================
+// Alert Classification Enums and Controlled Vocabulary
+// ============================================================================
+
+export enum AlertClassification {
+    PHISHING = 'phishing',
+    MALWARE = 'malware',
+    SPYWARE = 'spyware',
+    AUTHENTICATION = 'authentication',
+    NETWORK = 'network',
+    OTHER = 'other'
+}
+
+export enum AlertSource {
+    DEFENDER = 'defender',
+    SONICWALL = 'sonicwall',
+    AVAST = 'avast',
+    FIREWALL_EMAIL = 'firewall_email'
+}
+
+export enum AlertSeverity {
+    CRITICAL = 'critical',
+    HIGH = 'high',
+    MEDIUM = 'medium',
+    LOW = 'low'
+}
+
+export type AlertOutcome = 'security_incident' | 'benign_activity' | 'false_positive';
+
+// ============================================================================
+// Report Data Structures
+// ============================================================================
+
+export interface BaseReport {
+    id: string;
+    tenantId: string;
+    reportType: 'weekly' | 'monthly' | 'quarterly';
+    dateRange: EnhancedDateRange;
+    generatedAt: Date;
+    generatedBy: string; // user ID
+    slides: Slide[];
+    templateVersion: string;
+    dataSchemaVersion: string;
+}
+
+export interface WeeklyReport extends BaseReport {
+    reportType: 'weekly';
+    executiveOverview: ExecutiveOverviewSlide;
+    alertsDigest: AlertsDigestSlide;
+    updatesSummary: UpdatesSummarySlide;
+    vulnerabilityPosture: VulnerabilityPostureSlide;
+}
+
+export interface MonthlyReport extends BaseReport {
+    reportType: 'monthly';
+    executiveOverview: ExecutiveOverviewSlide;
+    alertsDigest: AlertsDigestSlide;
+    updatesSummary: UpdatesSummarySlide;
+    vulnerabilityPosture: VulnerabilityPostureSlide;
+    trendAnalysis: TrendAnalysisSlide;
+    incidentSummary: IncidentSummarySlide;
+}
+
+export interface QuarterlyReport extends BaseReport {
+    reportType: 'quarterly';
+    executiveOverview: ExecutiveOverviewSlide;
+    securityPostureSummary: SecurityPostureSummarySlide;
+    riskReductionHighlights: RiskReductionSlide;
+    businessValueDelivered: BusinessValueSlide;
+}
+
+// ============================================================================
+// Report Snapshot for Audit Trail
+// ============================================================================
+
+export interface ReportSnapshot {
+    id: string;
+    tenantId: string;
+    reportId: string;
+    reportType: 'weekly' | 'monthly' | 'quarterly';
+    dateRange: EnhancedDateRange;
+    generatedAt: Date;
+    generatedBy: string; // user ID
+    slideData: SlideData[]; // JSON payload of computed metrics
+    templateVersion: string;
+    dataSchemaVersion: string;
+    pdfStorageKey?: string; // S3 key or file path
+    pdfSize?: number;
+    isArchived: boolean;
+}
+
+// ============================================================================
+// Slide Structures
+// ============================================================================
+
+export interface Slide {
+    id: string;
+    title: string;
+    content: SlideContent;
+    charts: Chart[];
+    layout: SlideLayout;
+}
+
+export interface SlideData {
+    slideId: string;
+    slideType: string;
+    title?: string;
+    subtitle?: string;
+    summary?: string;
+    keyPoints?: string[];
+    charts?: any[];
+    keyMetrics?: any[];
+    reportingPeriod?: string;
+    weekOverWeekTrends?: any[];
+    recurringAlertTypes?: any[];
+    vulnerabilityAging?: any;
+    highlights?: any[];
+    metrics?: any[];
+    callouts?: any[];
+    computedMetrics: Record<string, any>;
+    chartData: ChartData[];
+    templateData: Record<string, any>;
+}
+
+export interface SlideContent {
+    heading: string;
+    subheading?: string;
+    summary: string;
+    keyPoints: string[];
+    callouts: Callout[];
+}
+
+export interface SlideLayout {
+    type: 'executive-overview' | 'data-visualization' | 'trend-analysis' | 'summary';
+    orientation: 'landscape'; // Locked to landscape
+    theme: 'dark'; // Locked to dark theme
+    branding: 'avian'; // AVIAN branding
+}
+
+// ============================================================================
+// Specific Slide Types
+// ============================================================================
+
+export interface ExecutiveOverviewSlide extends Slide {
+    reportingPeriod: string;
+    autoGeneratedSummary: string;
+    keyMetrics: KeyMetric[];
+    keyTakeaways?: string[]; // Key Takeaways (max 3 bullet points)
+    recommendedActions?: string[]; // Recommended Actions when applicable
+}
+
+export interface AlertsDigestSlide extends Slide {
+    alertsDigest: AlertsDigest;
+}
+
+export interface UpdatesSummarySlide extends Slide {
+    updatesSummary: UpdatesSummary;
+}
+
+export interface VulnerabilityPostureSlide extends Slide {
+    vulnerabilityPosture: VulnerabilityPosture;
+}
+
+export interface TrendAnalysisSlide extends Slide {
+    weekOverWeekTrends: TrendData[];
+    recurringAlertTypes: RecurringAlertType[];
+    vulnerabilityAging: VulnerabilityAging;
+}
+
+export interface IncidentSummarySlide extends Slide {
+    incidentSummaries: IncidentSummary[];
+    topAffectedAssets: AssetSummary[];
+}
+
+export interface SecurityPostureSummarySlide extends Slide {
+    overallPosture: SecurityPosture;
+    quarterlyTrends: QuarterlyTrend[];
+}
+
+export interface RiskReductionSlide extends Slide {
+    riskReductionMetrics: RiskReductionMetric[];
+    vulnerabilityReductionTrend: VulnerabilityReductionTrend;
+}
+
+export interface BusinessValueSlide extends Slide {
+    valueDelivered: BusinessValue[];
+    plainLanguageExplanations: string[];
+}
+
+// ============================================================================
+// Data Aggregation Models
+// ============================================================================
+
+export interface AlertsDigest {
+    totalAlertsDigested: number;
+    alertClassification: Record<AlertClassification, number>;
+    alertOutcomes: {
+        securityIncidents: number;
+        benignActivity: number;
+        falsePositives: number;
+    };
+    weeklyTimeline: DailyAlertCount[]; // Always exactly 7 buckets (Mon-Sun)
+    sourceBreakdown: Record<AlertSource, number>;
+}
+
+export interface UpdatesSummary {
+    totalUpdatesApplied: number;
+    updatesBySource: {
+        windows: number;
+        microsoftOffice: number;
+        firewall: number;
+        other: number;
+    };
+}
+
+export interface VulnerabilityPosture {
+    totalDetected: number;
+    totalMitigated: number;
+    // Primary breakdown mode by report type
+    severityBreakdown: { // Default for Weekly
+        critical: number;
+        high: number;
+        medium: number;
+    };
+    classBreakdown?: { // Additional for Monthly
+        [className: string]: number;
+    };
+    topCVEs?: CVEInfo[]; // Excluded from Quarterly (too technical)
+    riskReductionTrend?: { // Quarterly focus
+        quarterStart: number;
+        quarterEnd: number;
+        percentReduction: number;
+    };
+}
+
+export interface DailyAlertCount {
+    date: string; // YYYY-MM-DD in tenant timezone
+    dayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    count: number; // Always present, 0 if no alerts
+}
+
+// ============================================================================
+// Historical Data Models
+// ============================================================================
+
+export interface AlertRecord {
+    id: string;
+    tenantId: string;
+    rawAlertType: string; // Original vendor type
+    normalizedType: AlertClassification; // AVIAN standard classification
+    severity: AlertSeverity;
+    outcome: AlertOutcome;
+    createdAt: Date;
+    resolvedAt: Date;
+    deviceId?: string;
+    source: AlertSource;
+    sourceSubtype?: string; // Specific vendor/product
+}
+
+export interface MetricsRecord {
+    id: string;
+    tenantId: string;
+    deviceId: string;
+    date: Date;
+    threatsBlocked: number;
+    updatesApplied: number;
+    vulnerabilitiesDetected: number;
+    vulnerabilitiesMitigated: number;
+    source: 'firewall' | 'edr';
+}
+
+// ============================================================================
+// Chart and Visualization Models
+// ============================================================================
+
+export interface Chart {
+    id: string;
+    type: 'bar' | 'donut' | 'progress' | 'line' | 'timeline';
+    title: string;
+    data: ChartData;
+    styling: ChartStyling;
+}
+
+export interface ChartData {
+    labels: string[];
+    datasets: ChartDataset[];
+    metadata?: Record<string, any>;
+}
+
+export interface ChartDataset {
+    label: string;
+    data: number[];
+    backgroundColor?: string[];
+    borderColor?: string[];
+    borderWidth?: number;
+}
+
+export interface ChartStyling {
+    theme: 'dark';
+    colors: string[];
+    fontSize: number;
+    showLegend: boolean;
+    showGrid: boolean;
+}
+
+// ============================================================================
+// Supporting Data Types
+// ============================================================================
+
+export interface KeyMetric {
+    label: string;
+    value: string | number;
+    trend?: 'up' | 'down' | 'stable';
+    trendPercentage?: number;
+}
+
+export interface Callout {
+    type: 'info' | 'warning' | 'success' | 'highlight';
+    text: string;
+    icon?: string;
+}
+
+export interface CVEInfo {
+    cveId: string;
+    severity: AlertSeverity;
+    description: string;
+    affectedDevices: number;
+    mitigated: boolean;
+}
+
+export interface TrendData {
+    metric: string;
+    currentPeriod: number;
+    previousPeriod: number;
+    changePercentage: number;
+    trend: 'up' | 'down' | 'stable';
+}
+
+export interface RecurringAlertType {
+    alertType: AlertClassification;
+    frequency: number;
+    averageSeverity: AlertSeverity;
+    topDevices: string[];
+}
+
+export interface VulnerabilityAging {
+    openVulnerabilities: {
+        lessThan30Days: number;
+        thirtyTo90Days: number;
+        moreThan90Days: number;
+    };
+    mitigatedThisPeriod: number;
+}
+
+export interface IncidentSummary {
+    incidentType: string;
+    count: number;
+    averageResolutionTime: number;
+    severity: AlertSeverity;
+    description: string;
+}
+
+export interface AssetSummary {
+    deviceId: string;
+    deviceName: string;
+    alertCount: number;
+    incidentCount: number;
+    riskScore: number;
+}
+
+export interface SecurityPosture {
+    overallScore: number;
+    riskLevel: 'low' | 'medium' | 'high' | 'critical';
+    improvementAreas: string[];
+    strengths: string[];
+}
+
+export interface QuarterlyTrend {
+    metric: string;
+    q1: number;
+    q2: number;
+    q3: number;
+    trend: 'improving' | 'declining' | 'stable';
+}
+
+export interface RiskReductionMetric {
+    category: string;
+    startOfQuarter: number;
+    endOfQuarter: number;
+    reductionPercentage: number;
+    businessImpact: string;
+}
+
+export interface VulnerabilityReductionTrend {
+    quarterStart: number;
+    quarterEnd: number;
+    percentReduction: number;
+    criticalReduced: number;
+    highReduced: number;
+    mediumReduced: number;
+}
+
+export interface BusinessValue {
+    category: string;
+    description: string;
+    quantifiedValue?: string;
+    qualitativeImpact: string;
+}
+
+// ============================================================================
+// Alert Classification Service Types
+// ============================================================================
+
+export interface ClassificationMapping {
+    source: AlertSource;
+    mappings: Record<string, AlertClassification>;
+    defaultClassification: AlertClassification;
+}
+
+// ============================================================================
+// API Request/Response Types
+// ============================================================================
+
+export interface WeeklyReportRequest {
+    startDate: string; // ISO 8601
+    endDate: string;   // ISO 8601
+}
+
+export interface MonthlyReportRequest {
+    month: string;     // YYYY-MM format
+    year: number;
+}
+
+export interface QuarterlyReportRequest {
+    quarter: 1 | 2 | 3 | 4;
+    year: number;
+}
+
+export interface ExportRequest {
+    reportId: string;
+    format: 'pdf';
+}
+
+export interface DownloadRequest {
+    snapshotId: string;
+}
+
+// ============================================================================
+// Error Handling Types
+// ============================================================================
+
+export interface ReportError {
+    code: string;
+    message: string;
+    category: 'data' | 'generation' | 'export' | 'validation' | 'network' | 'authentication' | 'authorization' | 'system';
+    retryable: boolean;
+    details?: Record<string, any>;
+}
+
+export interface ErrorResponse {
+    error: ReportError;
+    timestamp: Date;
+    requestId: string;
+}
+
+export interface ValidationResult {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+}
+
+// ============================================================================
+// Snapshot Management Types
+// ============================================================================
+
+export interface SnapshotFilters {
+    reportType?: 'weekly' | 'monthly' | 'quarterly';
+    dateRange?: EnhancedDateRange;
+    generatedBy?: string;
+    isArchived?: boolean;
+}
+
+export interface SnapshotListResponse {
+    snapshots: ReportSnapshot[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+}

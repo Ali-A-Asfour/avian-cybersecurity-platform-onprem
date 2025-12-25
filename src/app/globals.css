@@ -1,0 +1,560 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* AVIAN Design System Colors */
+
+  /* Primary - Cyber Blue */
+  --color-primary-50: #e6f9ff;
+  --color-primary-100: #b3f0ff;
+  --color-primary-200: #80e7ff;
+  --color-primary-300: #4dddff;
+  --color-primary-400: #1ad4ff;
+  --color-primary-500: #00d4ff;
+  --color-primary-600: #00b8e6;
+  --color-primary-700: #009bcc;
+  --color-primary-800: #007fb3;
+  --color-primary-900: #006299;
+
+  /* Secondary - Dark Navy */
+  --color-secondary-50: #f0f4f8;
+  --color-secondary-100: #d9e2ec;
+  --color-secondary-200: #bcccdc;
+  --color-secondary-300: #9fb3c8;
+  --color-secondary-400: #829ab1;
+  --color-secondary-500: #627d98;
+  --color-secondary-600: #486581;
+  --color-secondary-700: #334e68;
+  --color-secondary-800: #243b53;
+  --color-secondary-900: #0a1628;
+
+  /* Success - Green */
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-300: #6ee7b7;
+  --color-success-400: #34d399;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+
+  /* Warning - Amber */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #eab308;
+  --color-warning-600: #ca8a04;
+  --color-warning-700: #a16207;
+  --color-warning-800: #854d0e;
+  --color-warning-900: #713f12;
+
+  /* Error - Red */
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-300: #fca5a5;
+  --color-error-400: #f87171;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+  --color-error-900: #7f1d1d;
+
+  /* Neutral - Grays */
+  --color-neutral-50: #fafbfc;
+  --color-neutral-100: #f4f6f8;
+  --color-neutral-200: #e4e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
+  --color-neutral-950: #030712;
+
+  /* Additional Chart Colors */
+  --color-purple-500: #8b5cf6;
+  --color-purple-600: #7c3aed;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-pink-500: #ec4899;
+  --color-pink-600: #db2777;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-teal-500: #14b8a6;
+  --color-teal-600: #0d9488;
+
+  /* Background - dark mode only */
+  --color-background-dark: #0f172a;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+}
+
+/* Light theme removed - dark mode only */
+
+/* Prevent light mode activation */
+.light,
+.light *,
+[data-theme="light"],
+[data-theme="light"] * {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Force dark mode regardless of system preference */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: dark !important;
+  }
+
+  html,
+  body {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+  }
+}
+
+/* Override any potential light mode CSS variables */
+:root {
+  --background: #0f172a !important;
+  --foreground: #f1f5f9 !important;
+  --card: #1e293b !important;
+  --card-foreground: #f1f5f9 !important;
+  --popover: #1e293b !important;
+  --popover-foreground: #f1f5f9 !important;
+  --primary: #00d4ff !important;
+  --primary-foreground: #0f172a !important;
+  --secondary: #334155 !important;
+  --secondary-foreground: #f1f5f9 !important;
+  --muted: #334155 !important;
+  --muted-foreground: #94a3b8 !important;
+  --accent: #334155 !important;
+  --accent-foreground: #f1f5f9 !important;
+  --destructive: #dc2626 !important;
+  --destructive-foreground: #f1f5f9 !important;
+  --border: #475569 !important;
+  --input: #334155 !important;
+  --ring: #00d4ff !important;
+}
+
+/* Dark theme - enforced as the only theme */
+.dark {
+  color-scheme: dark;
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --border-color: #475569;
+  --border-light: #334155;
+}
+
+.dark,
+.dark body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Force dark mode styles for key components */
+.dark .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+.dark .bg-neutral-50 {
+  background-color: var(--bg-primary) !important;
+}
+
+.dark .bg-neutral-100 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Text color overrides for better readability */
+.dark .text-neutral-900,
+.dark .text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-neutral-800,
+.dark .text-gray-800 {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-neutral-700,
+.dark .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-neutral-600,
+.dark .text-gray-600 {
+  color: var(--text-muted) !important;
+}
+
+.dark .text-neutral-500,
+.dark .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+.dark .text-neutral-400,
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+/* Border overrides */
+.dark .border-neutral-200,
+.dark .border-gray-200 {
+  border-color: var(--border-light) !important;
+}
+
+.dark .border-neutral-300,
+.dark .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+/* Card and component backgrounds */
+.dark .bg-blue-50 {
+  background-color: #1e3a8a !important;
+}
+
+.dark .text-blue-900 {
+  color: #dbeafe !important;
+}
+
+.dark .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+/* Badge styling enforcement - solid backgrounds with white text only */
+/* Remove old badge patterns that used bg-{color}-100 with text-{color}-800 */
+/* All badges must use solid backgrounds (bg-{color}-600/700) with text-white */
+
+/* Override any legacy badge styles to enforce solid backgrounds */
+.dark .bg-blue-100,
+.dark .bg-purple-100,
+.dark .bg-orange-100,
+.dark .bg-red-100,
+.dark .bg-green-100,
+.dark .bg-yellow-100,
+.dark .bg-gray-100 {
+  /* Force solid backgrounds instead of light variants */
+  background-color: transparent !important;
+}
+
+/* Override any legacy badge text colors to enforce white text */
+.dark .text-blue-800,
+.dark .text-purple-800,
+.dark .text-orange-800,
+.dark .text-red-800,
+.dark .text-green-800,
+.dark .text-yellow-800,
+.dark .text-gray-800 {
+  /* Force white text for maximum contrast */
+  color: white !important;
+}
+
+/* Prevent any gradient or opacity effects on badges */
+.dark [class*="bg-gradient"],
+.dark [class*="bg-opacity"],
+.dark [class*="opacity-"] {
+  background-image: none !important;
+  opacity: 1 !important;
+}
+
+/* Ensure badge readability in tables and dense lists */
+.dark table [class*="bg-"][class*="text-white"],
+.dark ul [class*="bg-"][class*="text-white"],
+.dark ol [class*="bg-"][class*="text-white"] {
+  /* Maintain solid backgrounds in table/list contexts */
+  background-image: none !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+  min-height: 20px !important;
+}
+
+/* Form inputs and interactive elements */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: var(--color-primary-500) !important;
+  box-shadow: 0 0 0 1px var(--color-primary-500) !important;
+}
+
+/* Hover states */
+.dark .hover\:bg-neutral-100:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.dark .hover\:bg-neutral-50:hover,
+.dark .hover\:bg-gray-50:hover {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Loading and placeholder text */
+.dark .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+/* Comprehensive text color overrides for better readability */
+.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+  /* Much lighter and more readable */
+}
+
+.dark .text-neutral-600 {
+  color: #cbd5e1 !important;
+  /* Much lighter and more readable */
+}
+
+.dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-neutral-400 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-gray-300 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-neutral-300 {
+  color: #e2e8f0 !important;
+}
+
+/* Ensure headings are bright and readable */
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: var(--text-primary) !important;
+}
+
+/* Links and interactive text */
+.dark a {
+  color: #60a5fa !important;
+}
+
+.dark a:hover {
+  color: #93c5fd !important;
+}
+
+/* Status and badge text improvements */
+.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+.dark .text-green-600 {
+  color: #4ade80 !important;
+}
+
+.dark .text-yellow-600 {
+  color: #facc15 !important;
+}
+
+.dark .text-red-600 {
+  color: #f87171 !important;
+}
+
+/* Chart and visualization colors - keep vibrant */
+.dark .text-primary-500 {
+  color: var(--color-primary-500) !important;
+}
+
+.dark .text-success-500 {
+  color: var(--color-success-500) !important;
+}
+
+.dark .text-warning-500 {
+  color: var(--color-warning-500) !important;
+}
+
+.dark .text-error-500 {
+  color: var(--color-error-500) !important;
+}
+
+.dark .bg-primary-500 {
+  background-color: var(--color-primary-500) !important;
+}
+
+.dark .bg-success-500 {
+  background-color: var(--color-success-500) !important;
+}
+
+.dark .bg-warning-500 {
+  background-color: var(--color-warning-500) !important;
+}
+
+.dark .bg-error-500 {
+  background-color: var(--color-error-500) !important;
+}
+
+/* Additional chart colors */
+.dark .text-success-400 {
+  color: var(--color-success-400) !important;
+}
+
+.dark .text-warning-400 {
+  color: var(--color-warning-400) !important;
+}
+
+.dark .text-success-600 {
+  color: var(--color-success-600) !important;
+}
+
+.dark .text-warning-600 {
+  color: var(--color-warning-600) !important;
+}
+
+/* Extended chart color palette */
+.dark .bg-purple-500 {
+  background-color: var(--color-purple-500) !important;
+}
+
+.dark .bg-orange-500 {
+  background-color: var(--color-orange-500) !important;
+}
+
+.dark .bg-pink-500 {
+  background-color: var(--color-pink-500) !important;
+}
+
+.dark .bg-indigo-500 {
+  background-color: var(--color-indigo-500) !important;
+}
+
+.dark .bg-teal-500 {
+  background-color: var(--color-teal-500) !important;
+}
+
+.dark .text-purple-500 {
+  color: var(--color-purple-500) !important;
+}
+
+.dark .text-orange-500 {
+  color: var(--color-orange-500) !important;
+}
+
+.dark .text-pink-500 {
+  color: var(--color-pink-500) !important;
+}
+
+.dark .text-indigo-500 {
+  color: var(--color-indigo-500) !important;
+}
+
+.dark .text-teal-500 {
+  color: var(--color-teal-500) !important;
+}
+
+/* Ensure form labels are readable */
+.dark label {
+  color: var(--text-secondary) !important;
+}
+
+/* Table and list text */
+.dark td,
+.dark th {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-sm {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-xs {
+  color: var(--text-muted) !important;
+}
+
+/* Focus styles */
+*:focus {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--color-neutral-800);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500);
+}

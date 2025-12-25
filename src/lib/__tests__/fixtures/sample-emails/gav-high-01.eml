@@ -1,0 +1,67 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: Gateway AV: Virus Detected and Blocked
+Date: Mon, 08 Dec 2025 10:22:15 -0500
+Message-ID: <gav-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Gateway Anti-Virus Alert
+===================================
+
+Alert Type: Gateway Anti-Virus Detection
+Severity: HIGH
+Timestamp: 2025-12-08 10:22:15 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Threat Details:
+---------------
+Virus Name: Trojan.Win32.Generic
+Threat Type: Trojan Horse
+Detection Method: Signature Match
+Signature Version: 2025.12.08.001
+
+Connection Details:
+-------------------
+Source IP: 10.0.1.45 (Internal)
+Source User: jsmith@company.local
+Destination IP: 198.51.100.123 (External)
+Destination Host: malicious-site.example
+Protocol: HTTP
+Port: 80
+Direction: Outbound
+
+Action Taken:
+-------------
+- Connection blocked
+- File download prevented
+- User notified
+- Event logged
+
+File Information:
+-----------------
+Filename: document.exe
+File Size: 2.4 MB
+File Type: Executable
+MD5 Hash: 5d41402abc4b2a76b9719d911017c592
+
+Recommendation:
+---------------
+1. Scan source computer (10.0.1.45) for malware
+2. Review user activity for additional threats
+3. Update endpoint antivirus definitions
+4. Provide security awareness training to user
+5. Consider blocking destination domain
+
+User Impact:
+------------
+Download blocked - user may report connectivity issue.
+IT support may need to assist with endpoint scan.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.
