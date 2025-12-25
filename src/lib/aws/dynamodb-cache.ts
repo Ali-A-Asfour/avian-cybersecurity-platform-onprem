@@ -13,7 +13,7 @@ import {
   UpdateItemCommand,
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
-import { logger } from './logger';
+import { logger } from '../logger';
 
 // Initialize DynamoDB client
 const dynamoClient = new DynamoDBClient({

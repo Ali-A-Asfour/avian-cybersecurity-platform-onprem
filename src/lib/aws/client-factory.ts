@@ -73,8 +73,6 @@ export function getSSMClient(): SSMClient {
 
 import { SSMClient } from '@aws-sdk/client-ssm';
 
-let ssmClient: SSMClient | null = null;
-
 // Cleanup function for graceful shutdown
 export function closeAllClients(): void {
   dynamoClient?.destroy();
