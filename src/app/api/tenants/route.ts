@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('❌ Error listing tenants:', error);
     
     const response: ApiResponse = {
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('❌ Error creating tenant:', error);
     
     const response: ApiResponse = {

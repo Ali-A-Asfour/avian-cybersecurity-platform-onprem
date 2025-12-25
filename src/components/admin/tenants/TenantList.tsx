@@ -70,7 +70,7 @@ export default function TenantList({ userRole, onTenantSelect, onCreateTenant }:
         total: result.meta?.total || 0,
         loading: false,
       }));
-    } catch {
+    } catch (error) {
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to fetch tenants',

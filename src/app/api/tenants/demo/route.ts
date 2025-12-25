@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       tenants: mockTenants,
       total: mockTenants.length
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch demo tenants:', error);
     return NextResponse.json(
       { error: 'Failed to fetch demo tenants' },

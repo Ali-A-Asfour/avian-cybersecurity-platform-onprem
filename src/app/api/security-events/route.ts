@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       total: events.length,
       filters
     });
-  } catch {
+  } catch (error) {
     logger.error('Failed to get security events', { error });
     return NextResponse.json(
       { error: 'Failed to get security events' },
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(securityEvent, { status: 201 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to create security event', { error });
     return NextResponse.json(
       { error: 'Failed to create security event' },

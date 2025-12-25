@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
         let body: RegisterRequest;
         try {
             body = await req.json();
-        } catch {
+        } catch (error) {
             await logAuthEvent(
                 'unknown',
                 'register',

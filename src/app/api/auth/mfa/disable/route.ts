@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: { message: 'MFA disabled successfully' },
     });
-  } catch {
+  } catch (error) {
     console.error('MFA disable error:', error);
 
     return NextResponse.json(

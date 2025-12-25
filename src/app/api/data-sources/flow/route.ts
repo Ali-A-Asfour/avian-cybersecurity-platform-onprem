@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       success: true,
       flow_nodes
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch flow data:', error);
     return NextResponse.json(
       { error: 'Failed to fetch flow data' },

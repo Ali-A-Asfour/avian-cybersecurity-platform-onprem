@@ -85,7 +85,7 @@ export abstract class BaseEDRConnector {
       logger.info('EDR connector started successfully', { 
         dataSourceId: this.dataSource.id 
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to start EDR connector', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -106,7 +106,7 @@ export abstract class BaseEDRConnector {
       logger.info('EDR connector stopped', { 
         dataSourceId: this.dataSource.id 
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to stop EDR connector', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -131,7 +131,7 @@ export abstract class BaseEDRConnector {
 
       // Update last poll time
       await this.setLastPollTime(new Date());
-    } catch {
+    } catch (error) {
       logger.error('Failed to poll EDR events', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -157,7 +157,7 @@ export abstract class BaseEDRConnector {
       };
 
       await dataIngestionService.ingestSecurityEvent(securityEvent);
-    } catch {
+    } catch (error) {
       logger.error('Failed to process EDR event', { 
         error, 
         eventId: edrEvent.id,
@@ -314,7 +314,7 @@ export class AvastEDRConnector extends BaseEDRConnector {
       this.apiToken = authData.access_token;
 
       return true;
-    } catch {
+    } catch (error) {
       logger.error('Avast EDR authentication failed', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -345,7 +345,7 @@ export class AvastEDRConnector extends BaseEDRConnector {
 
       const data = await response.json();
       return this.transformAvastEvents(data.events || []);
-    } catch {
+    } catch (error) {
       logger.error('Failed to fetch Avast EDR events', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -367,7 +367,7 @@ export class AvastEDRConnector extends BaseEDRConnector {
         success: true, 
         message: `Connection successful. Found ${events.length} recent events.` 
       };
-    } catch {
+    } catch (error) {
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Connection test failed' 
@@ -451,7 +451,7 @@ export class GenericEDRConnector extends BaseEDRConnector {
       }
 
       return false;
-    } catch {
+    } catch (error) {
       logger.error('Generic EDR authentication failed', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -485,7 +485,7 @@ export class GenericEDRConnector extends BaseEDRConnector {
 
       const data = await response.json();
       return this.transformGenericEvents(data.events || data || []);
-    } catch {
+    } catch (error) {
       logger.error('Failed to fetch generic EDR events', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -502,7 +502,7 @@ export class GenericEDRConnector extends BaseEDRConnector {
       }
 
       return { success: true, message: 'Connection successful' };
-    } catch {
+    } catch (error) {
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Connection test failed' 

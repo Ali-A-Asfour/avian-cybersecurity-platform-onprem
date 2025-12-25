@@ -61,7 +61,7 @@ export async function PATCH(
       },
       { status: 400 }
     );
-  } catch {
+  } catch (error) {
     console.error('Error updating notification:', error);
     return NextResponse.json(
       {

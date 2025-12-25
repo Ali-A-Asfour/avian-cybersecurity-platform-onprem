@@ -65,7 +65,7 @@ export async function POST(
     }
 
     return NextResponse.json(testResult);
-  } catch {
+  } catch (error) {
     logger.error('Failed to test connection', { error, id: params.id });
     return NextResponse.json(
       { 

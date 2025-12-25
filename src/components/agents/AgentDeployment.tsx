@@ -72,7 +72,7 @@ export function AgentDeployment({ tenantId }: AgentDeploymentProps) {
       } else {
         alert(`Failed to generate script: ${data.error?.message}`);
       }
-    } catch {
+    } catch (error) {
       alert('Failed to generate deployment script');
     } finally {
       setLoading(false);

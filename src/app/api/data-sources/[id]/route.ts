@@ -49,7 +49,7 @@ export async function GET(
     }
 
     return NextResponse.json(dataSource);
-  } catch {
+  } catch (error) {
     logger.error('Failed to get data source', { error, id: params.id });
     return NextResponse.json(
       { error: 'Failed to get data source' },
@@ -156,7 +156,7 @@ export async function PUT(
     }
 
     return NextResponse.json(dataSource);
-  } catch {
+  } catch (error) {
     logger.error('Failed to update data source', { error, id: params.id });
     return NextResponse.json(
       { error: 'Failed to update data source' },
@@ -200,7 +200,7 @@ export async function DELETE(
     await syslogServerManager.stopServer(params.id);
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
     logger.error('Failed to delete data source', { error, id: params.id });
     return NextResponse.json(
       { error: 'Failed to delete data source' },

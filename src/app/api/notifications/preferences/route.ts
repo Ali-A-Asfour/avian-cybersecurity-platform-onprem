@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: preferences,
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching notification preferences:', error);
     return NextResponse.json(
       {
@@ -102,7 +102,7 @@ export async function PUT(request: NextRequest) {
         preferences: validPreferences,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Error updating notification preferences:', error);
     return NextResponse.json(
       {
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
-  } catch {
+  } catch (error) {
     console.error('Error processing notification preferences action:', error);
     return NextResponse.json(
       {

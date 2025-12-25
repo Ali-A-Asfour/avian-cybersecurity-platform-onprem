@@ -69,7 +69,7 @@ export function AssetComplianceReport({ tenantId }: AssetComplianceReportProps) 
       } else {
         setError(data.error?.message || 'Failed to fetch compliance report');
       }
-    } catch {
+    } catch (error) {
       setError('Failed to fetch compliance report');
     } finally {
       setLoading(false);
@@ -95,7 +95,7 @@ export function AssetComplianceReport({ tenantId }: AssetComplianceReportProps) 
       } else {
         alert('Failed to export report');
       }
-    } catch {
+    } catch (error) {
       alert('Failed to export report');
     }
   };

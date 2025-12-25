@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error calculating hybrid compliance score:', error);
     return NextResponse.json(
       {
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         updated_score: scoreResult.data
       }
     });
-  } catch {
+  } catch (error) {
     console.error('Error triggering compliance assessment:', error);
     return NextResponse.json(
       {

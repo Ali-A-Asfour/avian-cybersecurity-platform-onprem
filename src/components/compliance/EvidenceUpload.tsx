@@ -92,7 +92,7 @@ export function EvidenceUpload({ controlId, frameworkId, onEvidenceUploaded }: E
       } else {
         alert(result.error?.message || 'Failed to upload evidence');
       }
-    } catch {
+    } catch (error) {
       console.error('Error uploading evidence:', error);
       alert('Failed to upload evidence');
     } finally {

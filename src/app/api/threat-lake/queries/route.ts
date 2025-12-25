@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
       success: true,
       queries: savedQueries
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch saved queries:', error);
     return NextResponse.json(
       { error: 'Failed to fetch saved queries' },
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       success: true,
       query: newQuery
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to save query:', error);
     return NextResponse.json(
       { error: 'Failed to save query' },

@@ -50,7 +50,7 @@ export function AuditLogViewer() {
         setLogs(data.data.logs || []);
         setTotalCount(data.data.total || 0);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load audit logs:', error);
     } finally {
       setLoading(false);
@@ -97,7 +97,7 @@ export function AuditLogViewer() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to export audit logs:', error);
     }
   };

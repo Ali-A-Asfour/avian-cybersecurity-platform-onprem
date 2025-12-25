@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (mounted) {
                         setUser(parsedUser);
                     }
-                } catch {
+                } catch (error) {
                     console.error('Failed to parse stored user:', error);
                 }
             }

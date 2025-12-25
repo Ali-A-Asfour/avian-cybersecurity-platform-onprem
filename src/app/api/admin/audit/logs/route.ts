@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         limit,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Audit logs error:', error);
     return NextResponse.json(
       { 

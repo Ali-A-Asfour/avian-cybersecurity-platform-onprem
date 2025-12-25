@@ -133,7 +133,7 @@ export default function CorrelationManagement() {
         const data = await response.json();
         setRules(data.rules || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load correlation rules:', error);
     }
   };
@@ -144,7 +144,7 @@ export default function CorrelationManagement() {
       // For now, we'll use mock data
       setCorrelations([]);
       setLoading(false);
-    } catch {
+    } catch (error) {
       console.error('Failed to load event correlations:', error);
       setLoading(false);
     }
@@ -181,7 +181,7 @@ export default function CorrelationManagement() {
         setShowRuleForm(false);
         resetRuleForm();
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to create correlation rule:', error);
     }
   };
@@ -198,7 +198,7 @@ export default function CorrelationManagement() {
       setEditingRule(null);
       setShowRuleForm(false);
       resetRuleForm();
-    } catch {
+    } catch (error) {
       console.error('Failed to update correlation rule:', error);
     }
   };
@@ -211,7 +211,7 @@ export default function CorrelationManagement() {
     try {
       // In a real implementation, this would delete via API
       setRules(rules.filter(rule => rule.id !== ruleId));
-    } catch {
+    } catch (error) {
       console.error('Failed to delete correlation rule:', error);
     }
   };
@@ -223,7 +223,7 @@ export default function CorrelationManagement() {
         rule.id === ruleId ? { ...rule, enabled } : rule
       );
       setRules(updatedRules);
-    } catch {
+    } catch (error) {
       console.error('Failed to toggle correlation rule:', error);
     }
   };

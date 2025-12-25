@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ policies: result.rows });
-  } catch {
+  } catch (error) {
     logger.error('Failed to get retention policies', { error });
     return NextResponse.json(
       { error: 'Failed to get retention policies' },
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(policy, { status: 201 });
-  } catch {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid retention policy data', details: error.errors },
@@ -184,7 +184,7 @@ export async function PUT(request: NextRequest) {
       message: 'Retention policies applied successfully',
       result
     });
-  } catch {
+  } catch (error) {
     logger.error('Failed to apply retention policies', { error });
     return NextResponse.json(
       { error: 'Failed to apply retention policies' },

@@ -114,7 +114,7 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
           );
         }
       }
-    } catch {
+    } catch (error) {
       console.error('Error loading preferences:', error);
     } finally {
       setLoading(false);
@@ -174,7 +174,7 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
       } else {
         throw new Error('Failed to save preferences');
       }
-    } catch {
+    } catch (error) {
       console.error('Error saving preferences:', error);
       // You could add error handling UI here
     } finally {

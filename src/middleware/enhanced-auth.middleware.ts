@@ -120,7 +120,7 @@ export async function enhancedAuthMiddleware(
     let payload: JWTPayload;
     try {
       payload = AuthService.verifyAccessToken(token);
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, {
         success: false,
         error: 'invalid_token'
@@ -393,7 +393,7 @@ export async function enhancedAuthMiddleware(
       requiresReauth: needsReauth,
     };
 
-  } catch {
+  } catch (error) {
     monitoring.tagSpan(span.spanId, {
       success: false,
       error: error instanceof Error ? error.message : 'unknown_error'

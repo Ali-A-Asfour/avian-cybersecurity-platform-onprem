@@ -61,7 +61,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to get asset', { error, assetId: id });
     
     const response: ApiResponse = {

@@ -39,7 +39,7 @@ export async function POST(
       success: true,
       data: execution
     }, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('Error starting playbook execution:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to start execution' } },

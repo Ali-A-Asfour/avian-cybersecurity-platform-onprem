@@ -105,7 +105,7 @@ class DatabaseOptimizer {
       monitoring.finishSpan(span.spanId);
 
       return { data, metrics };
-    } catch {
+    } catch (error) {
       const duration = Date.now() - startTime;
       
       monitoring.tagSpan(span.spanId, { 
@@ -317,7 +317,7 @@ class DatabaseOptimizer {
         });
         
         monitoring.recordMetric('db_index_creation_duration_ms', duration);
-      } catch {
+      } catch (error) {
         logger.error('Failed to create index', error instanceof Error ? error : undefined, { 
           sql: indexSQL 
         });

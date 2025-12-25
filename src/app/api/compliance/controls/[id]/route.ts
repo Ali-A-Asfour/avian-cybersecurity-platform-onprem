@@ -40,7 +40,7 @@ export async function PUT(
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error updating compliance control:', error);
     return NextResponse.json(
       {

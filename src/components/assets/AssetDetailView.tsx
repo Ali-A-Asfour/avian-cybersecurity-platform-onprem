@@ -35,7 +35,7 @@ export function AssetDetailView({ assetId, onClose }: AssetDetailViewProps) {
       } else {
         setError(data.error?.message || 'Failed to fetch asset details');
       }
-    } catch {
+    } catch (error) {
       setError('Failed to fetch asset details');
     } finally {
       setLoading(false);
@@ -55,7 +55,7 @@ export function AssetDetailView({ assetId, onClose }: AssetDetailViewProps) {
       } else {
         alert(`Scan failed: ${data.error?.message}`);
       }
-    } catch {
+    } catch (error) {
       alert('Failed to initiate scan');
     }
   };

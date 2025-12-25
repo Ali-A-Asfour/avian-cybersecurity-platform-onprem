@@ -473,7 +473,7 @@ export class AuthenticationService {
         access_token: accessToken,
         expires_in: 3600,
       };
-    } catch {
+    } catch (error) {
       throw new Error('Invalid or expired refresh token');
     }
   }

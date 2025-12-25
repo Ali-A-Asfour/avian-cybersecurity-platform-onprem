@@ -121,7 +121,7 @@ export class AlertService {
         success: true,
         data: newAlert as Alert,
       };
-    } catch {
+    } catch (error) {
       console.error('Error creating alert:', error);
       return {
         success: false,
@@ -250,7 +250,7 @@ export class AlertService {
           limit,
         },
       };
-    } catch {
+    } catch (error) {
       console.error('Error fetching alerts:', error);
       return {
         success: false,
@@ -310,7 +310,7 @@ export class AlertService {
         success: true,
         data: alert as Alert,
       };
-    } catch {
+    } catch (error) {
       console.error('Error fetching alert:', error);
       return {
         success: false,
@@ -406,7 +406,7 @@ export class AlertService {
         success: true,
         data: updatedAlert as Alert,
       };
-    } catch {
+    } catch (error) {
       console.error('Error updating alert status:', error);
       return {
         success: false,
@@ -441,7 +441,7 @@ export class AlertService {
         AlertStatus.INVESTIGATING,
         escalationMetadata
       );
-    } catch {
+    } catch (error) {
       console.error('Error escalating alert to incident:', error);
       return {
         success: false,
@@ -512,7 +512,7 @@ export class AlertService {
         success: true,
         data: newAlerts as Alert[],
       };
-    } catch {
+    } catch (error) {
       console.error('Error bulk creating alerts:', error);
       return {
         success: false,
@@ -630,7 +630,7 @@ export class AlertService {
           recent_alerts: recentAlerts as Alert[],
         },
       };
-    } catch {
+    } catch (error) {
       console.error('Error fetching alert stats:', error);
       return {
         success: false,
@@ -716,7 +716,7 @@ export class AlertService {
           priority: TicketPriority.URGENT,
           tags: ['auto-generated', 'alert', alert.category],
         });
-      } catch {
+      } catch (error) {
         console.error('Error auto-creating ticket for alert:', error);
       }
     }
@@ -755,7 +755,7 @@ export class AlertService {
         console.log(`Found ${similarAlerts.length} similar alerts for correlation`);
         // Implementation would depend on specific correlation rules
       }
-    } catch {
+    } catch (error) {
       console.error('Error processing correlation rules:', error);
     }
   }

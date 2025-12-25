@@ -56,7 +56,7 @@ export default function NotificationTestPage() {
           type: 'success',
         });
       }
-    } catch {
+    } catch (error) {
       console.error('Error creating notification:', error);
       addToast({
         title: 'Error',
@@ -89,7 +89,7 @@ export default function NotificationTestPage() {
           type: 'success',
         });
       }
-    } catch {
+    } catch (error) {
       console.error('Error sending email:', error);
       addToast({
         title: 'Error',
@@ -126,7 +126,7 @@ export default function NotificationTestPage() {
           type: 'success',
         });
       }
-    } catch {
+    } catch (error) {
       console.error('Error sending WebSocket notification:', error);
       addToast({
         title: 'Error',
@@ -166,7 +166,7 @@ export default function NotificationTestPage() {
           type: 'success',
         });
       }
-    } catch {
+    } catch (error) {
       console.error('Error sending SLA breach notification:', error);
       addToast({
         title: 'Error',

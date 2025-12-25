@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: { message: 'MFA enabled successfully' },
     });
-  } catch {
+  } catch (error) {
     console.error('MFA enable error:', error);
 
     if (error instanceof z.ZodError) {

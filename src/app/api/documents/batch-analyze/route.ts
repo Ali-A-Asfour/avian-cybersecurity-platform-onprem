@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(result, { status: 200 });
-  } catch {
+  } catch (error) {
     console.error('Batch analysis error:', error);
     return NextResponse.json({
       success: false,

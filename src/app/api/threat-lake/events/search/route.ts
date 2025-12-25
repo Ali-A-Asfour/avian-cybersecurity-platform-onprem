@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       ...result,
       aggregations
     });
-  } catch {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid search parameters', details: error.errors },
@@ -203,7 +203,7 @@ async function performAggregations(tenantId: string, query: any, aggregationConf
     }
 
     return aggregations;
-  } catch {
+  } catch (error) {
     logger.error('Failed to perform aggregations', { error, tenantId });
     return {};
   }

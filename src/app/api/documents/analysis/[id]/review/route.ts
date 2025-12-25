@@ -78,7 +78,7 @@ export async function PUT(
     await processMachineLearningFeedback(analysisId, feedback);
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error submitting review:', error);
     return NextResponse.json(
       { 
@@ -140,7 +140,7 @@ async function processMachineLearningFeedback(analysisId: string, feedback: Revi
     // Simulate ML model update
     await updateModelWeights(trainingData);
     
-  } catch {
+  } catch (error) {
     console.error('Error processing ML feedback:', error);
     // Don't fail the review submission if ML processing fails
   }
@@ -220,7 +220,7 @@ export async function GET(
       success: true,
       data: reviewInfo,
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching review info:', error);
     return NextResponse.json(
       { 

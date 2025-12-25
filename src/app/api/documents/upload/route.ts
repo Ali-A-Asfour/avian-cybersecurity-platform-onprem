@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(result, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('Document upload error:', error);
     return NextResponse.json({
       success: false,

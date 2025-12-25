@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to scan asset', { error, assetId: id });
     
     const response: ApiResponse = {

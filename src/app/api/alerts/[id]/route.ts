@@ -29,7 +29,7 @@ export async function GET(
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error in GET /api/alerts/[id]:', error);
     return NextResponse.json(
       {
@@ -89,7 +89,7 @@ export async function PUT(
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error in PUT /api/alerts/[id]:', error);
     return NextResponse.json(
       {

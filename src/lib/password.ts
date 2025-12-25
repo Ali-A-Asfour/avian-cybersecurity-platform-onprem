@@ -75,7 +75,7 @@ export async function verifyPassword(
 
     try {
         return await bcrypt.compare(password, hash);
-    } catch {
+    } catch (error) {
         console.error('Password verification error:', error);
         return false;
     }
@@ -209,7 +209,7 @@ export async function isPasswordInHistory(
         }
 
         return false;
-    } catch {
+    } catch (error) {
         console.error('Error checking password history:', error);
         return false;
     }
@@ -236,7 +236,7 @@ export async function addPasswordToHistory(
 
         // Clean up old password history (keep only last N passwords)
         await cleanupPasswordHistory(userId);
-    } catch {
+    } catch (error) {
         console.error('Error adding password to history:', error);
         throw error;
     }
@@ -270,7 +270,7 @@ async function cleanupPasswordHistory(_userId: string): Promise<void> {
                     .where(eq(passwordHistory.id, record.id));
             }
         }
-    } catch {
+    } catch (error) {
         console.error('Error cleaning up password history:', error);
         // Don't throw - this is a cleanup operation
     }
@@ -351,7 +351,7 @@ export async function changePassword(
         await addPasswordToHistory(userId, user.password_hash);
 
         return { success: true, errors: [] };
-    } catch {
+    } catch (error) {
         console.error('Error changing password:', error);
         errors.push('An error occurred while changing password');
         return { success: false, errors };

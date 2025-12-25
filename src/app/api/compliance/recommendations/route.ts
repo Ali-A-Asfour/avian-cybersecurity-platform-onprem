@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error generating compliance recommendations:', error);
     return NextResponse.json(
       {

@@ -1224,7 +1224,7 @@ export class PDFGenerator {
         // Check if file exists
         try {
             await fs.access(filePath);
-        } catch {
+        } catch (error) {
             throw new Error(`PDF file not found: ${storageKey}`);
         }
 

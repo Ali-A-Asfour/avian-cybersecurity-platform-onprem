@@ -66,7 +66,7 @@ export async function validateSessionFromRequest(
             role: verifyResult.payload.role,
             tenantId: verifyResult.payload.tenantId,
         };
-    } catch {
+    } catch (error) {
         console.error('Session validation error:', error);
         return {
             valid: false,

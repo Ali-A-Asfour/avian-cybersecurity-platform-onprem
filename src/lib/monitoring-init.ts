@@ -13,7 +13,7 @@ export function initializeMonitoring(): void {
       performanceMonitoring: true,
       logLevel: process.env.NODE_ENV === 'development' ? 'DEBUG' : 'INFO',
     });
-  } catch {
+  } catch (error) {
     logger.error('Failed to initialize monitoring services', error instanceof Error ? error : undefined);
   }
 }
@@ -25,7 +25,7 @@ export function shutdownMonitoring(): void {
   try {
     performanceMonitor.stop();
     logger.info('Monitoring services shut down');
-  } catch {
+  } catch (error) {
     logger.error('Error during monitoring shutdown', error instanceof Error ? error : undefined);
   }
 }

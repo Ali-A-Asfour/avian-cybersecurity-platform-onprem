@@ -149,7 +149,7 @@ export class DataIngestionService {
       });
 
       return newDataSource;
-    } catch {
+    } catch (error) {
       logger.error('Failed to create data source', { error, dataSource });
       throw new Error('Failed to create data source');
     }
@@ -167,7 +167,7 @@ export class DataIngestionService {
         ...row,
         connection_config: JSON.parse(row.connection_config)
       }));
-    } catch {
+    } catch (error) {
       logger.error('Failed to get data sources', { error, tenantId });
       throw new Error('Failed to get data sources');
     }
@@ -188,7 +188,7 @@ export class DataIngestionService {
         ...result.rows[0],
         connection_config: JSON.parse(result.rows[0].connection_config)
       };
-    } catch {
+    } catch (error) {
       logger.error('Failed to get data source', { error, id, tenantId });
       throw new Error('Failed to get data source');
     }
@@ -229,7 +229,7 @@ export class DataIngestionService {
       });
 
       return updated;
-    } catch {
+    } catch (error) {
       logger.error('Failed to update data source', { error, id, tenantId });
       throw new Error('Failed to update data source');
     }
@@ -263,7 +263,7 @@ export class DataIngestionService {
       });
 
       return true;
-    } catch {
+    } catch (error) {
       logger.error('Failed to delete data source', { error, id, tenantId });
       throw new Error('Failed to delete data source');
     }
@@ -318,7 +318,7 @@ export class DataIngestionService {
       });
 
       return securityEvent;
-    } catch {
+    } catch (error) {
       logger.error('Failed to ingest security event', { error, event });
       throw new Error('Failed to ingest security event');
     }
@@ -348,7 +348,7 @@ export class DataIngestionService {
       };
 
       await threatLakeService.ingestEvent(threatLakeEvent);
-    } catch {
+    } catch (error) {
       // Don't fail the main ingestion if threat lake forwarding fails
       logger.error('Failed to forward event to threat lake', {
         error,
@@ -529,7 +529,7 @@ export class DataIngestionService {
         normalized_data: JSON.parse(row.normalized_data),
         tags: JSON.parse(row.tags)
       }));
-    } catch {
+    } catch (error) {
       logger.error('Failed to get security events', { error, tenantId, filters });
       throw new Error('Failed to get security events');
     }
@@ -543,7 +543,7 @@ export class DataIngestionService {
         success: true,
         message: 'Connection test successful'
       };
-    } catch {
+    } catch (error) {
       logger.error('Connection test failed', { error, dataSourceId: dataSource.id });
       return {
         success: false,
@@ -559,7 +559,7 @@ export class DataIngestionService {
         SET events_processed = events_processed + 1, last_heartbeat = NOW()
         WHERE id = $1
       `, [sourceId]);
-    } catch {
+    } catch (error) {
       logger.error('Failed to update data source metrics', { error, sourceId });
     }
   }

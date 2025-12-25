@@ -35,7 +35,7 @@ export function TenantSwitcher({ userRole }: TenantSwitcherProps) {
       
       // Reload the page to reflect changes
       window.location.reload();
-    } catch {
+    } catch (error) {
       console.error('Failed to switch tenant:', error);
     }
   };

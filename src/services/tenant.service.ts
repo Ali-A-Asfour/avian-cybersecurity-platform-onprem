@@ -102,7 +102,7 @@ export class TenantService {
     // Create tenant-specific database schema
     try {
       await TenantSchemaManager.createTenantSchema(newTenant.id);
-    } catch {
+    } catch (error) {
       // Rollback tenant creation if schema creation fails
       await db.delete(tenants).where(eq(tenants.id, newTenant.id));
       throw new Error(`Failed to create tenant schema: ${error}`);

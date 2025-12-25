@@ -62,7 +62,7 @@ export function DataSourceMonitoring({ dataSources }: DataSourceMonitoringProps)
         const alertsData = await alertsResponse.json();
         setAlerts(alertsData.alerts || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to fetch monitoring data:', error);
     } finally {
       setLoading(false);

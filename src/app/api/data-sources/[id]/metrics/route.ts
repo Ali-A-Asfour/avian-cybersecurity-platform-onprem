@@ -20,7 +20,7 @@ export async function GET(
       success: true,
       metrics
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch data source metrics:', error);
     return NextResponse.json(
       { error: 'Failed to fetch metrics' },

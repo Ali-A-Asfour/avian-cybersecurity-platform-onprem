@@ -69,7 +69,7 @@ export async function GET(
       health: connector.getHealth(),
       capabilities: connector.getCapabilities(),
     });
-  } catch {
+  } catch (error) {
     return ErrorHandler.handleError(error, `/api/connectors/${connectorId}`);
   }
 }
@@ -149,7 +149,7 @@ export async function PUT(
       health: connector.getHealth(),
       capabilities: connector.getCapabilities(),
     });
-  } catch {
+  } catch (error) {
     return ErrorHandler.handleError(error, `/api/connectors/${connectorId}`);
   }
 }
@@ -195,7 +195,7 @@ export async function DELETE(
     }
 
     return ErrorHandler.success({ message: 'Connector removed successfully' });
-  } catch {
+  } catch (error) {
     return ErrorHandler.handleError(error, `/api/connectors/${connectorId}`);
   }
 }

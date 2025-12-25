@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(result, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('Error generating compliance report:', error);
     return NextResponse.json(
       {

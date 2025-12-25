@@ -42,7 +42,7 @@ export async function GET(
       success: true,
       data: recommendations
     });
-  } catch {
+  } catch (error) {
     console.error('Error getting playbook recommendations:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to get recommendations' } },

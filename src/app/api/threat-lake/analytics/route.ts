@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid analytics query parameters', details: error.errors },
@@ -147,7 +147,7 @@ async function getThreatPredictions(tenantId: string, timeRange: TimeRange) {
       model_accuracy: modelsResult.rows[0].accuracy_score,
       predictions
     };
-  } catch {
+  } catch (error) {
     logger.error('Failed to get threat predictions', { error, tenantId });
     return {
       available: false,
@@ -237,7 +237,7 @@ async function getThreatTrends(tenantId: string, timeRange: TimeRange) {
         duration_hours: Math.round((timeRange.end_time.getTime() - timeRange.start_time.getTime()) / (1000 * 60 * 60))
       }
     };
-  } catch {
+  } catch (error) {
     logger.error('Failed to get threat trends', { error, tenantId });
     return {
       error: 'Failed to calculate trends'

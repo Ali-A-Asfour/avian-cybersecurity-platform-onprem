@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to get agents', { error });
     
     const response: ApiResponse = {
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response, { status: 201 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to create agent deployment', { error });
     
     const response: ApiResponse = {

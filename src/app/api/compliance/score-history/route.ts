@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error fetching compliance score history:', error);
     return NextResponse.json(
       {

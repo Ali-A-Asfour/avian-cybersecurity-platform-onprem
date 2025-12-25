@@ -17,7 +17,7 @@ export async function GET(
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error fetching compliance evidence:', error);
     return NextResponse.json(
       {
@@ -119,7 +119,7 @@ export async function POST(
     }
 
     return NextResponse.json(result, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('Error uploading compliance evidence:', error);
     return NextResponse.json(
       {

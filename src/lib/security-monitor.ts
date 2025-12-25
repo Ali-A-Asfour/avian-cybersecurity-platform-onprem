@@ -108,7 +108,7 @@ export class SecurityMonitor {
       // Clean up old incidents
       this.cleanupOldIncidents();
       
-    } catch {
+    } catch (error) {
       logger.error('Security monitoring analysis failed', error instanceof Error ? error : new Error(String(error)), {
         category: 'security',
       });
@@ -166,7 +166,7 @@ export class SecurityMonitor {
           await this.reportIncident(incident);
         }
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to detect brute force attacks', error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -222,7 +222,7 @@ export class SecurityMonitor {
           await this.reportIncident(incident);
         }
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to detect XSS attempts', error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -288,7 +288,7 @@ export class SecurityMonitor {
           await this.reportIncident(incident);
         }
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to detect suspicious patterns', error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -343,7 +343,7 @@ export class SecurityMonitor {
           await this.reportIncident(incident);
         }
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to detect rate limit abuse', error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -378,7 +378,7 @@ export class SecurityMonitor {
       // - Trigger automated responses (IP blocking, etc.)
       // - Create tickets in incident management system
       
-    } catch {
+    } catch (error) {
       logger.error('Failed to report security incident', error instanceof Error ? error : new Error(String(error)), {
         incidentId: incident.id,
       });
@@ -473,7 +473,7 @@ export class SecurityMonitor {
           end: endTime,
         },
       };
-    } catch {
+    } catch (error) {
       logger.error('Failed to get security metrics', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }

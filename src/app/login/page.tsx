@@ -55,7 +55,7 @@ export default function LoginPage() {
         // Fallback to dashboard
         window.location.href = '/dashboard';
       }
-    } catch {
+    } catch (error) {
       setError('An error occurred. Please try again.');
       setLoading(false);
     }

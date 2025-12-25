@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       processing_time: processingTime,
     });
 
-  } catch {
+  } catch (error) {
     console.error('Webhook processing error:', error);
     return ErrorHandler.handleError(
       error,
@@ -279,7 +279,7 @@ async function _validateWebhookSignature(payload: unknown, signature: string): P
       result |= cleanBytes[i] ^ expectedBytes[i];
     }
     return result === 0;
-  } catch {
+  } catch (error) {
     console.error('Error validating webhook signature:', error);
     return false;
   }
@@ -330,7 +330,7 @@ function parseSIEMWebhook(payload: any, source: string): any[] {
         },
       });
     }
-  } catch {
+  } catch (error) {
     console.error('Error parsing SIEM webhook:', error);
   }
 
@@ -383,7 +383,7 @@ function parseThreatLakeWebhook(payload: any, source: string): any[] {
         },
       });
     }
-  } catch {
+  } catch (error) {
     console.error('Error parsing Threat Lake webhook:', error);
   }
 
@@ -434,7 +434,7 @@ function parseGenericWebhook(payload: WebhookPayload, source: string): any[] {
         },
       });
     }
-  } catch {
+  } catch (error) {
     console.error('Error parsing generic webhook:', error);
   }
 

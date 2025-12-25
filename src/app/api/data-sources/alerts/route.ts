@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       success: true,
       alerts
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch data source alerts:', error);
     return NextResponse.json(
       { error: 'Failed to fetch alerts' },

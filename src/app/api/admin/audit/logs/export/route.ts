@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="audit-logs-${new Date().toISOString().split('T')[0]}.csv"`,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Audit logs export error:', error);
     return NextResponse.json(
       { 

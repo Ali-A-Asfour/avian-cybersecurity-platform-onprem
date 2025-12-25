@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
                 createdAt: user.created_at,
             },
         });
-    } catch {
+    } catch (error) {
         console.error('Get current user error:', error);
 
         return NextResponse.json(

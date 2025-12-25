@@ -955,7 +955,7 @@ export class DatabaseQueryOptimizer {
                 return plan['Total Cost'] || plan['Actual Total Time'] || 0;
             }
             return 0;
-        } catch {
+        } catch (error) {
             return 0;
         }
     }
@@ -1141,7 +1141,7 @@ export class DatabaseQueryOptimizer {
                     avgTime: parseFloat(row.avg_time as string) || 0,
                     calls: parseInt(row.calls as string) || 0
                 }));
-            } catch {
+            } catch (error) {
                 // pg_stat_statements might not be available
                 slowQueries = [];
             }

@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Error fetching IT support tickets:', error);
     const response: ApiResponse = {
       success: false,

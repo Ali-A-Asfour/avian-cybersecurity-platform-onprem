@@ -174,7 +174,7 @@ class HelpDeskIntegrationTestRunner {
                     duration,
                     errors: result.testResults?.[0]?.message ? [result.testResults[0].message] : [String(error)]
                 };
-            } catch {
+            } catch (error) {
                 return {
                     testSuite: testPath,
                     passed: 0,

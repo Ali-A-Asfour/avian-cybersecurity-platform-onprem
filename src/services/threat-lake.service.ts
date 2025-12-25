@@ -332,7 +332,7 @@ export class ThreatLakeService {
       });
 
       return threatLakeEvent;
-    } catch {
+    } catch (error) {
       logger.error('Failed to ingest event into threat lake', { error, event });
       throw new Error('Failed to ingest event into threat lake');
     }
@@ -441,7 +441,7 @@ export class ThreatLakeService {
         offset,
         has_more: offset + limit < total
       };
-    } catch {
+    } catch (error) {
       logger.error('Failed to search threat lake events', { error, tenantId, query });
       throw new Error('Failed to search threat lake events');
     }
@@ -491,7 +491,7 @@ export class ThreatLakeService {
       });
 
       return correlationRule;
-    } catch {
+    } catch (error) {
       logger.error('Failed to create correlation rule', { error, rule });
       throw new Error('Failed to create correlation rule');
     }
@@ -509,7 +509,7 @@ export class ThreatLakeService {
         ...row,
         rule_logic: JSON.parse(row.rule_logic)
       }));
-    } catch {
+    } catch (error) {
       logger.error('Failed to get correlation rules', { error, tenantId });
       throw new Error('Failed to get correlation rules');
     }
@@ -550,7 +550,7 @@ export class ThreatLakeService {
       ]);
 
       return threatFeed;
-    } catch {
+    } catch (error) {
       logger.error('Failed to create threat intelligence feed', { error, feed });
       throw new Error('Failed to create threat intelligence feed');
     }
@@ -565,7 +565,7 @@ export class ThreatLakeService {
       `, [tenantId]);
 
       return result.rows;
-    } catch {
+    } catch (error) {
       logger.error('Failed to get threat intelligence feeds', { error, tenantId });
       throw new Error('Failed to get threat intelligence feeds');
     }
@@ -622,7 +622,7 @@ export class ThreatLakeService {
         top_threat_indicators: indicatorResult.rows,
         time_range: timeRange
       };
-    } catch {
+    } catch (error) {
       logger.error('Failed to get threat analytics', { error, tenantId, timeRange });
       throw new Error('Failed to get threat analytics');
     }
@@ -662,7 +662,7 @@ export class ThreatLakeService {
       ]);
 
       return retentionPolicy;
-    } catch {
+    } catch (error) {
       logger.error('Failed to create retention policy', { error, policy });
       throw new Error('Failed to create retention policy');
     }
@@ -720,7 +720,7 @@ export class ThreatLakeService {
         deleted_count: totalDeleted,
         policies_applied: policies.rows.length
       };
-    } catch {
+    } catch (error) {
       logger.error('Failed to apply retention policies', { error, tenantId });
       throw new Error('Failed to apply retention policies');
     }
@@ -745,7 +745,7 @@ class CorrelationEngine {
           await this.createCorrelation(event, rule, ruleLogic);
         }
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to analyze event for correlation', { error, eventId: event.id });
     }
   }
@@ -856,7 +856,7 @@ class CorrelationEngine {
         eventId: event.id,
         tenantId: event.tenant_id
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to create correlation', { error, eventId: event.id, ruleId: rule.id });
     }
   }
@@ -892,7 +892,7 @@ class EnrichmentEngine {
       }
 
       return enrichmentData;
-    } catch {
+    } catch (error) {
       logger.error('Failed to enrich event', { error, eventType: event.event_type });
       return {
         threat_intelligence_matches: [],
@@ -950,7 +950,7 @@ class EnrichmentEngine {
       }
 
       return matches;
-    } catch {
+    } catch (error) {
       logger.error('Failed to get threat intelligence matches', { error });
       return [];
     }
@@ -987,7 +987,7 @@ class EnrichmentEngine {
         owner: asset.owner || 'unknown',
         location: asset.location || 'unknown'
       };
-    } catch {
+    } catch (error) {
       logger.error('Failed to get asset context', { error, assetId });
       return undefined;
     }

@@ -69,7 +69,7 @@ export function PlatformMetrics({ tenants, users }: PlatformMetricsProps) {
         activeUsers,
         ...additionalStats,
       });
-    } catch {
+    } catch (error) {
       console.error('Failed to load platform stats:', error);
     } finally {
       setLoading(false);

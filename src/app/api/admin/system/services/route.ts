@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: services,
     });
-  } catch {
+  } catch (error) {
     console.error('Service status error:', error);
     return NextResponse.json(
       { 

@@ -266,7 +266,7 @@ This is an automated notification from the AVIAN Cybersecurity Platform for ${te
       },
     });
 
-  } catch {
+  } catch (error) {
     console.error('Error escalating alert to incident:', error);
     return NextResponse.json(
       {

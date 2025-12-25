@@ -56,7 +56,7 @@ export class WorkflowService {
       for (const ticket of overdueTickets) {
         await this.processTicketEscalation(tenantId, ticket);
       }
-    } catch {
+    } catch (error) {
       console.error('Error checking for escalations:', error);
     }
   }
@@ -127,7 +127,7 @@ export class WorkflowService {
           }
         }
       }
-    } catch {
+    } catch (error) {
       console.error('Error monitoring SLA breaches:', error);
     }
   }
@@ -176,7 +176,7 @@ export class WorkflowService {
       }
 
       return null;
-    } catch {
+    } catch (error) {
       console.error('Error assigning ticket with workload balancing:', error);
       return null;
     }
@@ -219,7 +219,7 @@ export class WorkflowService {
         criticalTickets,
         workloadScore,
       };
-    } catch {
+    } catch (error) {
       console.error('Error calculating user workload:', error);
       return {
         userId,
@@ -280,7 +280,7 @@ export class WorkflowService {
       } else if (newStatus === TicketStatus.CLOSED) {
         await this.handleTicketClosure(tenantId, ticket);
       }
-    } catch {
+    } catch (error) {
       console.error('Error handling status change:', error);
     }
   }
@@ -359,7 +359,7 @@ export class WorkflowService {
           });
         }
       }
-    } catch {
+    } catch (error) {
       console.error('Error reassigning ticket:', error);
       throw error;
     }
@@ -377,7 +377,7 @@ export class WorkflowService {
       );
 
       return workloadMetrics.sort((a: WorkloadMetrics, b: WorkloadMetrics) => b.workloadScore - a.workloadScore);
-    } catch {
+    } catch (error) {
       console.error('Error getting workload summary:', error);
       return [];
     }

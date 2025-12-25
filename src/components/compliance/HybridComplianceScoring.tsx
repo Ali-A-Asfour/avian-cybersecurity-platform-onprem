@@ -42,7 +42,7 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
         loadRecommendations(),
         loadScoreHistory()
       ]);
-    } catch {
+    } catch (error) {
       console.error('Error loading compliance data:', error);
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
       if (result.success) {
         await loadComplianceData(); // Reload all data
       }
-    } catch {
+    } catch (error) {
       console.error('Error triggering assessment:', error);
     } finally {
       setAssessmentLoading(false);
@@ -134,7 +134,7 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
       if (result.success && result.data.download_url) {
         window.open(result.data.download_url, '_blank');
       }
-    } catch {
+    } catch (error) {
       console.error('Error generating report:', error);
     }
   };

@@ -321,7 +321,7 @@ export class InputSanitizer {
     try {
       new URL(sanitized);
       return sanitized;
-    } catch {
+    } catch (error) {
       return '';
     }
   }
@@ -383,7 +383,7 @@ export function validateRequest<T>(schema: z.ZodSchema<T>) {
       if (request.headers.get('content-type')?.includes('application/json')) {
         try {
           body = await request.json();
-        } catch {
+        } catch (error) {
           return {
             success: false,
             error: {
@@ -421,7 +421,7 @@ export function validateRequest<T>(schema: z.ZodSchema<T>) {
         success: true,
         data: validatedData,
       };
-    } catch {
+    } catch (error) {
       if (error instanceof z.ZodError) {
         return {
           success: false,
@@ -476,7 +476,7 @@ export function validateQueryParams<T>(schema: z.ZodSchema<T>) {
         success: true,
         data: validatedData,
       };
-    } catch {
+    } catch (error) {
       if (error instanceof z.ZodError) {
         return {
           success: false,

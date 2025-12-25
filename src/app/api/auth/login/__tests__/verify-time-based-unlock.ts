@@ -226,7 +226,7 @@ async function verifyTimeBasedUnlock() {
         console.log('✅ Boundary conditions (locked_until = now) work correctly');
 
         return true;
-    } catch {
+    } catch (error) {
         console.error('\n❌ Verification failed:', error);
 
         // Cleanup on error

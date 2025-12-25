@@ -30,7 +30,7 @@ export class AssetService {
       } else {
         return await this.createAsset(agentId, assetData);
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to create or update asset', { error, agentId, assetData });
       throw new Error('Failed to create or update asset');
     }
@@ -98,7 +98,7 @@ export class AssetService {
     try {
       // In a real implementation, this would query the database
       return null;
-    } catch {
+    } catch (error) {
       logger.error('Failed to get asset by agent ID', { error, agentId });
       throw new Error('Failed to get asset by agent ID');
     }
@@ -119,7 +119,7 @@ export class AssetService {
       });
 
       return mockAssets;
-    } catch {
+    } catch (error) {
       logger.error('Failed to get assets for tenant', { error, tenantId });
       throw new Error('Failed to get assets for tenant');
     }
@@ -570,7 +570,7 @@ export class AssetService {
     try {
       // In a real implementation, this would query the database
       return null;
-    } catch {
+    } catch (error) {
       logger.error('Failed to get asset by ID', { error, assetId });
       throw new Error('Failed to get asset by ID');
     }
@@ -586,7 +586,7 @@ export class AssetService {
         assetId,
         softwareCount: software.length
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to update software inventory', { error, assetId });
       throw new Error('Failed to update software inventory');
     }
@@ -602,7 +602,7 @@ export class AssetService {
         assetId,
         toolsCount: tools.length
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to update security tools', { error, assetId });
       throw new Error('Failed to update security tools');
     }
@@ -665,7 +665,7 @@ export class AssetService {
       });
 
       return status;
-    } catch {
+    } catch (error) {
       logger.error('Failed to perform compliance assessment', { error, assetId });
       throw new Error('Failed to perform compliance assessment');
     }
@@ -696,7 +696,7 @@ export class AssetService {
       });
 
       return report;
-    } catch {
+    } catch (error) {
       logger.error('Failed to generate inventory report', { error, tenantId });
       throw new Error('Failed to generate inventory report');
     }
@@ -723,7 +723,7 @@ export class AssetService {
       });
 
       return vulnerabilities;
-    } catch {
+    } catch (error) {
       logger.error('Failed to scan asset vulnerabilities', { error, assetId });
       throw new Error('Failed to scan asset vulnerabilities');
     }

@@ -27,7 +27,7 @@ export function useFeatureFlag(flagName: string): boolean {
                     const serverFlags = await response.json();
                     setFlags({ ...defaultFlags, ...serverFlags });
                 }
-            } catch {
+            } catch (error) {
                 console.warn('Failed to fetch feature flags, using defaults:', error);
             } finally {
                 setLoading(false);
@@ -57,7 +57,7 @@ export function useFeatureFlags(): { flags: FeatureFlags; loading: boolean } {
                     const serverFlags = await response.json();
                     setFlags({ ...defaultFlags, ...serverFlags });
                 }
-            } catch {
+            } catch (error) {
                 console.warn('Failed to fetch feature flags, using defaults:', error);
             } finally {
                 setLoading(false);

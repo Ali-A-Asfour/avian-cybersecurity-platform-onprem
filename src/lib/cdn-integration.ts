@@ -68,7 +68,7 @@ class CDNService {
 
       monitoring.finishSpan(span.spanId);
       return mockUpload;
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, { 
         error: error instanceof Error ? error.message : 'unknown' 
       });
@@ -124,7 +124,7 @@ class CDNService {
           try {
             const _result = await this.uploadFile(file, options);
             resolve(result);
-          } catch {
+          } catch (error) {
             reject(error);
           }
         })
@@ -221,7 +221,7 @@ class CDNService {
 
       logger.info('CDN cache purged', { paths });
       monitoring.finishSpan(span.spanId);
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, { 
         error: error instanceof Error ? error.message : 'unknown' 
       });
@@ -435,7 +435,7 @@ export const useCDNAsset = (path: string, options: Parameters<CDNService['genera
       const assetUrl = cdn.generateImageUrl(path, options);
       setUrl(assetUrl);
       setLoading(false);
-    } catch {
+    } catch (error) {
       setError(err instanceof Error ? err : new Error('Failed to generate asset URL'));
       setLoading(false);
     }

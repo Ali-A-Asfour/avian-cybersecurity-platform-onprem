@@ -110,7 +110,7 @@ export class WebhookSecurity {
         result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
       }
       return result === 0;
-    } catch {
+    } catch (error) {
       return false;
     }
   }
@@ -149,7 +149,7 @@ export class WebhookSecurity {
       }
 
       return { valid: true, payload };
-    } catch {
+    } catch (error) {
       return {
         valid: false,
         error: `Webhook verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -293,7 +293,7 @@ export class SiemAlertProcessor implements WebhookProcessor {
       }
 
       return { success: true };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: `SIEM alert processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -344,7 +344,7 @@ export class ThreatLakeProcessor implements WebhookProcessor {
       }
 
       return { success: true };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: `Threat Lake processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -453,7 +453,7 @@ export class WebhookDelivery {
           body: responseData,
         },
       };
-    } catch {
+    } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         return { success: false, error: 'Webhook delivery timeout' };
       }
@@ -554,7 +554,7 @@ export class WebhookUtils {
     try {
       webhookSchemas.base.parse(payload);
       return { valid: true };
-    } catch {
+    } catch (error) {
       return {
         valid: false,
         error: error instanceof Error ? error.message : 'Invalid webhook payload'

@@ -50,7 +50,7 @@ export async function connectRedis() {
     try {
       await redisClient.connect();
       isConnected = true;
-    } catch {
+    } catch (error) {
       if (config.app.nodeEnv === 'development') {
         console.warn('⚠️ Redis connection failed in development mode, continuing without Redis');
         isConnected = false;

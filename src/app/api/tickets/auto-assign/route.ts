@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Error auto-assigning ticket:', error);
     const response: ApiResponse = {
       success: false,

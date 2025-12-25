@@ -89,7 +89,7 @@ export function DocumentUpload({
       } else {
         console.error('Upload failed:', result.error);
       }
-    } catch {
+    } catch (error) {
       console.error('Upload error:', error);
     } finally {
       setUploading(false);
@@ -125,7 +125,7 @@ export function DocumentUpload({
       } else {
         console.error('Analysis failed:', result.error);
       }
-    } catch {
+    } catch (error) {
       console.error('Analysis error:', error);
     } finally {
       setAnalyzing(false);

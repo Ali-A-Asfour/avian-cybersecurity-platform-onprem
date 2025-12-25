@@ -59,7 +59,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to get agent', { error, agentId: params.id });
     
     const response: ApiResponse = {
@@ -126,7 +126,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to update agent configuration', { error, agentId: params.id });
     
     const response: ApiResponse = {

@@ -78,7 +78,7 @@ export class CryptoUtils {
         result |= hash.charCodeAt(i) ^ computedHash.charCodeAt(i);
       }
       return result === 0;
-    } catch {
+    } catch (error) {
       return false;
     }
   }
@@ -196,7 +196,7 @@ export class CryptoUtils {
         result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
       }
       return result === 0;
-    } catch {
+    } catch (error) {
       return false;
     }
   }

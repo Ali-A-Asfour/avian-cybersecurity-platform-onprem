@@ -14,7 +14,7 @@ const featureFlags = {
 export async function GET() {
     try {
         return NextResponse.json(featureFlags);
-    } catch {
+    } catch (error) {
         console.error('Error fetching feature flags:', error);
         return NextResponse.json(
             { error: 'Failed to fetch feature flags' },
@@ -42,7 +42,7 @@ export async function POST(_request: Request) {
             success: true,
             message: `Feature flag '${flag}' ${enabled ? 'enabled' : 'disabled'}`
         });
-    } catch {
+    } catch (error) {
         console.error('Error updating feature flag:', error);
         return NextResponse.json(
             { error: 'Failed to update feature flag' },

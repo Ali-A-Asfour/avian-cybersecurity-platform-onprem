@@ -97,7 +97,7 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
         const error = await response.json();
         alert(error.error?.message || 'Failed to save user');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to save user:', error);
       alert('Failed to save user');
     } finally {
@@ -125,7 +125,7 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
         const error = await response.json();
         alert(error.error?.message || 'Failed to deactivate user');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to deactivate user:', error);
       alert('Failed to deactivate user');
     }
@@ -154,7 +154,7 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
         const error = await response.json();
         alert(error.error?.message || 'Failed to reset password');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to reset password:', error);
       alert('Failed to reset password');
     }

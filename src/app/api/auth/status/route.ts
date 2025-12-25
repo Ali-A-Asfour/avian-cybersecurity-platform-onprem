@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
       data: responseData,
     });
 
-  } catch {
+  } catch (error) {
     console.error('Auth status check error:', error);
 
     return NextResponse.json(
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch {
+  } catch (error) {
     console.error('Session refresh error:', error);
 
     return NextResponse.json(

@@ -34,7 +34,7 @@ export function PlaybookRecommendations({ alertId, onClose }: PlaybookRecommenda
       } else {
         setError(data.error?.message || 'Failed to fetch recommendations');
       }
-    } catch {
+    } catch (error) {
       setError('Failed to fetch recommendations');
     } finally {
       setLoading(false);

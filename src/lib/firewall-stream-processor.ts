@@ -285,7 +285,7 @@ export class FirewallStreamProcessor {
             logger.info('Flushed firewall metrics', {
                 metricsCount: this.metricsCache.size
             });
-        } catch {
+        } catch (error) {
             logger.error('Failed to flush firewall metrics', { error });
         }
     }

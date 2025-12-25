@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: playbooks
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching playbooks:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch playbooks' } },
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: newPlaybook
     }, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('Error creating playbook:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to create playbook' } },

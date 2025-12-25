@@ -35,7 +35,7 @@ export function ComplianceReports({ frameworks }: ComplianceReportsProps) {
       } else {
         alert(result.error?.message || 'Failed to generate report');
       }
-    } catch {
+    } catch (error) {
       console.error('Error generating report:', error);
       alert('Failed to generate report');
     } finally {

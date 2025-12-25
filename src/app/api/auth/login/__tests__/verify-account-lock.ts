@@ -172,7 +172,7 @@ async function verifyAccountLockLogic() {
         console.log('✅ isAccountLocked checks locked_until timestamp');
 
         return true;
-    } catch {
+    } catch (error) {
         console.error('\n❌ Verification failed:', error);
 
         // Cleanup on error

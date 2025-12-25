@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
         hasPreviousPage: page > 1,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching pending reviews:', error);
     return NextResponse.json(
       { 
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
         results,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Error processing bulk review operation:', error);
     return NextResponse.json(
       { 

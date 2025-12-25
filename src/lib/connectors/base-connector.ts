@@ -150,7 +150,7 @@ export abstract class BaseConnector {
       }
 
       return { success: true, metadata: { timestamp: new Date() } };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -281,7 +281,7 @@ export class ConnectorRegistry {
         data: connector,
         metadata: { timestamp: new Date() },
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -341,7 +341,7 @@ export class ConnectorRegistry {
         success: true,
         metadata: { timestamp: new Date() },
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -363,7 +363,7 @@ export class ConnectorRegistry {
       try {
         const testResult = await connector.testConnection();
         results[id] = testResult.success;
-      } catch {
+      } catch (error) {
         results[id] = false;
       }
     }
@@ -444,7 +444,7 @@ export class ConnectorManager {
         success: true,
         metadata: { timestamp: new Date() },
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -465,7 +465,7 @@ export class ConnectorManager {
       try {
         await connector.testConnection();
         return { id: connector.getInfo().id, health: connector.getHealth() };
-      } catch {
+      } catch (error) {
         return {
           id: connector.getInfo().id,
           health: {
@@ -490,7 +490,7 @@ export class ConnectorManager {
         data: healthStatus,
         metadata: { timestamp: new Date() },
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {

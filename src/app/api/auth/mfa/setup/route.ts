@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: result,
     });
-  } catch {
+  } catch (error) {
     console.error('MFA setup error:', error);
 
     return NextResponse.json(

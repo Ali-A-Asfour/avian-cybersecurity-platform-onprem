@@ -36,7 +36,7 @@ export async function GET(
       success: true,
       data: progressData,
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching analysis progress:', error);
     return NextResponse.json(
       { 

@@ -38,7 +38,7 @@ export default function TenantsPage() {
         const data = await response.json();
         setTenants(data.tenants || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to fetch tenants:', error);
     } finally {
       setLoading(false);

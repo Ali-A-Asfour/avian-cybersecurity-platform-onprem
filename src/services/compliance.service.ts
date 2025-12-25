@@ -43,7 +43,7 @@ export class ComplianceService {
         success: true,
         data: AVAILABLE_FRAMEWORKS
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -81,7 +81,7 @@ export class ComplianceService {
         success: true,
         data: tenantFrameworks
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -125,7 +125,7 @@ export class ComplianceService {
         success: true,
         data: framework
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -166,7 +166,7 @@ export class ComplianceService {
         success: true,
         data: true
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -214,7 +214,7 @@ export class ComplianceService {
         success: true,
         data: controls
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -256,7 +256,7 @@ export class ComplianceService {
         success: true,
         data: MOCK_CONTROLS[controlIndex]
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -330,7 +330,7 @@ export class ComplianceService {
         success: true,
         data: score
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -362,7 +362,7 @@ export class ComplianceService {
         success: true,
         data: score
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -428,7 +428,7 @@ export class ComplianceService {
         success: true,
         data: recommendations
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -486,7 +486,7 @@ export class ComplianceService {
           summary
         }
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {

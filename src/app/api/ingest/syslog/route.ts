@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
           processedEvents.push(securityEvent);
         }
-      } catch {
+      } catch (error) {
         logger.error('Failed to process syslog message', {
           error,
           message: syslogMsg.message
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       total: messages.length,
       events: processedEvents
     });
-  } catch {
+  } catch (error) {
     logger.error('Failed to ingest syslog messages', { error });
     return NextResponse.json(
       { error: 'Failed to ingest syslog messages' },

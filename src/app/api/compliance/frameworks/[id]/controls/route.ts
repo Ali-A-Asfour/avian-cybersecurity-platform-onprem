@@ -17,7 +17,7 @@ export async function GET(
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error fetching compliance controls:', error);
     return NextResponse.json(
       {

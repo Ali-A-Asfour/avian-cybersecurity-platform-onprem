@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Health check failed', error instanceof Error ? error : undefined);
     
     return NextResponse.json(
@@ -73,7 +73,7 @@ async function performHealthChecks(): Promise<Array<{ name: string; status: 'pas
       status: dbConnected ? 'pass' : 'fail' as const,
       message: dbConnected ? undefined : 'Database connection failed',
     });
-  } catch {
+  } catch (error) {
     checks.push({
       name: 'database',
       status: 'fail' as const,
@@ -90,7 +90,7 @@ async function performHealthChecks(): Promise<Array<{ name: string; status: 'pas
       status: redisConnected ? 'pass' : 'fail' as const,
       message: redisConnected ? undefined : 'Redis connection failed',
     });
-  } catch {
+  } catch (error) {
     checks.push({
       name: 'redis',
       status: 'fail' as const,

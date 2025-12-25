@@ -61,7 +61,7 @@ export class AgentService {
       });
 
       return deployment;
-    } catch {
+    } catch (error) {
       logger.error('Failed to create agent deployment', { error, tenantId, deploymentName });
       throw new Error('Failed to create agent deployment');
     }
@@ -99,7 +99,7 @@ export class AgentService {
       });
 
       return script;
-    } catch {
+    } catch (error) {
       logger.error('Failed to generate installation script', { error, tenantId, osType });
       throw new Error('Failed to generate installation script');
     }
@@ -135,7 +135,7 @@ export class AgentService {
       });
 
       return registration;
-    } catch {
+    } catch (error) {
       logger.error('Failed to register agent', { error, registrationData });
       throw new Error('Failed to register agent');
     }
@@ -237,7 +237,7 @@ export class AgentService {
         timestamp: heartbeatData.timestamp,
         eventsCount: heartbeatData.security_events?.length || 0
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to process heartbeat', { error, agentId: heartbeatData.agent_id });
       throw new Error('Failed to process heartbeat');
     }
@@ -279,7 +279,7 @@ export class AgentService {
         agentId,
         eventCount: events.length
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to process security events', { error, agentId, eventCount: events.length });
       throw error;
     }
@@ -353,7 +353,7 @@ export class AgentService {
           severity: event.severity
         });
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to evaluate event for alerting', { error, eventId: event.id });
     }
   }
@@ -380,7 +380,7 @@ export class AgentService {
       if (event.vulnerabilities) {
         await assetService.updateVulnerabilities(assetId, event.vulnerabilities, event.tenant_id);
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to update asset from event', { error, agentId, event });
     }
   }
@@ -417,7 +417,7 @@ export class AgentService {
         agentId,
         dataTypes: Object.keys(telemetryData)
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to ingest telemetry data', { error, agentId });
       throw error;
     }
@@ -508,7 +508,7 @@ export class AgentService {
       if (telemetryData.security_tools) {
         await assetService.updateSecurityTools(assetId, telemetryData.security_tools);
       }
-    } catch {
+    } catch (error) {
       logger.error('Failed to update asset from telemetry', { error, agentId });
     }
   }
@@ -552,7 +552,7 @@ export class AgentService {
       });
 
       return correlationResults;
-    } catch {
+    } catch (error) {
       logger.error('Failed to correlate agent data', { error, agentId });
       throw error;
     }
@@ -579,7 +579,7 @@ export class AgentService {
         performanceAnomalies: performanceAnomalies.length,
         securityAnomalies: securityAnomalies.length
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to generate anomaly alerts', { error, agentId });
     }
   }
@@ -873,7 +873,7 @@ export class AgentService {
       });
 
       return installedTool;
-    } catch {
+    } catch (error) {
       logger.error('Failed to install tool', { error, agentId, toolConfig });
       throw new Error('Failed to install tool');
     }
@@ -887,7 +887,7 @@ export class AgentService {
       // In a real implementation, this would query the database
       // For now, return mock data
       return null;
-    } catch {
+    } catch (error) {
       logger.error('Failed to get agent status', { error, agentId });
       throw new Error('Failed to get agent status');
     }
@@ -911,7 +911,7 @@ export class AgentService {
       logger.info('Agent configuration updated', { agentId, config });
 
       return updatedConfig;
-    } catch {
+    } catch (error) {
       logger.error('Failed to update agent configuration', { error, agentId, config });
       throw new Error('Failed to update agent configuration');
     }
@@ -924,7 +924,7 @@ export class AgentService {
     try {
       // In a real implementation, this would query the database
       return [];
-    } catch {
+    } catch (error) {
       logger.error('Failed to get agents for tenant', { error, tenantId });
       throw new Error('Failed to get agents for tenant');
     }

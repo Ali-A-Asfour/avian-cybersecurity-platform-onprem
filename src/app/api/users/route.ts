@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         limit: result.limit,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('List users error:', error);
 
     if (error instanceof z.ZodError) {
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: newUser,
     }, { status: 201 });
-  } catch {
+  } catch (error) {
     console.error('Create user error:', error);
 
     if (error instanceof z.ZodError) {

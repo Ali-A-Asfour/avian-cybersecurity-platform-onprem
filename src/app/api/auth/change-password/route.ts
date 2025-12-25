@@ -45,7 +45,7 @@ async function logAuthEvent(
             user_agent: userAgent,
             metadata: metadata || {},
         });
-    } catch {
+    } catch (error) {
         console.error('Failed to log auth event:', error);
     }
 }
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         let body: ChangePasswordRequest;
         try {
             body = await req.json();
-        } catch {
+        } catch (error) {
             return NextResponse.json(
                 { error: 'Invalid request body' },
                 { status: 400 }
@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
             },
             { status: 200 }
         );
-    } catch {
+    } catch (error) {
         console.error('Change password error:', error);
 
         await logAuthEvent(

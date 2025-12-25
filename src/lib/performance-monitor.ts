@@ -183,7 +183,7 @@ class PerformanceMonitor {
         requestsPerMinute,
       });
 
-    } catch {
+    } catch (error) {
       logger.error('Failed to collect performance metrics', error instanceof Error ? error : undefined);
     }
   }

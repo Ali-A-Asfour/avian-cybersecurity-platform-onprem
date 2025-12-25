@@ -83,7 +83,7 @@ export default function TenantUsers({ tenant, onUserSelect }: TenantUsersProps) 
         total: result.meta?.total || 0,
         loading: false,
       }));
-    } catch {
+    } catch (error) {
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to fetch users',

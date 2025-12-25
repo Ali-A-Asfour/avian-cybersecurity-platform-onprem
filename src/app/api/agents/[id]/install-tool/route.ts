@@ -64,7 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response, { status: 201 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to install tool on agent', { error, agentId: params.id });
     
     const response: ApiResponse = {

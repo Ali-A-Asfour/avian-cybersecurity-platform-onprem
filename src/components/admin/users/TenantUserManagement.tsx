@@ -74,7 +74,7 @@ export function TenantUserManagement({ tenantId, tenantName }: TenantUserManagem
         // Set empty array on error to prevent crashes
         setUsers([]);
       }
-    } catch {
+    } catch (error) {
       console.error('Error loading users:', error);
       // Set empty array on error to prevent crashes
       setUsers([]);
@@ -121,7 +121,7 @@ export function TenantUserManagement({ tenantId, tenantName }: TenantUserManagem
         const error = await response.json();
         alert(error.error?.message || 'Failed to save user');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to save user:', error);
       alert('Failed to save user');
     } finally {
@@ -149,7 +149,7 @@ export function TenantUserManagement({ tenantId, tenantName }: TenantUserManagem
         const error = await response.json();
         alert(error.error?.message || 'Failed to deactivate user');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to deactivate user:', error);
       alert('Failed to deactivate user');
     }
@@ -178,7 +178,7 @@ export function TenantUserManagement({ tenantId, tenantName }: TenantUserManagem
         const error = await response.json();
         alert(error.error?.message || 'Failed to reset password');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to reset password:', error);
       alert('Failed to reset password');
     }

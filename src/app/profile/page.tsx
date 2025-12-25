@@ -235,7 +235,7 @@ function PasswordTab() {
 
             setSuccess(true);
             setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        } catch {
+        } catch (error) {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);

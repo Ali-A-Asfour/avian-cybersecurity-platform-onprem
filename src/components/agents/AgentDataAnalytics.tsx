@@ -137,7 +137,7 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
         setAlertData(alertResult.data);
       }
 
-    } catch {
+    } catch (error) {
       setError('Failed to fetch agent data');
     } finally {
       setLoading(false);
@@ -168,7 +168,7 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
       } else {
         alert(`Correlation failed: ${result.error?.message}`);
       }
-    } catch {
+    } catch (error) {
       alert('Failed to trigger correlation analysis');
     }
   };

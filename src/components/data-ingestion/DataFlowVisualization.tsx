@@ -48,7 +48,7 @@ export function DataFlowVisualization({ dataSources }: DataFlowVisualizationProp
         const data = await response.json();
         setFlowData(data.flow_nodes || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to fetch flow data:', error);
       // Generate mock flow data for demonstration
       generateMockFlowData();
@@ -151,7 +151,7 @@ export function DataFlowVisualization({ dataSources }: DataFlowVisualizationProp
       });
       const _result = await response.json();
       alert(`Diagnostics for ${nodeId}:\n${JSON.stringify(result, null, 2)}`);
-    } catch {
+    } catch (error) {
       alert('Failed to run diagnostics');
     }
   };

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error in GET /api/alerts/stats:', error);
     return NextResponse.json(
       {

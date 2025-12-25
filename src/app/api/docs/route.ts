@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Error serving OpenAPI documentation:', error);
     return NextResponse.json(
       {

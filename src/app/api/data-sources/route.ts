@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       data_sources: dataSources,
       total: dataSources.length
     });
-  } catch {
+  } catch (error) {
     logger.error('Failed to get data sources', { error });
     return NextResponse.json(
       { error: 'Failed to get data sources' },
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(dataSource, { status: 201 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to create data source', { error });
     return NextResponse.json(
       { error: 'Failed to create data source' },

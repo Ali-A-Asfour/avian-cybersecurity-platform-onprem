@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
         'Content-Length': Buffer.byteLength(exportData, 'utf8').toString()
       }
     });
-  } catch {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid export parameters', details: error.errors },

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Dashboard config API error:', error);
     
     const response: ApiResponse = {
@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Dashboard config update error:', error);
     
     const response: ApiResponse = {

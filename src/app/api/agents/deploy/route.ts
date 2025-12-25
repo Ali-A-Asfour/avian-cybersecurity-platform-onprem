@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response, { status: 201 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to generate deployment script', { error });
     
     const response: ApiResponse = {

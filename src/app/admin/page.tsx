@@ -82,7 +82,7 @@ export default function AdminPage() {
         const error = await response.json();
         alert(error.error?.message || 'Failed to save tenant');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to save tenant:', error);
       alert('Failed to save tenant');
     }

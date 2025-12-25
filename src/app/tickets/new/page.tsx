@@ -73,7 +73,7 @@ export default function NewTicketPage() {
       
       // Redirect to tickets list
       router.push('/tickets');
-    } catch {
+    } catch (error) {
       console.error('Error creating ticket:', error);
     } finally {
       setIsSubmitting(false);

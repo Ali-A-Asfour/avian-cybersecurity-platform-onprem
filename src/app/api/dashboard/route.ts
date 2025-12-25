@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Dashboard API error:', error);
     
     const response: ApiResponse = {

@@ -71,7 +71,7 @@ export async function GET(
       success: true,
       data: targetUser,
     });
-  } catch {
+  } catch (error) {
     console.error('Get user error:', error);
 
     return NextResponse.json(
@@ -137,7 +137,7 @@ export async function PUT(
       success: true,
       data: updatedUser,
     });
-  } catch {
+  } catch (error) {
     console.error('Update user error:', error);
 
     if (error instanceof z.ZodError) {
@@ -212,7 +212,7 @@ export async function DELETE(
       success: true,
       data: { message: 'User deleted successfully' },
     });
-  } catch {
+  } catch (error) {
     console.error('Delete user error:', error);
 
     return NextResponse.json(

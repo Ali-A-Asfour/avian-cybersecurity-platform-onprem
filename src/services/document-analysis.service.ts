@@ -214,7 +214,7 @@ export class DocumentAnalysisService {
         success: true,
         data: document,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -259,7 +259,7 @@ export class DocumentAnalysisService {
         success: true,
         data: analysis,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -296,7 +296,7 @@ export class DocumentAnalysisService {
         success: true,
         data: analyses,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -325,7 +325,7 @@ export class DocumentAnalysisService {
         success: true,
         data: analysis,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -364,7 +364,7 @@ export class DocumentAnalysisService {
         success: true,
         data: progress,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -411,7 +411,7 @@ export class DocumentAnalysisService {
         success: true,
         data: MOCK_ANALYSES[analysisIndex],
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -485,7 +485,7 @@ export class DocumentAnalysisService {
         success: true,
         data: validationResult,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -575,7 +575,7 @@ export class DocumentAnalysisService {
         success: true,
         data: pendingReviews,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -597,7 +597,7 @@ export class DocumentAnalysisService {
         success: true,
         data: analyses,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {
@@ -637,7 +637,7 @@ export class DocumentAnalysisService {
         success: true,
         data: statistics,
       };
-    } catch {
+    } catch (error) {
       return {
         success: false,
         error: {

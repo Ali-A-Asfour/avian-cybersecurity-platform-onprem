@@ -194,7 +194,7 @@ export class XSSProtection {
       }
       
       return urlObj.toString();
-    } catch {
+    } catch (error) {
       return '';
     }
   }
@@ -388,7 +388,7 @@ export function createXSSProtectionMiddleware(options: {
           const formData = await request.formData();
           body = Object.fromEntries(formData.entries());
         }
-      } catch {
+      } catch (error) {
         // If body parsing fails, continue without sanitization
         return null;
       }
@@ -449,7 +449,7 @@ export function createXSSProtectionMiddleware(options: {
       // Continue with sanitized request
       return NextResponse.rewrite(sanitizedRequest.url);
       
-    } catch {
+    } catch (error) {
       logger.error('XSS protection middleware error', error instanceof Error ? error : new Error(String(error)), {
         category: 'security',
         path: new URL(request.url).pathname,

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
-  } catch {
+  } catch (error) {
     console.error('Error marking notifications as read:', error);
     return NextResponse.json(
       {

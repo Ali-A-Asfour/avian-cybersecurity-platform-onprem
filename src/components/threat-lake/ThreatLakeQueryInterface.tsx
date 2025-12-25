@@ -93,7 +93,7 @@ export function ThreatLakeQueryInterface() {
         const data = await response.json();
         setSavedQueries(data.queries || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to fetch saved queries:', error);
     }
   };
@@ -118,7 +118,7 @@ export function ThreatLakeQueryInterface() {
         const error = await response.json();
         alert(`Query failed: ${error.message}`);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to execute query:', error);
       alert('Query execution failed');
     } finally {
@@ -149,7 +149,7 @@ export function ThreatLakeQueryInterface() {
         fetchSavedQueries();
         alert('Query saved successfully');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to save query:', error);
       alert('Failed to save query');
     }

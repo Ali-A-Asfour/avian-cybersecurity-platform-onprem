@@ -40,7 +40,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
             description: `${authUser.role} - Authenticated User`
           };
           setCurrentUser(mappedUser);
-        } catch {
+        } catch (error) {
           console.error('Failed to parse auth user');
         }
       }
@@ -89,7 +89,7 @@ export function useDemoContext() {
 export function useDemoContextSafe() {
   try {
     return useContext(DemoContext);
-  } catch {
+  } catch (error) {
     return null;
   }
 }

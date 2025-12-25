@@ -48,7 +48,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json(result, { status: 200 });
-  } catch {
+  } catch (error) {
     console.error('Document validation error:', error);
     return NextResponse.json({
       success: false,

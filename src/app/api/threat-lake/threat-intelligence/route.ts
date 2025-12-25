@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ feeds: sanitizedFeeds });
-  } catch {
+  } catch (error) {
     logger.error('Failed to get threat intelligence feeds', { error });
     return NextResponse.json(
       { error: 'Failed to get threat intelligence feeds' },
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(sanitizedFeed, { status: 201 });
-  } catch {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid threat intelligence feed data', details: error.errors },

@@ -46,7 +46,7 @@ export async function PUT(
       success: true,
       data: updatedExecution
     });
-  } catch {
+  } catch (error) {
     console.error('Error completing step:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to complete step' } },

@@ -355,7 +355,7 @@ export function asyncHandler(
   return async (request: Request, context?: any): Promise<NextResponse> => {
     try {
       return await handler(request, context);
-    } catch {
+    } catch (error) {
       const url = new URL(request.url);
       return ErrorHandler.handleError(error, url.pathname);
     }

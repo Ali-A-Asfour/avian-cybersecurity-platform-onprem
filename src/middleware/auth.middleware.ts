@@ -148,7 +148,7 @@ export async function authMiddleware(request: NextRequest): Promise<{ success: b
       success: true,
       user: payload
     };
-  } catch {
+  } catch (error) {
     monitoring.tagSpan(span.spanId, {
       success: false,
       error: error instanceof Error ? error.message : 'unknown_error'

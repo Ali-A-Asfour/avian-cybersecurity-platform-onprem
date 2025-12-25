@@ -171,7 +171,7 @@ export default function ThreatLakeDashboard() {
         const data = await response.json();
         setAnalytics(data);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load threat analytics:', error);
     } finally {
       setLoading(false);
@@ -190,7 +190,7 @@ export default function ThreatLakeDashboard() {
         const data = await response.json();
         setEvents(data.events || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load recent events:', error);
     }
   };
@@ -224,7 +224,7 @@ export default function ThreatLakeDashboard() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to export data:', error);
     }
   };

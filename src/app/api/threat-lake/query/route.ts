@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       total: mockResults.length,
       query_time_ms: Math.floor(Math.random() * 1000) + 100
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to execute query:', error);
     return NextResponse.json(
       { error: 'Failed to execute query' },

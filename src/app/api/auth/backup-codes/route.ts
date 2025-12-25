@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       message: 'New backup codes generated successfully. Please store them securely.',
     });
 
-  } catch {
+  } catch (error) {
     console.error('Backup code generation error:', error);
 
     return NextResponse.json(
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch {
+  } catch (error) {
     console.error('Backup code status error:', error);
 
     return NextResponse.json(

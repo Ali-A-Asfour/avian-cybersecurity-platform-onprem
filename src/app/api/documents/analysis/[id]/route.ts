@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json(result, { status: 200 });
-  } catch {
+  } catch (error) {
     console.error('Get analysis error:', error);
     return NextResponse.json({
       success: false,

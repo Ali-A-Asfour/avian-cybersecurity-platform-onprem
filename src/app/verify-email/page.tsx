@@ -41,7 +41,7 @@ function VerifyEmailContent() {
                 // Success
                 setSuccess(true);
                 setVerifying(false);
-            } catch {
+            } catch (error) {
                 setError('An error occurred during verification');
                 setVerifying(false);
             }

@@ -61,7 +61,7 @@ export class SLAMonitorService {
       }
       
       console.log(`SLA monitoring cycle completed for ${tenants.length} tenants`);
-    } catch {
+    } catch (error) {
       console.error('Error in SLA monitoring cycle:', error);
     }
   }
@@ -77,7 +77,7 @@ export class SLAMonitorService {
       // Check for escalations
       await WorkflowService.checkForEscalations(tenantId);
       
-    } catch {
+    } catch (error) {
       console.error(`Error monitoring tenant ${tenantId}:`, error);
     }
   }

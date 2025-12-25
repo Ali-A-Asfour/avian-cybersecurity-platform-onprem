@@ -200,7 +200,7 @@ class Logger {
           body: JSON.stringify(entry),
         });
       }
-    } catch {
+    } catch (error) {
       // Fallback to console if remote logging fails
       console.error('Failed to send log to remote endpoint:', error);
     }

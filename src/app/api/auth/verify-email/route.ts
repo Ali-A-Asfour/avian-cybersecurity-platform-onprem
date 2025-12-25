@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         let body: { token: string };
         try {
             body = await req.json();
-        } catch {
+        } catch (error) {
             return NextResponse.json(
                 { error: 'Invalid request body' },
                 { status: 400 }
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
             },
             { status: 200 }
         );
-    } catch {
+    } catch (error) {
         console.error('Email verification error:', error);
 
         await logAuthEvent({
@@ -242,7 +242,7 @@ export async function GET(req: NextRequest) {
             },
             { status: 200 }
         );
-    } catch {
+    } catch (error) {
         console.error('Token validation error:', error);
         return NextResponse.json(
             { valid: false, error: 'Validation failed' },

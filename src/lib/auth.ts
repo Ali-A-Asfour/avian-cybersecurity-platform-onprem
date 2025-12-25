@@ -31,7 +31,7 @@ export class AuthService {
   static verifyAccessToken(token: string): JWTPayload {
     try {
       return verify(token, config.jwt.secret) as JWTPayload;
-    } catch {
+    } catch (error) {
       throw new Error('Invalid or expired access token');
     }
   }
@@ -42,7 +42,7 @@ export class AuthService {
   static verifyRefreshToken(token: string): JWTPayload {
     try {
       return verify(token, config.jwt.refreshSecret) as JWTPayload;
-    } catch {
+    } catch (error) {
       throw new Error('Invalid or expired refresh token');
     }
   }
@@ -95,7 +95,7 @@ export class AuthService {
         success: true,
         user: payload as JWTPayload & { tenant_id: string; role: UserRole },
       };
-    } catch {
+    } catch (error) {
       return { success: false, error: 'Invalid token' };
     }
   }

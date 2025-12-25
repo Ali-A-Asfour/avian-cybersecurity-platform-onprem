@@ -44,7 +44,7 @@ export async function GET(
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('❌ Error getting tenant:', error);
     
     const response: ApiResponse = {
@@ -124,7 +124,7 @@ export async function PUT(
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('❌ Error updating tenant:', error);
     
     const response: ApiResponse = {
@@ -174,7 +174,7 @@ export async function DELETE(
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('❌ Error deleting tenant:', error);
     
     const response: ApiResponse = {

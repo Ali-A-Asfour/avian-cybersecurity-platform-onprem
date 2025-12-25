@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       success: true,
       correlations
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch correlations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch correlations' },

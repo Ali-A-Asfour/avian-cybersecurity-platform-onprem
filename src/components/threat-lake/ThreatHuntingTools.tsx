@@ -174,7 +174,7 @@ export default function ThreatHuntingTools() {
       // In a real implementation, this would fetch from an API
       // For now, we'll use mock data
       setSavedQueries([]);
-    } catch {
+    } catch (error) {
       console.error('Failed to load saved queries:', error);
     }
   };
@@ -203,7 +203,7 @@ export default function ThreatHuntingTools() {
       } else {
         console.error('Hunt execution failed');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to execute hunt:', error);
     } finally {
       setLoading(false);
@@ -235,7 +235,7 @@ export default function ThreatHuntingTools() {
         name: '',
         description: ''
       });
-    } catch {
+    } catch (error) {
       console.error('Failed to save query:', error);
     }
   };
@@ -294,7 +294,7 @@ export default function ThreatHuntingTools() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch {
+    } catch (error) {
       console.error('Failed to export results:', error);
     }
   };

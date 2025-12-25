@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     }));
 
     return ErrorHandler.success(connectorsInfo);
-  } catch {
+  } catch (error) {
     return ErrorHandler.handleError(error, '/api/connectors');
   }
 }
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       health: result.data!.getHealth(),
       capabilities: result.data!.getCapabilities(),
     }, undefined, 201);
-  } catch {
+  } catch (error) {
     return ErrorHandler.handleError(error, '/api/connectors');
   }
 }

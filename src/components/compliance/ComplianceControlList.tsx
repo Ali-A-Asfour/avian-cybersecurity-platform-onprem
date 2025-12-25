@@ -32,7 +32,7 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
           fetchEvidence(control.id);
         }
       }
-    } catch {
+    } catch (error) {
       console.error('Error fetching controls:', error);
     } finally {
       setLoading(false);
@@ -50,7 +50,7 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
           [controlId]: result.data,
         }));
       }
-    } catch {
+    } catch (error) {
       console.error('Error fetching evidence:', error);
     }
   };
@@ -75,7 +75,7 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
           )
         );
       }
-    } catch {
+    } catch (error) {
       console.error('Error updating control status:', error);
     } finally {
       setUpdatingControl(null);

@@ -143,7 +143,7 @@ export function verifyToken(token: string): VerifyResult {
             valid: true,
             payload: decoded,
         };
-    } catch {
+    } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
             return {
                 valid: false,

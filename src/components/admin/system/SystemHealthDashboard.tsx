@@ -67,7 +67,7 @@ export function SystemHealthDashboard() {
         const servicesData = await servicesResponse.json();
         setServices(servicesData.data);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load system health:', error);
     } finally {
       setLoading(false);

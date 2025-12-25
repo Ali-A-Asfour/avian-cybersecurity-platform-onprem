@@ -58,7 +58,7 @@ export async function GET(
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('❌ Error getting tenant users:', error);
     
     const response: ApiResponse = {

@@ -132,7 +132,7 @@ export class SiemConnector extends BaseConnector {
 
       this.updateHealth(ConnectorStatus.CONFIGURING, 'Connector initialized');
       return this.createResult(true);
-    } catch {
+    } catch (error) {
       this.updateHealth(ConnectorStatus.ERROR, error instanceof Error ? error.message : 'Initialization failed');
       return this.createResult(false, undefined, {
         code: 'INITIALIZATION_FAILED',
@@ -156,7 +156,7 @@ export class SiemConnector extends BaseConnector {
       // Validate URL format
       try {
         new URL(siemConfig.settings.apiUrl);
-      } catch {
+      } catch (error) {
         return this.createResult(false, false, {
           code: 'INVALID_URL',
           message: 'Invalid API URL format',
@@ -177,7 +177,7 @@ export class SiemConnector extends BaseConnector {
       }
 
       return this.createResult(true, true);
-    } catch {
+    } catch (error) {
       return this.createResult(false, false, {
         code: 'CONFIG_VALIDATION_FAILED',
         message: error instanceof Error ? error.message : 'Configuration validation failed',
@@ -207,7 +207,7 @@ export class SiemConnector extends BaseConnector {
           message: `HTTP ${response.status}: ${response.statusText}`,
         }, undefined, startTime);
       }
-    } catch {
+    } catch (error) {
       this.updateHealth(ConnectorStatus.ERROR, error instanceof Error ? error.message : 'Connection test failed');
       return this.createResult(false, false, {
         code: 'CONNECTION_TEST_ERROR',
@@ -233,7 +233,7 @@ export class SiemConnector extends BaseConnector {
 
       this.updateHealth(ConnectorStatus.CONNECTED, 'Successfully connected to SIEM system');
       return this.createResult(true);
-    } catch {
+    } catch (error) {
       this.updateHealth(ConnectorStatus.ERROR, error instanceof Error ? error.message : 'Connection failed');
       return this.createResult(false, undefined, {
         code: 'CONNECTION_FAILED',
@@ -251,7 +251,7 @@ export class SiemConnector extends BaseConnector {
       
       this.updateHealth(ConnectorStatus.DISCONNECTED, 'Disconnected from SIEM system');
       return this.createResult(true);
-    } catch {
+    } catch (error) {
       return this.createResult(false, undefined, {
         code: 'DISCONNECTION_FAILED',
         message: error instanceof Error ? error.message : 'Disconnection failed',
@@ -289,7 +289,7 @@ export class SiemConnector extends BaseConnector {
 
       this.log('info', `Processed ${events.length} SIEM alerts`);
       return this.createResult(true, events);
-    } catch {
+    } catch (error) {
       this.log('error', 'Failed to process incoming SIEM data', error);
       return this.createResult(false, [], {
         code: 'DATA_PROCESSING_FAILED',
@@ -314,7 +314,7 @@ export class SiemConnector extends BaseConnector {
           message: `HTTP ${response.status}: ${response.statusText}`,
         });
       }
-    } catch {
+    } catch (error) {
       return this.createResult(false, undefined, {
         code: 'SEND_DATA_ERROR',
         message: error instanceof Error ? error.message : 'Send data failed',
@@ -335,7 +335,7 @@ export class SiemConnector extends BaseConnector {
     this.pollTimer = setInterval(async () => {
       try {
         await this.pollForAlerts();
-      } catch {
+      } catch (error) {
         this.log('error', 'Polling error', error);
       }
     }, interval);
@@ -385,7 +385,7 @@ export class SiemConnector extends BaseConnector {
       } else {
         this.log('error', `Polling failed: HTTP ${response.status}`);
       }
-    } catch {
+    } catch (error) {
       this.log('error', 'Polling error', error);
     }
   }

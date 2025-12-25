@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     const { id: _id } = await params;
     logger.error('Failed to process agent heartbeat', { error, agentId: id });
 

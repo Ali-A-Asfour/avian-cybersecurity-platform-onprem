@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid query parameters', details: error.errors },
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(event, { status: 201 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to ingest threat lake event', { error });
     return NextResponse.json(
       { error: 'Failed to ingest threat lake event' },

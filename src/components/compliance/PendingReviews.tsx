@@ -31,7 +31,7 @@ export function PendingReviews({ tenantId, onReviewComplete }: PendingReviewsPro
       if (response.success && response.data) {
         setPendingAnalyses(response.data);
       }
-    } catch {
+    } catch (error) {
       console.error('Error fetching pending reviews:', error);
     } finally {
       setLoading(false);
@@ -206,7 +206,7 @@ export function PendingReviews({ tenantId, onReviewComplete }: PendingReviewsPro
                 setSelectedAnalysis(null);
                 onReviewComplete?.(selectedAnalysis.id);
               }
-            } catch {
+            } catch (error) {
               console.error('Error submitting review:', error);
             } finally {
               setSubmittingReview(false);

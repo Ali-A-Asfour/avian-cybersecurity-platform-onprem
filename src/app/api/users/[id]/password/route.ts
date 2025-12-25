@@ -65,7 +65,7 @@ export async function PUT(
       success: true,
       data: { message: 'Password changed successfully' },
     });
-  } catch {
+  } catch (error) {
     console.error('Change password error:', error);
 
     if (error instanceof z.ZodError) {

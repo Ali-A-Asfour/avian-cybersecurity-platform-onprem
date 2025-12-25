@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to process agent telemetry', { error, agentId: params.id });
     
     const response: ApiResponse = {
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to get agent telemetry', { error, agentId: params.id });
     
     const response: ApiResponse = {

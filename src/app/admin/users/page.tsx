@@ -289,7 +289,8 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
       // TODO: Call API to create user
       console.log('Creating user:', formData);
       onClose();
-    } catch {
+    } catch (error) {
+      console.error('Failed to create user:', error);
       setError('Failed to create user');
     } finally {
       setLoading(false);

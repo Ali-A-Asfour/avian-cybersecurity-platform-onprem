@@ -127,7 +127,7 @@ export function TicketForm({ isOpen, onClose, onSubmit, ticket, mode, fieldPermi
 
       await onSubmit(formData);
       onClose();
-    } catch {
+    } catch (error) {
       setError(err instanceof Error ? err.message : 'Failed to save ticket');
     } finally {
       setLoading(false);

@@ -209,7 +209,7 @@ export async function GET(request: NextRequest) {
         { name: 'EduTech University', industry: 'Education', size: 'Large Organization', sources: 2 }
       ]
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to fetch demo data sources:', error);
     return NextResponse.json(
       { error: 'Failed to fetch demo data sources' },

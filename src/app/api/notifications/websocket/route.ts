@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         instructions: 'Use a WebSocket client to connect to this endpoint for real-time notifications',
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Error in WebSocket endpoint:', error);
     return NextResponse.json(
       {
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
-  } catch {
+  } catch (error) {
     console.error('Error in WebSocket POST:', error);
     return NextResponse.json(
       {

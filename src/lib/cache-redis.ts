@@ -87,7 +87,7 @@ class CacheService {
 
       logger.debug('Cache set', { key, ttl, duration, tags: options.tags });
       monitoring.finishSpan(span.spanId);
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, { error: error instanceof Error ? error.message : 'unknown' });
       logger.error('Cache set error', error instanceof Error ? error : undefined, { key });
       monitoring.finishSpan(span.spanId);
@@ -116,7 +116,7 @@ class CacheService {
 
       logger.debug('Cache delete', { key, duration });
       monitoring.finishSpan(span.spanId);
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, { error: error instanceof Error ? error.message : 'unknown' });
       logger.error('Cache delete error', error instanceof Error ? error : undefined, { key });
       monitoring.finishSpan(span.spanId);
@@ -132,7 +132,7 @@ class CacheService {
       const cacheKey = this.getCacheKey(key);
       const exists = await client.exists(cacheKey);
       return exists === 1;
-    } catch {
+    } catch (error) {
       logger.error('Cache exists error', error instanceof Error ? error : undefined, { key });
       return false;
     }
@@ -172,7 +172,7 @@ class CacheService {
       logger.debug('Cache computed and stored', { key, computeDuration });
       monitoring.finishSpan(span.spanId);
       return value;
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, { error: error instanceof Error ? error.message : 'unknown' });
       logger.error('Cache getOrSet error', error instanceof Error ? error : undefined, { key });
       monitoring.finishSpan(span.spanId);
@@ -207,7 +207,7 @@ class CacheService {
 
       logger.info('Cache invalidated by tags', { tags, keysDeleted: keysToDelete.length });
       monitoring.finishSpan(span.spanId);
-    } catch {
+    } catch (error) {
       monitoring.tagSpan(span.spanId, { error: error instanceof Error ? error.message : 'unknown' });
       logger.error('Cache invalidation error', error instanceof Error ? error : undefined, { tags });
       monitoring.finishSpan(span.spanId);
@@ -228,7 +228,7 @@ class CacheService {
       }
 
       logger.info('Cache cleared', { keysDeleted: keys.length });
-    } catch {
+    } catch (error) {
       logger.error('Cache clear error', error instanceof Error ? error : undefined);
     }
   }
@@ -279,7 +279,7 @@ class CacheService {
         memoryUsage,
         stats: this.getStats(),
       };
-    } catch {
+    } catch (error) {
       logger.error('Cache info error', error instanceof Error ? error : undefined);
       return {
         keyCount: 0,
@@ -322,7 +322,7 @@ class CacheService {
         await client.sAdd(tagKey, key);
         await client.expire(tagKey, ttl);
       }
-    } catch {
+    } catch (error) {
       logger.error('Cache tag error', error instanceof Error ? error : undefined, { key, tags });
     }
   }

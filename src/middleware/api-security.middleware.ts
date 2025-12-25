@@ -311,7 +311,7 @@ export class ApiSecurityMiddleware {
               
               request = sanitizedRequest;
             }
-          } catch {
+          } catch (error) {
             // If body parsing fails, continue with original request
           }
         }
@@ -349,7 +349,7 @@ export class ApiSecurityMiddleware {
 
         return response;
 
-      } catch {
+      } catch (error) {
         // Log error with audit context
         await AuditLogger.logEvent({
           action: AuditEventType.SECURITY_VIOLATION,

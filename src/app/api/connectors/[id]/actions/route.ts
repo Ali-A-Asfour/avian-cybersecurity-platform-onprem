@@ -105,7 +105,7 @@ export async function POST(
       health: connector.getHealth(),
     });
 
-  } catch {
+  } catch (error) {
     return ErrorHandler.handleError(error, `/api/connectors/${connectorId}/actions`);
   }
 }

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Error running SLA monitoring:', error);
     const response: ApiResponse = {
       success: false,
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Error getting SLA monitoring status:', error);
     const response: ApiResponse = {
       success: false,

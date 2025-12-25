@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     console.error('Error reassigning ticket:', error);
     const response: ApiResponse = {
       success: false,

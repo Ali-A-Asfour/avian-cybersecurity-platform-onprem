@@ -333,7 +333,7 @@ export class ThreatRuleEngine {
                 if (rule.condition(event, context)) {
                     matchedRules.push(rule);
                 }
-            } catch {
+            } catch (error) {
                 console.error(`Error evaluating rule ${rule.id}:`, error);
             }
         }

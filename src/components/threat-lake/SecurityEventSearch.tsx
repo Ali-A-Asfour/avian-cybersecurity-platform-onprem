@@ -69,7 +69,7 @@ export function SecurityEventSearch() {
         const data = await response.json();
         setEvents(data.events || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to search events:', error);
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export function SecurityEventSearch() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to export events:', error);
     }
   };

@@ -37,7 +37,7 @@ export async function GET(
       success: true,
       data: playbook
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching playbook:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch playbook' } },
@@ -86,7 +86,7 @@ export async function PUT(
       success: true,
       data: updatedPlaybook
     });
-  } catch {
+  } catch (error) {
     console.error('Error updating playbook:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update playbook' } },
@@ -129,7 +129,7 @@ export async function DELETE(
       success: true,
       data: { message: 'Playbook deleted successfully' }
     });
-  } catch {
+  } catch (error) {
     console.error('Error deleting playbook:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to delete playbook' } },

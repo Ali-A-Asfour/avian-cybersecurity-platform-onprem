@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
             },
             { status: 200 }
         );
-    } catch {
+    } catch (error) {
         console.error('Audit logs query error:', error);
         return NextResponse.json(
             { error: 'Failed to retrieve audit logs' },
@@ -257,7 +257,7 @@ export async function POST(req: NextRequest) {
             },
             { status: 200 }
         );
-    } catch {
+    } catch (error) {
         console.error('Audit stats error:', error);
         return NextResponse.json(
             { error: 'Failed to retrieve statistics' },

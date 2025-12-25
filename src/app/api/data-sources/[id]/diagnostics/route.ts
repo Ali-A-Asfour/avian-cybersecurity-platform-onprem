@@ -47,7 +47,7 @@ export async function POST(
       success: true,
       diagnostics
     });
-  } catch {
+  } catch (error) {
     console.error('Failed to run diagnostics:', error);
     return NextResponse.json(
       { error: 'Failed to run diagnostics' },

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     try {
       await db.execute('SELECT 1 FROM users LIMIT 1');
       readinessCheck.checks.migrations = true;
-    } catch {
+    } catch (error) {
       readinessCheck.checks.migrations = false;
     }
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     await redisClient.ping();
     readinessCheck.checks.redis = true;
 
-  } catch {
+  } catch (error) {
     // Individual checks will remain false
   }
 

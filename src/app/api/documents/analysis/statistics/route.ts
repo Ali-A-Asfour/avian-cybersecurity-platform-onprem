@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         includes_ml_metrics: includeMLMetrics,
       },
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching review statistics:', error);
     return NextResponse.json(
       { 
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
     console.error('Error processing ML action:', error);
     return NextResponse.json(
       { 

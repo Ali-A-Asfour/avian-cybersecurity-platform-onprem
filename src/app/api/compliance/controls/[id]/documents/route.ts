@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json(result, { status: 200 });
-  } catch {
+  } catch (error) {
     console.error('Get control documents error:', error);
     return NextResponse.json({
       success: false,

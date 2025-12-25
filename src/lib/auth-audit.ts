@@ -337,7 +337,7 @@ export class AuthAuditLogger {
         user_agent: event.user_agent,
         created_at: new Date(),
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to write audit log', error instanceof Error ? error : undefined, {
         action: event.action,
         userId: event.user_id,

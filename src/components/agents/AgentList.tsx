@@ -31,7 +31,7 @@ export function AgentList({ tenantId }: AgentListProps) {
       } else {
         setError(data.error?.message || 'Failed to fetch agents');
       }
-    } catch {
+    } catch (error) {
       setError('Failed to fetch agents');
     } finally {
       setLoading(false);

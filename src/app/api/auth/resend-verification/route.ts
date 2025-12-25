@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         let body: { email: string };
         try {
             body = await req.json();
-        } catch {
+        } catch (error) {
             return NextResponse.json(
                 { error: 'Invalid request body' },
                 { status: 400 }
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(successResponse, { status: 200 });
-    } catch {
+    } catch (error) {
         console.error('Resend verification error:', error);
 
         await logAuthEvent({

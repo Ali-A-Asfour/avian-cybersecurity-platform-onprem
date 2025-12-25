@@ -55,7 +55,7 @@ export function EventTimelineVisualization() {
         const correlationsData = await correlationsResponse.json();
         setCorrelations(correlationsData.correlations || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to fetch timeline data:', error);
       // Generate mock data for demonstration
       generateMockData();

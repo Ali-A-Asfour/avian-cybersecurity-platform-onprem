@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response, { status: 400 });
-  } catch {
+  } catch (error) {
     logger.error('Failed to export compliance report', { error });
     
     const response: ApiResponse = {

@@ -95,7 +95,7 @@ export async function devApiCall<T>(
     const _result = await apiCall();
     if (label) logPerformance(label, startTime);
     return result;
-  } catch {
+  } catch (error) {
     if (isDevelopment) {
       console.warn(`API call failed, using mock data for ${label}:`, error);
       return await createMockApiResponse(mockData, 50);

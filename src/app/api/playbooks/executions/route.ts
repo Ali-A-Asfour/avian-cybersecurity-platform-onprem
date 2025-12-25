@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: executions
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching executions:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch executions' } },

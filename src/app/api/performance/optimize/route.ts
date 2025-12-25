@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: result,
     });
-  } catch {
+  } catch (error) {
     logger.error('Performance optimization failed', error instanceof Error ? error : undefined);
     
     return NextResponse.json(
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: performanceData,
     });
-  } catch {
+  } catch (error) {
     logger.error('Failed to fetch performance data', error instanceof Error ? error : undefined);
     
     return NextResponse.json(

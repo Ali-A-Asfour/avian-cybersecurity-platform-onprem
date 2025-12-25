@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to get assets', { error });
     
     const response: ApiResponse = {

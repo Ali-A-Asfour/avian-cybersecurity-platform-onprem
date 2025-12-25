@@ -158,7 +158,7 @@ export function TenantSelector({ onTenantSelect, selectedTenant }: TenantSelecto
       ];
 
       setTenants(mockTenants);
-    } catch {
+    } catch (error) {
       console.error('Failed to fetch tenants:', error);
       setTenants([]); // Set empty array on error
     } finally {

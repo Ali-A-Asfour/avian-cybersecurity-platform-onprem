@@ -46,7 +46,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       } else {
         setError(data.error?.message || 'Failed to start execution');
       }
-    } catch {
+    } catch (error) {
       setError('Failed to start execution');
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       } else {
         setError(data.error?.message || 'Failed to complete step');
       }
-    } catch {
+    } catch (error) {
       setError('Failed to complete step');
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       if (data.success) {
         setExecution(data.data);
       }
-    } catch {
+    } catch (error) {
       setError('Failed to pause execution');
     }
   };
@@ -151,7 +151,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       if (data.success) {
         setExecution(data.data);
       }
-    } catch {
+    } catch (error) {
       setError('Failed to resume execution');
     }
   };

@@ -65,7 +65,7 @@ export class SyslogServer {
         port: this.config.port,
         protocol: this.config.protocol
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to start syslog server', { error });
       throw error;
     }
@@ -84,7 +84,7 @@ export class SyslogServer {
 
       this.isRunning = false;
       logger.info('Syslog server stopped');
-    } catch {
+    } catch (error) {
       logger.error('Failed to stop syslog server', { error });
     }
   }
@@ -96,7 +96,7 @@ export class SyslogServer {
       try {
         const syslogMsg = this.parseSyslogMessage(msg.toString(), rinfo.address);
         await this.processSyslogMessage(syslogMsg, rinfo.address);
-      } catch {
+      } catch (error) {
         logger.error('Failed to process UDP syslog message', {
           error,
           remoteAddress: rinfo.address
@@ -127,7 +127,7 @@ export class SyslogServer {
             const syslogMsg = this.parseSyslogMessage(msgStr, socket.remoteAddress || '');
             await this.processSyslogMessage(syslogMsg, socket.remoteAddress || '');
           }
-        } catch {
+        } catch (error) {
           logger.error('Failed to process TCP syslog message', {
             error,
             remoteAddress: socket.remoteAddress
@@ -176,7 +176,7 @@ export class SyslogServer {
             const syslogMsg = this.parseSyslogMessage(msgStr, socket.remoteAddress || '');
             await this.processSyslogMessage(syslogMsg, socket.remoteAddress || '');
           }
-        } catch {
+        } catch (error) {
           logger.error('Failed to process TLS syslog message', {
             error,
             remoteAddress: socket.remoteAddress
@@ -340,7 +340,7 @@ export class SyslogServer {
       };
 
       await dataIngestionService.ingestSecurityEvent(securityEvent);
-    } catch {
+    } catch (error) {
       logger.error('Failed to process syslog message', { error, syslogMsg });
     }
   }

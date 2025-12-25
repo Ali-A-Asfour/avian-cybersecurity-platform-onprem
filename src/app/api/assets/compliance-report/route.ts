@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch {
+  } catch (error) {
     logger.error('Failed to generate compliance report', { error });
     
     const response: ApiResponse = {

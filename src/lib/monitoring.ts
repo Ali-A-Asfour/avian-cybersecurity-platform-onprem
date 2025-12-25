@@ -326,7 +326,7 @@ export function trace(operationName?: string) {
         monitoring.finishSpan(span.spanId);
         
         return result;
-      } catch {
+      } catch (error) {
         monitoring.tagSpan(span.spanId, { 
           success: false, 
           error: error instanceof Error ? error.message : 'Unknown error' 

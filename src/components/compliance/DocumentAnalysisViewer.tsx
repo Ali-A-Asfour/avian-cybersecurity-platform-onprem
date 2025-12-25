@@ -39,7 +39,7 @@ export function DocumentAnalysisViewer({
       if (response.success && response.data) {
         setAnalysis(response.data);
       }
-    } catch {
+    } catch (error) {
       console.error('Error fetching analysis:', error);
     } finally {
       setLoading(false);

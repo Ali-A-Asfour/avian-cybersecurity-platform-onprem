@@ -37,7 +37,7 @@ export async function GET(
       success: true,
       data: execution
     });
-  } catch {
+  } catch (error) {
     console.error('Error fetching execution:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch execution' } },
@@ -91,7 +91,7 @@ export async function PUT(
       success: true,
       data: updatedExecution
     });
-  } catch {
+  } catch (error) {
     console.error('Error updating execution:', error);
     return NextResponse.json(
       { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update execution' } },

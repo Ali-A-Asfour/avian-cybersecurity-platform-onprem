@@ -66,7 +66,7 @@ export abstract class BaseFirewallConnector {
       logger.info('Firewall connector started successfully', { 
         dataSourceId: this.dataSource.id 
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to start firewall connector', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -87,7 +87,7 @@ export abstract class BaseFirewallConnector {
       logger.info('Firewall connector stopped', { 
         dataSourceId: this.dataSource.id 
       });
-    } catch {
+    } catch (error) {
       logger.error('Failed to stop firewall connector', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -110,7 +110,7 @@ export abstract class BaseFirewallConnector {
       }
 
       await this.setLastPollTime(new Date());
-    } catch {
+    } catch (error) {
       logger.error('Failed to poll firewall logs', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -136,7 +136,7 @@ export abstract class BaseFirewallConnector {
       };
 
       await dataIngestionService.ingestSecurityEvent(securityEvent);
-    } catch {
+    } catch (error) {
       logger.error('Failed to process firewall log', { 
         error, 
         eventId: firewallEvent.id,
@@ -256,7 +256,7 @@ export class PfSenseConnector extends BaseFirewallConnector {
       });
 
       return response.ok;
-    } catch {
+    } catch (error) {
       logger.error('pfSense authentication failed', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -283,7 +283,7 @@ export class PfSenseConnector extends BaseFirewallConnector {
 
       const data = await response.json();
       return this.transformPfSenseLogs(data.logs || []);
-    } catch {
+    } catch (error) {
       logger.error('Failed to fetch pfSense logs', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -300,7 +300,7 @@ export class PfSenseConnector extends BaseFirewallConnector {
       }
 
       return { success: true, message: 'Connection successful' };
-    } catch {
+    } catch (error) {
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Connection test failed' 
@@ -372,7 +372,7 @@ export class FortinetConnector extends BaseFirewallConnector {
       }
 
       return false;
-    } catch {
+    } catch (error) {
       logger.error('Fortinet authentication failed', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -404,7 +404,7 @@ export class FortinetConnector extends BaseFirewallConnector {
 
       const data = await response.json();
       return this.transformFortinetLogs(data.results || []);
-    } catch {
+    } catch (error) {
       logger.error('Failed to fetch Fortinet logs', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -421,7 +421,7 @@ export class FortinetConnector extends BaseFirewallConnector {
       }
 
       return { success: true, message: 'Connection successful' };
-    } catch {
+    } catch (error) {
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Connection test failed' 
@@ -489,7 +489,7 @@ export class GenericFirewallConnector extends BaseFirewallConnector {
       }
 
       return false;
-    } catch {
+    } catch (error) {
       logger.error('Generic firewall authentication failed', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -523,7 +523,7 @@ export class GenericFirewallConnector extends BaseFirewallConnector {
 
       const data = await response.json();
       return this.transformGenericLogs(data.logs || data || []);
-    } catch {
+    } catch (error) {
       logger.error('Failed to fetch generic firewall logs', { 
         error, 
         dataSourceId: this.dataSource.id 
@@ -540,7 +540,7 @@ export class GenericFirewallConnector extends BaseFirewallConnector {
       }
 
       return { success: true, message: 'Connection successful' };
-    } catch {
+    } catch (error) {
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Connection test failed' 
