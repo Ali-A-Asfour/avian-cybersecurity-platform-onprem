@@ -14,6 +14,7 @@ import {
   ActivityFeedItem
 } from '@/services/dashboard.service';
 import { UserRole } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface DashboardData {
   tickets: TicketSummary;
@@ -46,7 +47,7 @@ export function DashboardGrid({ onNavigate, userRole }: DashboardGridProps) {
     try {
       // Use mock endpoint for development
       const endpoint = process.env.NODE_ENV === 'development' ? '/api/dashboard/mock' : '/api/dashboard/widgets';
-      const response = await fetch(endpoint);
+      const response = await api.get(endpoint);
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }

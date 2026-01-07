@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Firewall Page - Redirects tenant admins to dashboard
@@ -11,12 +12,23 @@ import { useRouter } from 'next/navigation';
  */
 export default function FirewallPage() {
     const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
 
     useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+            return;
+        }
         // For now, redirect all users to dashboard
         // In a real app, you'd check the user's role first
-        router.replace('/dashboard/tenant-admin');
-    }, [router]);
+        if (isAuthenticated) {
+            router.replace('/dashboard/tenant-admin');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     return (
         <div className="min-h-screen bg-neutral-900 flex items-center justify-center">

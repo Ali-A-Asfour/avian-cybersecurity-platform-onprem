@@ -2,32 +2,49 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assetService } from '@/services/asset.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const assetId = params.id;
   try {
-    // Await params in Next.js 16
-    const { id } = await params;
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
-    const assetId = id;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Only Security Analysts, Tenant Admins, and Super Admins can initiate scans
     if (!['super_admin', 'tenant_admin', 'security_analyst'].includes(user.role)) {
@@ -62,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to scan asset', { error, assetId: id });
+    logger.error('Failed to scan asset', { error, assetId });
     
     const response: ApiResponse = {
       success: false,

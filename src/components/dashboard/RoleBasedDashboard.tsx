@@ -8,6 +8,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DashboardCardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { api } from '@/lib/api-client';
 
 interface AnalystMetricsProps {
   onNavigate: (section: string) => void;
@@ -45,7 +46,7 @@ function SecurityAnalystMetrics({ onNavigate }: AnalystMetricsProps) {
 
   const fetchMyTicketsData = async () => {
     try {
-      const response = await fetch('/api/dashboard/my-tickets');
+      const response = await api.get('/api/dashboard/my-tickets');
       const result = await response.json();
       if (result.success) {
         setMyTicketsData(result.data);
@@ -57,11 +58,9 @@ function SecurityAnalystMetrics({ onNavigate }: AnalystMetricsProps) {
     }
   };
 
-
-
   const fetchAlertData = async () => {
     try {
-      const response = await fetch('/api/alerts?limit=100');
+      const response = await api.get('/api/alerts?limit=100');
       const result = await response.json();
       if (result.success) {
         const alerts = result.data.alerts || [];
@@ -180,7 +179,7 @@ function TenantAdminMetrics({ onNavigate }: AnalystMetricsProps) {
   const fetchTenantData = async () => {
     try {
       // Get current user info to determine tenant
-      const authResponse = await fetch('/api/auth/status');
+      const authResponse = await api.get('/api/auth/status');
       const authResult = await authResponse.json();
 
       if (authResult.success && authResult.data.user) {
@@ -290,7 +289,7 @@ function ITHelpdeskAnalystMetrics({ onNavigate }: AnalystMetricsProps) {
 
   const fetchMyTicketsData = async () => {
     try {
-      const response = await fetch('/api/dashboard/my-tickets');
+      const response = await api.get('/api/dashboard/my-tickets');
       const result = await response.json();
       if (result.success) {
         setMyTicketsData(result.data);
@@ -304,7 +303,7 @@ function ITHelpdeskAnalystMetrics({ onNavigate }: AnalystMetricsProps) {
 
   const fetchAssetData = async () => {
     try {
-      const response = await fetch('/api/assets/inventory');
+      const response = await api.get('/api/assets/inventory');
       const result = await response.json();
       if (result.success) {
         // Calculate asset metrics for IT support

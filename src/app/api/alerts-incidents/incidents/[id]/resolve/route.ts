@@ -21,11 +21,9 @@ import { logger } from '@/lib/logger';
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success) {
@@ -53,7 +51,7 @@ export async function POST(
             );
         }
 
-        const incidentId = id;
+        const incidentId = params.id;
 
         // Validate incident ID
         if (!incidentId) {
@@ -119,7 +117,7 @@ export async function POST(
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         logger.error('Error in POST /api/alerts-incidents/incidents/[id]/resolve', error instanceof Error ? error : new Error(String(error)), {
-            incidentId: id,
+            incidentId: params.id,
         });
 
         // Handle specific business logic errors

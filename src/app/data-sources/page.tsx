@@ -2,6 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { DataSourceList } from '@/components/data-ingestion/DataSourceList';
 import { TenantAwareLayout } from '@/components/layout/TenantAwareLayout';
 import { Card } from '@/components/ui/Card';
@@ -19,14 +20,25 @@ function LoadingFallback() {
 
 export default function DataSourcesPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     // Use demo context instead of API calls
     setUserRole(UserRole.SECURITY_ANALYST); // Default to security analyst for demo
     setLoading(false);
   }, [router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   if (loading) {
     return (

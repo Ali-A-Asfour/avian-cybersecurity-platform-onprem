@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { SecurityEventSearch } from './SecurityEventSearch';
 import { EventTimelineVisualization } from './EventTimelineVisualization';
 import { ThreatLakeQueryInterface } from './ThreatLakeQueryInterface';
+import { api } from '@/lib/api-client';
 // Simple text-based icons for compatibility
 const SimpleIcon = ({ children }: { children: React.ReactNode }) => (
   <span className="inline-block w-4 h-4 text-center">{children}</span>
@@ -174,7 +175,7 @@ export default function ThreatHuntingTools() {
       // In a real implementation, this would fetch from an API
       // For now, we'll use mock data
       setSavedQueries([]);
-    } catch (error) {
+    } catch {
       console.error('Failed to load saved queries:', error);
     }
   };
@@ -183,26 +184,15 @@ export default function ThreatHuntingTools() {
     try {
       setLoading(true);
       
-      const response = await fetch('/api/threat-lake/events/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+      const data = await api.post('/api/threat-lake/events/search', {
+        query: {
+          ...currentQuery.query,
+          limit: 100
         },
-        body: JSON.stringify({
-          query: {
-            ...currentQuery.query,
-            limit: 100
-          },
-          aggregations: currentQuery.query.aggregations
-        })
+        aggregations: currentQuery.query.aggregations
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setHuntResults(data);
-      } else {
-        console.error('Hunt execution failed');
-      }
+      
+      setHuntResults(data);
     } catch (error) {
       console.error('Failed to execute hunt:', error);
     } finally {
@@ -235,7 +225,7 @@ export default function ThreatHuntingTools() {
         name: '',
         description: ''
       });
-    } catch (error) {
+    } catch {
       console.error('Failed to save query:', error);
     }
   };
@@ -294,7 +284,7 @@ export default function ThreatHuntingTools() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (error) {
+    } catch {
       console.error('Failed to export results:', error);
     }
   };

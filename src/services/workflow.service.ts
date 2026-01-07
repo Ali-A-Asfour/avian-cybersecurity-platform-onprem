@@ -187,7 +187,7 @@ export class WorkflowService {
    */
   private static async calculateUserWorkload(tenantId: string, userId: string): Promise<WorkloadMetrics> {
     try {
-      const _user = await UserService.getUserByIdSimple(tenantId, userId);
+      const user = await UserService.getUserByIdSimple(tenantId, userId);
       if (!user) {
         return {
           userId,

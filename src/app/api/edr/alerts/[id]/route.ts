@@ -15,11 +15,9 @@ import { eq, and } from 'drizzle-orm';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Apply authentication middleware FIRST (before any other checks)
         const authResult = await authMiddleware(request);
         if (!authResult.success || !authResult.user) {
@@ -67,7 +65,7 @@ export async function GET(
         }
 
         // Validate alert ID format (must be valid UUID)
-        const alertId = id;
+        const alertId = params.id;
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(alertId)) {
             return NextResponse.json(

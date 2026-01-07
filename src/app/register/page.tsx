@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -37,17 +38,11 @@ export default function RegisterPage() {
         }
 
         try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: formData.email,
-                    password: formData.password,
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                }),
+            const response = await api.post('/api/auth/register', {
+                email: formData.email,
+                password: formData.password,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
             });
 
             const data = await response.json();
@@ -63,7 +58,7 @@ export default function RegisterPage() {
             setTimeout(() => {
                 router.push('/login');
             }, 3000);
-        } catch (error) {
+        } catch {
             setError('An error occurred. Please try again.');
             setLoading(false);
         }

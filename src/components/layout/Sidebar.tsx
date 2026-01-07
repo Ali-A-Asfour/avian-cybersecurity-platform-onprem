@@ -176,7 +176,6 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
     case 'user':
       return [
         ...baseNavigation,
-        { name: 'Help Desk', href: '/help-desk', icon: HelpDeskIcon, badge: ticketCounts.helpDesk || undefined },
         { name: 'Settings', href: '/settings', icon: SettingsIcon },
       ];
 

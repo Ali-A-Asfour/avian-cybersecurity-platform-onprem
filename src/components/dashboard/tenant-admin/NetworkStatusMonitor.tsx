@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { NetworkErrorDetector, ErrorMonitor, DashboardError, ErrorContext } from '@/lib/errorHandling';
+import { api } from '@/lib/api-client';
 
 interface NetworkStatusMonitorProps {
     className?: string;
@@ -44,11 +45,7 @@ export const NetworkStatusMonitor: React.FC<NetworkStatusMonitorProps> = ({
             const startTime = performance.now();
 
             // Use a lightweight endpoint for connection testing
-            const response = await fetch('/api/health', {
-                method: 'HEAD',
-                cache: 'no-cache',
-                signal: AbortSignal.timeout(5000), // 5 second timeout
-            });
+            const response = await api.get('/api/health');
 
             const endTime = performance.now();
             const latency = Math.round(endTime - startTime);

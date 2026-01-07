@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { api } from '@/lib/api-client';
 
 interface TimelineEvent {
   id: string;
@@ -43,18 +44,12 @@ export function EventTimelineVisualization() {
       setLoading(true);
       
       // Fetch timeline events
-      const eventsResponse = await fetch(`/api/threat-lake/events?time_range=${selectedTimeRange}&limit=100`);
-      if (eventsResponse.ok) {
-        const eventsData = await eventsResponse.json();
-        setEvents(eventsData.events || []);
-      }
+      const eventsData = await api.get(`/api/threat-lake/events?time_range=${selectedTimeRange}&limit=100`);
+      setEvents(eventsData.events || []);
 
       // Fetch correlations
-      const correlationsResponse = await fetch(`/api/threat-lake/correlations?time_range=${selectedTimeRange}`);
-      if (correlationsResponse.ok) {
-        const correlationsData = await correlationsResponse.json();
-        setCorrelations(correlationsData.correlations || []);
-      }
+      const correlationsData = await api.get(`/api/threat-lake/correlations?time_range=${selectedTimeRange}`);
+      setCorrelations(correlationsData.correlations || []);
     } catch (error) {
       console.error('Failed to fetch timeline data:', error);
       // Generate mock data for demonstration

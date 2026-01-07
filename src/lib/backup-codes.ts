@@ -32,7 +32,7 @@ export class BackupCodeService {
    */
   private static generateSingleCode(): string {
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const _result = '';
+    let result = '';
     
     for (let i = 0; i < this.BACKUP_CODE_LENGTH; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));

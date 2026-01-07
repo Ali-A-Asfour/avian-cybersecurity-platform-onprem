@@ -1,6 +1,8 @@
 'use client';
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
@@ -25,8 +27,20 @@ export const dynamic = 'force-dynamic';
  * Requirements: 7.1, 7.3, 8.4
  */
 export default function TenantAdminDashboardPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const { loading, refresh } = useDashboardData();
     const [error, setError] = React.useState<string | null>(null);
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     const isLoading = loading.recentActivity || loading.kpis;
 

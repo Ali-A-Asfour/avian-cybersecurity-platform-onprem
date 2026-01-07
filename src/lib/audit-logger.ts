@@ -4,7 +4,7 @@
  * Part of production authentication system (Task 4.3)
  */
 
-import { db } from './database';
+import { getDb } from './database';
 import { authAuditLogs, auditLogs } from '../../database/schemas/main';
 import { NextRequest } from 'next/server';
 
@@ -36,6 +36,8 @@ export enum AuditAction {
   SESSION_EXPIRED = 'session_expired',
   SESSION_REVOKED = 'session_revoked',
   SESSION_REFRESHED = 'session_refreshed',
+  SESSION_INVALIDATED = 'session_invalidated',
+  ALL_SESSIONS_INVALIDATED = 'all_sessions_invalidated',
 
   // MFA events
   MFA_ENABLED = 'mfa_enabled',
@@ -109,12 +111,8 @@ export function extractClientInfo(req: NextRequest): {
  * Log authentication event
  */
 export async function logAuthEvent(entry: AuditLogEntry): Promise<void> {
-  if (!db) {
-    console.error('Database not initialized - cannot log audit event');
-    return;
-  }
-
   try {
+    const db = await getDb();
     await db.insert(authAuditLogs).values({
       user_id: entry.userId || null,
       email: entry.email || null,
@@ -150,12 +148,8 @@ export async function logAuditEvent(
     resourceId?: string;
   }
 ): Promise<void> {
-  if (!db) {
-    console.error('Database not initialized - cannot log audit event');
-    return;
-  }
-
   try {
+    const db = await getDb();
     await db.insert(auditLogs).values({
       tenant_id: entry.tenantId || null,
       user_id: entry.userId || null,
@@ -384,19 +378,18 @@ class AuditLogBatcher {
     this.batch = [];
 
     try {
-      if (db) {
-        await db.insert(authAuditLogs).values(
-          toFlush.map((entry) => ({
-            user_id: entry.userId || null,
-            email: entry.email || null,
-            action: entry.action,
-            result: entry.result,
-            ip_address: entry.ipAddress,
-            user_agent: entry.userAgent,
-            metadata: entry.metadata || {},
-          }))
-        );
-      }
+      const db = await getDb();
+      await db.insert(authAuditLogs).values(
+        toFlush.map((entry) => ({
+          user_id: entry.userId || null,
+          email: entry.email || null,
+          action: entry.action,
+          result: entry.result,
+          ip_address: entry.ipAddress,
+          user_agent: entry.userAgent,
+          metadata: entry.metadata || {},
+        }))
+      );
     } catch (error) {
       console.error('Failed to flush audit log batch:', error);
     }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api-client';
 
 interface DataSource {
   id: string;
@@ -43,11 +44,9 @@ export function DataFlowVisualization({ dataSources }: DataFlowVisualizationProp
   const fetchFlowData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/data-sources/flow');
-      if (response.ok) {
-        const data = await response.json();
-        setFlowData(data.flow_nodes || []);
-      }
+      const response = await api.get('/api/data-sources/flow');
+      const data = await response.json();
+      setFlowData(data.flow_nodes || []);
     } catch (error) {
       console.error('Failed to fetch flow data:', error);
       // Generate mock flow data for demonstration
@@ -146,10 +145,7 @@ export function DataFlowVisualization({ dataSources }: DataFlowVisualizationProp
 
   const runDiagnostics = async (nodeId: string) => {
     try {
-      const response = await fetch(`/api/data-sources/${nodeId}/diagnostics`, {
-        method: 'POST'
-      });
-      const _result = await response.json();
+      const result = await api.post(`/api/data-sources/${nodeId}/diagnostics`, {});
       alert(`Diagnostics for ${nodeId}:\n${JSON.stringify(result, null, 2)}`);
     } catch (error) {
       alert('Failed to run diagnostics');

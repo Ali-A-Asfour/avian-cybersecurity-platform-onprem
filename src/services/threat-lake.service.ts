@@ -1,5 +1,5 @@
 // import { logger } from '@/lib/logger';
-import { redisClient } from '@/lib/redis';
+import { getRedisClient } from '@/lib/redis';
 // import { db } from '@/lib/database';
 import { logAuditEvent, AuditAction } from '@/lib/audit-logger';
 
@@ -320,9 +320,10 @@ export class ThreatLakeService {
       await this.correlationEngine.analyzeEvent(threatLakeEvent);
 
       // Cache for real-time access
+      const redisClient = await getRedisClient();
       const cacheKey = `threat_lake:${threatLakeEvent.tenant_id}:recent`;
-      await redisClient.lpush(cacheKey, JSON.stringify(threatLakeEvent));
-      await redisClient.ltrim(cacheKey, 0, 4999); // Keep last 5000 events
+      await redisClient.lPush(cacheKey, JSON.stringify(threatLakeEvent));
+      await redisClient.lTrim(cacheKey, 0, 4999); // Keep last 5000 events
       await redisClient.expire(cacheKey, 7200); // 2 hours TTL
 
       logger.info('Event ingested into threat lake', {

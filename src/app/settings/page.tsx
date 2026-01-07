@@ -1,11 +1,26 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { useDemoContext } from '@/contexts/DemoContext';
 import { useState } from 'react';
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { isDemo, setIsDemo } = useDemoContext();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const handleDemoToggle = (enabled: boolean) => {
     setIsDemo(enabled);

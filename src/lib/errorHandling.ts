@@ -5,6 +5,8 @@
  * retry mechanisms, and graceful degradation strategies.
  */
 
+import { api } from '@/lib/api-client';
+
 export interface ErrorContext {
     component: string;
     operation: string;
@@ -357,13 +359,7 @@ export class ErrorMonitor {
     private static async sendToMonitoringService(error: DashboardError): Promise<void> {
         try {
             // TODO: Integrate with actual monitoring service (Sentry, DataDog, etc.)
-            await fetch('/api/monitoring/errors', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(error.toJSON()),
-            });
+            await api.post('/api/monitoring/errors', error.toJSON());
         } catch (monitoringError) {
             console.error('Failed to send error to monitoring service:', monitoringError);
         }

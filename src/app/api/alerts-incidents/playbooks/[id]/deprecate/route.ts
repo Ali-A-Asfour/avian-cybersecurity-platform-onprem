@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
  */
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         // Get user from headers (set by middleware)

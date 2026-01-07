@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const _user = authResult.user;
+        const user = authResult.user;
 
         // Parse request body
         let body: ChangePasswordRequest;

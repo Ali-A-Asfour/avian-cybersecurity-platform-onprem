@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth as useAuthContext } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -9,11 +10,13 @@ import { Ticket } from '@/types';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api-client';
 
 export const dynamic = 'force-dynamic';
 
 export default function TicketsPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authContextLoading } = useAuthContext();
   const { user, loading } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -21,31 +24,12 @@ export default function TicketsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
-  useEffect(() => {
-    // Redirect users to appropriate ticket queue based on role
-    if (!loading && user) {
-      if (user.role === 'security_analyst') {
-        router.push('/security-tickets');
-        return;
-      } else if (user.role === 'it_helpdesk_analyst') {
-        router.push('/helpdesk-tickets');
-        return;
-      }
-    }
-    fetchAllTickets();
-  }, [loading, user, router]);
-
-  const fetchAllTickets = async () => {
+  const fetchAllTickets = useCallback(async () => {
     try {
       setTicketsLoading(true);
 
       // Fetch user's own tickets (created by them or assigned to them)
-      const response = await fetch('/api/tickets/user-tickets', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get('/api/tickets/user-tickets');
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -75,7 +59,32 @@ export default function TicketsPage() {
     } finally {
       setTicketsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!authContextLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authContextLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    // Redirect users to appropriate ticket queue based on role
+    if (!loading && user) {
+      if (user.role === 'security_analyst') {
+        router.push('/security-tickets');
+        return;
+      } else if (user.role === 'it_helpdesk_analyst') {
+        router.push('/helpdesk-tickets');
+        return;
+      }
+    }
+    fetchAllTickets();
+  }, [loading, user, router, fetchAllTickets]);
+
+  // Early return after all hooks to prevent rendering when not authenticated
+  if (authContextLoading || !isAuthenticated) {
+    return null;
+  }
 
   const handleTicketClick = (ticket: Ticket) => {
     setSelectedTicket(ticket);

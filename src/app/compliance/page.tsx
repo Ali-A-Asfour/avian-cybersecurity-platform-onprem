@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ComplianceFramework } from '@/types';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
@@ -10,8 +12,11 @@ import { ComplianceReports } from '@/components/compliance/ComplianceReports';
 import { PendingReviews } from '@/components/compliance/PendingReviews';
 import { DocumentAnalysisViewer } from '@/components/compliance/DocumentAnalysisViewer';
 import { ReviewWorkflowGuide } from '@/components/compliance/ReviewWorkflowGuide';
+import { api } from '@/lib/api-client';
 
 export default function CompliancePage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'frameworks' | 'reports' | 'reviews' | 'analysis' | 'guide'>('dashboard');
   const [selectedFramework, setSelectedFramework] = useState<ComplianceFramework | null>(null);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
@@ -19,12 +24,24 @@ export default function CompliancePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFrameworks();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFrameworks();
+    }
+  }, [isAuthenticated]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const fetchFrameworks = async () => {
     try {
-      const response = await fetch('/api/compliance/frameworks');
+      const response = await api.get('/api/compliance/frameworks');
       const result = await response.json();
 
       if (result.success) {

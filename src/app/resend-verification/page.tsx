@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 export default function ResendVerificationPage() {
     const [email] = useState('');
@@ -15,13 +16,7 @@ export default function ResendVerificationPage() {
         setLoading(true);
 
         try {
-            const response = await fetch('/api/auth/resend-verification', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email }),
-            });
+            const response = await api.post('/api/auth/resend-verification', { email });
 
             const data = await response.json();
 
@@ -34,7 +29,7 @@ export default function ResendVerificationPage() {
             // Success
             setSuccess(true);
             setLoading(false);
-        } catch (error) {
+        } catch {
             setError('An error occurred. Please try again.');
             setLoading(false);
         }

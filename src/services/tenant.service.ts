@@ -140,7 +140,7 @@ export class TenantService {
       throw new Error('Insufficient permissions to access this tenant');
     }
 
-    const _tenant = await db
+    const tenant = await db
       .select()
       .from(tenants)
       .where(eq(tenants.id, tenantId))
@@ -160,7 +160,7 @@ export class TenantService {
    * Get tenant by domain
    */
   static async getTenantByDomain(domain: string): Promise<Tenant | null> {
-    const _tenant = await db
+    const tenant = await db
       .select()
       .from(tenants)
       .where(and(eq(tenants.domain, domain), eq(tenants.is_active, true)))
@@ -263,7 +263,7 @@ export class TenantService {
       throw new Error('Tenant not found');
     }
 
-    const _tenant = existingTenant[0];
+    const tenant = existingTenant[0];
 
     // Check if domain is being changed and if it already exists
     if (data.domain && data.domain !== tenant.domain) {
@@ -344,7 +344,7 @@ export class TenantService {
       throw new Error('Tenant not found');
     }
 
-    const _tenant = existingTenant[0];
+    const tenant = existingTenant[0];
 
     // Deactivate tenant instead of hard delete
     await db
@@ -431,7 +431,7 @@ export class TenantService {
   /**
    * Generate tenant-specific mock users for development
    */
-  private static generateTenantSpecificUsers(_tenantId: string) {
+  private static generateTenantSpecificUsers(tenantId: string) {
     const userSets = {
       'dev-tenant-123': [
         {

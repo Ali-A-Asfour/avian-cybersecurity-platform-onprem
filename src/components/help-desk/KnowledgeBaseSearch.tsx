@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { KnowledgeArticle } from '../../services/help-desk/KnowledgeBaseService';
+import { api } from '@/lib/api-client';
 
 interface KnowledgeBaseSearchProps {
     onArticleSelect?: (article: KnowledgeArticle) => void;
@@ -44,7 +45,7 @@ export function KnowledgeBaseSearch({
                 params.append('approved_only', 'true');
             }
 
-            const response = await fetch(`/api/help-desk/knowledge-base?${params}`);
+            const response = await api.get(`/api/help-desk/knowledge-base?${params}`);
 
             if (!response.ok) {
                 throw new Error('Failed to search knowledge base');

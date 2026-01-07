@@ -10,7 +10,7 @@
 import { logger } from '@/lib/logger';
 import { cache, CacheOptions } from '@/lib/cache';
 import { TenantCache } from '@/lib/cache-redis';
-import { monitoring } from '@/lib/monitoring';
+import { monitoring, MetricCategory } from '@/lib/monitoring';
 import {
     WeeklyReport,
     MonthlyReport,
@@ -178,7 +178,7 @@ export class ReportCacheService {
                 tags: [...config.tags, `tenant:${tenantId}`, 'metadata']
             });
 
-            monitoring.recordMetric('report_cached', 1, { tenantId, reportType });
+            monitoring.counter('report.cached', MetricCategory.BUSINESS, 1, { tenantId, reportType });
 
             logger.info('Report cached successfully', {
                 tenantId,
@@ -219,7 +219,7 @@ export class ReportCacheService {
             const cachedReport = await cache.get<T>(cacheKey);
 
             if (cachedReport) {
-                monitoring.recordMetric('report_cache_hit', 1, { tenantId, reportType });
+                monitoring.counter('report.cache_hit', MetricCategory.BUSINESS, 1, { tenantId, reportType });
                 logger.debug('Report cache hit', {
                     tenantId,
                     reportType,
@@ -227,7 +227,7 @@ export class ReportCacheService {
                     category: 'reports'
                 });
             } else {
-                monitoring.recordMetric('report_cache_miss', 1, { tenantId, reportType });
+                monitoring.counter('report.cache_miss', MetricCategory.BUSINESS, 1, { tenantId, reportType });
                 logger.debug('Report cache miss', {
                     tenantId,
                     reportType,
@@ -281,7 +281,7 @@ export class ReportCacheService {
 
             await cache.set(cacheKey, data, cacheOptions);
 
-            monitoring.recordMetric('aggregated_data_cached', 1, { tenantId, dataType });
+            monitoring.counter('aggregated_data.cached', MetricCategory.BUSINESS, 1, { tenantId, dataType });
 
             logger.debug('Aggregated data cached', {
                 tenantId,
@@ -321,7 +321,7 @@ export class ReportCacheService {
             const cachedData = await cache.get<T>(cacheKey);
 
             if (cachedData) {
-                monitoring.recordMetric('aggregated_data_cache_hit', 1, { tenantId, dataType });
+                monitoring.counter('aggregated_data.cache_hit', MetricCategory.BUSINESS, 1, { tenantId, dataType });
                 logger.debug('Aggregated data cache hit', {
                     tenantId,
                     dataType,
@@ -329,7 +329,7 @@ export class ReportCacheService {
                     category: 'reports'
                 });
             } else {
-                monitoring.recordMetric('aggregated_data_cache_miss', 1, { tenantId, dataType });
+                monitoring.counter('aggregated_data.cache_miss', MetricCategory.BUSINESS, 1, { tenantId, dataType });
                 logger.debug('Aggregated data cache miss', {
                     tenantId,
                     dataType,
@@ -377,7 +377,7 @@ export class ReportCacheService {
 
             await cache.set(cacheKey, snapshot, cacheOptions);
 
-            monitoring.recordMetric('snapshot_cached', 1, { tenantId: snapshot.tenantId, reportType: snapshot.reportType });
+            monitoring.counter('snapshot.cached', MetricCategory.BUSINESS, 1, { tenantId: snapshot.tenantId, reportType: snapshot.reportType });
 
             logger.info('Report snapshot cached', {
                 snapshotId: snapshot.id,
@@ -413,14 +413,14 @@ export class ReportCacheService {
             const cachedSnapshot = await cache.get<ReportSnapshot>(cacheKey);
 
             if (cachedSnapshot) {
-                monitoring.recordMetric('snapshot_cache_hit', 1, { snapshotId });
+                monitoring.counter('snapshot.cache_hit', MetricCategory.BUSINESS, 1, { snapshotId });
                 logger.debug('Snapshot cache hit', {
                     snapshotId,
                     cacheKey,
                     category: 'reports'
                 });
             } else {
-                monitoring.recordMetric('snapshot_cache_miss', 1, { snapshotId });
+                monitoring.counter('snapshot.cache_miss', MetricCategory.BUSINESS, 1, { snapshotId });
                 logger.debug('Snapshot cache miss', {
                     snapshotId,
                     cacheKey,
@@ -492,7 +492,7 @@ export class ReportCacheService {
             if (tagsToInvalidate.length > 0) {
                 await cache.invalidateByTags(tagsToInvalidate);
 
-                monitoring.recordMetric('cache_invalidated', 1, {
+                monitoring.counter('cache.invalidated', MetricCategory.BUSINESS, 1, {
                     tenantId: options.tenantId || 'all',
                     trigger: options.trigger || 'manual',
                     tagsCount: tagsToInvalidate.length.toString()
@@ -553,7 +553,7 @@ export class ReportCacheService {
                 await Promise.allSettled(batch);
             }
 
-            monitoring.recordMetric('cache_warmed_up', 1, { tenantId, reportTypesCount: reportTypes.length.toString() });
+            monitoring.counter('cache.warmed_up', MetricCategory.BUSINESS, 1, { tenantId, reportTypesCount: reportTypes.length.toString() });
 
             logger.info('Cache warm-up completed', {
                 tenantId,

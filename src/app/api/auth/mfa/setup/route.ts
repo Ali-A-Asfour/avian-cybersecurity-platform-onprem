@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Setup MFA for user
     const _result = await UserService.setupMFA(user.user_id);

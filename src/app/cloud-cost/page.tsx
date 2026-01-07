@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 
 interface CostData {
@@ -39,13 +41,27 @@ interface BudgetAlert {
 }
 
 export default function CloudCostPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const [costData, setCostData] = useState<CostData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
 
     useEffect(() => {
-        fetchCostData();
-    }, [selectedPeriod]);
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchCostData();
+        }
+    }, [selectedPeriod, isAuthenticated]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     const fetchCostData = async () => {
         try {

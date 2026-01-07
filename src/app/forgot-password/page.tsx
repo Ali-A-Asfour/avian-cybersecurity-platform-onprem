@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 export default function ForgotPasswordPage() {
     const [email] = useState('');
@@ -15,13 +16,7 @@ export default function ForgotPasswordPage() {
         setLoading(true);
 
         try {
-            const response = await fetch('/api/auth/forgot-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email }),
-            });
+            const response = await api.post('/api/auth/forgot-password', { email });
 
             const data = await response.json();
 
@@ -34,7 +29,7 @@ export default function ForgotPasswordPage() {
             // Success
             setSuccess(true);
             setLoading(false);
-        } catch (error) {
+        } catch {
             setError('An error occurred. Please try again.');
             setLoading(false);
         }

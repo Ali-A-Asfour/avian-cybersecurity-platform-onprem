@@ -10,11 +10,14 @@ import { Loader2, ArrowLeft, User, Clock, Phone, Mail, MessageSquare, Paperclip,
 import { TicketTimeline } from '@/components/help-desk/TicketTimeline';
 import { TicketActions } from '@/components/help-desk/TicketActions';
 import { ContactPreferences } from '@/components/help-desk/ContactPreferences';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api-client';
 
 export default function TicketDetailPage() {
     const params = useParams();
     const router = useRouter();
     const ticketId = params.id as string;
+    const { isAuthenticated, loading: authLoading } = useAuth();
 
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [comments, setComments] = useState<TicketComment[]>([]);
@@ -23,6 +26,13 @@ export default function TicketDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [user, setUser] = useState<any>(null);
     const [tenant, setTenant] = useState<any>(null);
+
+    // Authentication check
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
 
     // Fetch user context
     useEffect(() => {
@@ -64,7 +74,7 @@ export default function TicketDetailPage() {
                 setError(null);
 
                 // Fetch ticket
-                const ticketResponse = await fetch(`/api/tickets/${ticketId}`);
+                const ticketResponse = await api.get(`/api/tickets/${ticketId}`);
                 if (!ticketResponse.ok) {
                     throw new Error('Failed to fetch ticket');
                 }
@@ -72,14 +82,14 @@ export default function TicketDetailPage() {
                 setTicket(ticketData.data);
 
                 // Fetch comments
-                const commentsResponse = await fetch(`/api/tickets/${ticketId}/comments`);
+                const commentsResponse = await api.get(`/api/tickets/${ticketId}/comments`);
                 if (commentsResponse.ok) {
                     const commentsData = await commentsResponse.json();
                     setComments(commentsData.data || []);
                 }
 
                 // Fetch attachments
-                const attachmentsResponse = await fetch(`/api/tickets/${ticketId}/attachments`);
+                const attachmentsResponse = await api.get(`/api/tickets/${ticketId}/attachments`);
                 if (attachmentsResponse.ok) {
                     const attachmentsData = await attachmentsResponse.json();
                     setAttachments(attachmentsData.data || []);
@@ -154,6 +164,10 @@ export default function TicketDetailPage() {
             return 'Less than 1 hour ago';
         }
     };
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     if (loading) {
         return (

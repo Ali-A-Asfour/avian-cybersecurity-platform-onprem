@@ -1,7 +1,7 @@
 import { eq, and, count, sql, desc, gte, lte } from 'drizzle-orm';
 // import { db } from '../lib/database';
 import { users, auditLogs } from '../../database/schemas/main';
-import { SessionService } from '../lib/redis';
+import { SessionService } from '../lib/session-service-compat';
 import { DashboardMetrics, UserRole, AlertSeverity, TicketStatus, TicketSeverity, ComplianceStatus } from '../types';
 import { cache, CachePatterns } from '../lib/cache';
 import { dbOptimizer, optimizedQuery } from '../lib/database-optimizer';

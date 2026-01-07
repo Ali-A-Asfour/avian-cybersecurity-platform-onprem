@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '../../ui/Card';
 import { MetricCard } from '../../dashboard/MetricCard';
 import { Tenant, User } from '../../../types';
+import { api } from '@/lib/api-client';
 
 interface PlatformMetricsProps {
   tenants: Tenant[];
@@ -49,7 +50,7 @@ export function PlatformMetrics({ tenants, users }: PlatformMetricsProps) {
       const activeUsers = users.filter(u => u.is_active).length;
 
       // Load additional platform metrics
-      const response = await fetch('/api/admin/platform/metrics');
+      const response = await api.get('/api/admin/platform/metrics');
       let additionalStats = {
         totalTickets: 0,
         totalAlerts: 0,
@@ -69,7 +70,7 @@ export function PlatformMetrics({ tenants, users }: PlatformMetricsProps) {
         activeUsers,
         ...additionalStats,
       });
-    } catch (error) {
+    } catch {
       console.error('Failed to load platform stats:', error);
     } finally {
       setLoading(false);

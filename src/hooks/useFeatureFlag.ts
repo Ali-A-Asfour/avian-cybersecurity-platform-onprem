@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { api } from '@/lib/api-client';
 
 interface FeatureFlags {
     [key: string]: boolean;
@@ -22,7 +23,7 @@ export function useFeatureFlag(flagName: string): boolean {
         // Fetch feature flags from API
         const fetchFlags = async () => {
             try {
-                const response = await fetch('/api/feature-flags');
+                const response = await api.get('/api/feature-flags');
                 if (response.ok) {
                     const serverFlags = await response.json();
                     setFlags({ ...defaultFlags, ...serverFlags });
@@ -52,7 +53,7 @@ export function useFeatureFlags(): { flags: FeatureFlags; loading: boolean } {
     useEffect(() => {
         const fetchFlags = async () => {
             try {
-                const response = await fetch('/api/feature-flags');
+                const response = await api.get('/api/feature-flags');
                 if (response.ok) {
                     const serverFlags = await response.json();
                     setFlags({ ...defaultFlags, ...serverFlags });

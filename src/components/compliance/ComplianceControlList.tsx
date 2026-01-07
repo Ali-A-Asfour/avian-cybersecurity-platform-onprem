@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ComplianceFramework, ComplianceControl, ComplianceEvidence, ComplianceStatus } from '../../types';
+import { api } from '@/lib/api-client';
 // import { EvidenceUpload } from './EvidenceUpload';
 
 interface ComplianceControlListProps {
@@ -22,8 +23,8 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
 
   const fetchControls = async () => {
     try {
-      const response = await fetch(`/api/compliance/frameworks/${framework.id}/controls`);
-      const _result = await response.json();
+      const response = await api.get(`/api/compliance/frameworks/${framework.id}/controls`);
+      const result = await response.json();
       
       if (result.success) {
         setControls(result.data);
@@ -32,7 +33,7 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
           fetchEvidence(control.id);
         }
       }
-    } catch (error) {
+    } catch {
       console.error('Error fetching controls:', error);
     } finally {
       setLoading(false);
@@ -41,8 +42,8 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
 
   const fetchEvidence = async (controlId: string) => {
     try {
-      const response = await fetch(`/api/compliance/controls/${controlId}/evidence`);
-      const _result = await response.json();
+      const response = await api.get(`/api/compliance/controls/${controlId}/evidence`);
+      const result = await response.json();
       
       if (result.success) {
         setEvidence(prev => ({
@@ -50,7 +51,7 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
           [controlId]: result.data,
         }));
       }
-    } catch (error) {
+    } catch {
       console.error('Error fetching evidence:', error);
     }
   };
@@ -58,15 +59,9 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
   const updateControlStatus = async (controlId: string, status: ComplianceStatus) => {
     setUpdatingControl(controlId);
     try {
-      const response = await fetch(`/api/compliance/controls/${controlId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      });
+      const response = await api.put(`/api/compliance/controls/${controlId}`, { status });
       
-      const _result = await response.json();
+      const result = await response.json();
       
       if (result.success) {
         setControls(prev => 
@@ -75,7 +70,7 @@ export function ComplianceControlList({ framework, onBack }: ComplianceControlLi
           )
         );
       }
-    } catch (error) {
+    } catch {
       console.error('Error updating control status:', error);
     } finally {
       setUpdatingControl(null);

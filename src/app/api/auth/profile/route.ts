@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Get current user profile
     const profile = await AuthenticationService.getCurrentUser(user.user_id);

@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ReportSnapshot } from '@/types/reports';
+import { api } from '@/lib/api-client';
 
 export interface PDFExportInterfaceProps {
     reportType: 'weekly' | 'monthly' | 'quarterly';
@@ -84,77 +85,7 @@ export function PDFExportInterface({
     });
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-    // Token refresh handler with automatic retry
-    const handleTokenRefresh = useCallback(async (): Promise<boolean> => {
-        try {
-            const refreshToken = localStorage.getItem('refresh-token');
-            if (!refreshToken) {
-                return false;
-            }
 
-            const response = await fetch('/api/auth/refresh', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ refreshToken }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('auth-token', data.accessToken);
-                if (data.refreshToken) {
-                    localStorage.setItem('refresh-token', data.refreshToken);
-                }
-                return true;
-            }
-
-            return false;
-        } catch (error) {
-            console.error('Token refresh failed:', error);
-            return false;
-        }
-    }, []);
-
-    // Enhanced API call with auth handling and retry logic
-    const makeAuthenticatedRequest = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
-        const token = localStorage.getItem('auth-token');
-        if (!token) {
-            throw new Error('Authentication required. Please log in again.');
-        }
-
-        const authOptions = {
-            ...options,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-        };
-
-        const response = await fetch(url, authOptions);
-
-        // Handle 401 with automatic token refresh
-        if (response.status === 401) {
-            const refreshSuccess = await handleTokenRefresh();
-            if (refreshSuccess) {
-                const newToken = localStorage.getItem('auth-token');
-                const retryOptions = {
-                    ...options,
-                    headers: {
-                        'Authorization': `Bearer ${newToken}`,
-                        'Content-Type': 'application/json',
-                        ...options.headers,
-                    },
-                };
-                return await fetch(url, retryOptions);
-            } else {
-                throw new Error('Session expired. Please log in again.');
-            }
-        }
-
-        return response;
-    }, [handleTokenRefresh]);
 
     // Load snapshots from API with proper auth handling
     const loadSnapshots = useCallback(async () => {
@@ -168,11 +99,10 @@ export function PDFExportInterface({
             setFilteredSnapshots([]);
 
             /* Production code (commented out for demo):
-            const response = await makeAuthenticatedRequest(`/api/reports/snapshots?reportType=${reportType}&pageSize=50`);
+            const response = await api.get(`/api/reports/snapshots?reportType=${reportType}&pageSize=50`);
+            const data = await response.json();
 
             if (!response.ok) {
-                const errorData = await response.json();
-
                 // Handle specific error cases with user-friendly messages
                 if (response.status === 403) {
                     throw new Error('Access restricted. Please contact your administrator for report history access.');
@@ -181,11 +111,9 @@ export function PDFExportInterface({
                 } else if (response.status >= 500) {
                     throw new Error('Server error occurred. Please try again in a few moments.');
                 } else {
-                    throw new Error(errorData.error?.message || 'Failed to load snapshots');
+                    throw new Error(data.error?.message || 'Failed to load snapshots');
                 }
             }
-
-            const data = await response.json();
 
             // Transform API response to display format
             const transformedSnapshots: SnapshotDisplayData[] = data.data.map((snapshot: ReportSnapshot) => {
@@ -224,7 +152,7 @@ export function PDFExportInterface({
         } finally {
             setIsLoadingSnapshots(false);
         }
-    }, [reportType, makeAuthenticatedRequest]);
+    }, [reportType]);
 
     // Filter snapshots based on current filters
     const applyFilters = useCallback(() => {
@@ -318,16 +246,10 @@ export function PDFExportInterface({
         try {
             // For demo purposes, use the demo export endpoint
             // In production, this would use the authenticated export endpoint
-            const response = await fetch('/api/reports/export/demo', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    reportId,
-                    reportType,
-                    format: 'pdf'
-                })
+            const response = await api.post('/api/reports/export/demo', {
+                reportId,
+                reportType,
+                format: 'pdf'
             });
 
             if (!response.ok) {
@@ -416,21 +338,8 @@ export function PDFExportInterface({
 
     const handleDownload = async (downloadUrl: string, snapshotId: string) => {
         try {
-            // Fetch the PDF file with auth
-            const response = await makeAuthenticatedRequest(downloadUrl);
-
-            if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('Access restricted. Please contact your administrator for download access.');
-                } else if (response.status === 404) {
-                    throw new Error('Report file not found. It may have been archived or deleted.');
-                } else {
-                    throw new Error('Download failed. Please try again.');
-                }
-            }
-
-            // Create blob from response
-            const blob = await response.blob();
+            // Fetch the PDF file with auth using api client
+            const blob = await api.getBlob(downloadUrl);
 
             // Create download link
             const url = window.URL.createObjectURL(blob);

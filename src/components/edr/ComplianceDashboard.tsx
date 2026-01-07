@@ -6,6 +6,7 @@ import { NormalizedCompliance } from '@/types/edr';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { api } from '@/lib/api-client';
 
 interface ComplianceDashboardProps {
     className?: string;
@@ -47,7 +48,7 @@ export function ComplianceDashboard({ className = '' }: ComplianceDashboardProps
     // Fetch compliance summary
     const fetchSummary = useCallback(async () => {
         try {
-            const response = await fetch('/api/edr/compliance/summary');
+            const response = await api.get('/api/edr/compliance/summary');
             const result: ComplianceSummaryResponse = await response.json();
 
             if (!response.ok) {
@@ -78,7 +79,7 @@ export function ComplianceDashboard({ className = '' }: ComplianceDashboardProps
                 params.append('state', stateFilter);
             }
 
-            const response = await fetch(`/api/edr/compliance?${params.toString()}`);
+            const response = await api.get(`/api/edr/compliance?${params.toString()}`);
             const result: ComplianceResponse = await response.json();
 
             if (!response.ok) {

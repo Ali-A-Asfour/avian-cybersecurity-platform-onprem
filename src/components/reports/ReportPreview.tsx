@@ -857,7 +857,7 @@ export function ReportPreview({ reportType, reportData, className }: ReportPrevi
                 setSlides(reportSlides);
                 setCurrentSlide(0);
                 setLoading(false);
-            } catch (error) {
+            } catch {
                 setError('Failed to load report preview');
                 setLoading(false);
             }

@@ -1,0 +1,105 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {},
+      "disabled": false,
+      "autoApprove": []
+    },
+    "document-loader": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "/Users/alasfour/.kiro/extensions/apex.apex-extension-internal-0.2.8/out/resources/config/dist/document_loader_mcp-0.1.3-py3-none-any.whl",
+        "document-loader-mcp"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "read_pdf",
+        "read_docx",
+        "read_xlsx",
+        "read_pptx",
+        "read_image"
+      ]
+    },
+    "intelligence-hub": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "/Users/alasfour/.kiro/extensions/apex.apex-extension-internal-0.2.8/out/resources/config/dist/intel_hub_mcp-1.0.0-py3-none-any.whl",
+        "intel-hub-mcp"
+      ],
+      "disabled": true,
+      "autoApprove": [
+        "submit_job",
+        "check_status",
+        "get_result"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO",
+        "API_GATEWAY_URL": "https://intelligence-hub-api.apex.aws.dev"
+      }
+    },
+    "awslabs.core-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "awslabs.core-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "aws-foundation": "true",
+        "dev-tools": "false",
+        "ci-cd-devops": "false",
+        "container-orchestration": "false",
+        "serverless-architecture": "false",
+        "analytics-warehouse": "false",
+        "data-platform-eng": "false",
+        "frontend-dev": "false",
+        "solutions-architect": "true",
+        "finops": "false",
+        "monitoring-observability": "false",
+        "caching-performance": "false",
+        "security-identity": "false",
+        "sql-db-specialist": "false",
+        "nosql-db-specialist": "false",
+        "timeseries-db-specialist": "false",
+        "messaging-events": "false",
+        "healthcare-lifesci": "false"
+      },
+      "disabled": true
+    },
+    "awslabs.aws-documentation-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "AWS_DOCUMENTATION_PARTITION": "aws",
+        "MCP_USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.amazon-bedrock-agentcore-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "awslabs.amazon-bedrock-agentcore-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "builder-mcp": {
+      "command": "builder-mcp",
+      "args": [],
+      "disabled": true,
+      "autoApprove": []
+    }
+  }
+}

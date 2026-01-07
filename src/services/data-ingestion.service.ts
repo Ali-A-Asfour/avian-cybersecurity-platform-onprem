@@ -1,5 +1,5 @@
 // import { logger } from '@/lib/logger';
-import { redisClient } from '@/lib/redis';
+import { getRedisClient } from '@/lib/redis';
 // import { db } from '@/lib/database';
 import { logAuditEvent, AuditAction } from '@/lib/audit-logger';
 
@@ -303,9 +303,10 @@ export class DataIngestionService {
       await this.forwardToThreatLake(securityEvent);
 
       // Cache recent events for quick access
+      const redisClient = await getRedisClient();
       const cacheKey = `events:${securityEvent.tenant_id}:recent`;
-      await redisClient.lpush(cacheKey, JSON.stringify(securityEvent));
-      await redisClient.ltrim(cacheKey, 0, 999); // Keep last 1000 events
+      await redisClient.lPush(cacheKey, JSON.stringify(securityEvent));
+      await redisClient.lTrim(cacheKey, 0, 999); // Keep last 1000 events
       await redisClient.expire(cacheKey, 3600); // 1 hour TTL
 
       // Update data source metrics

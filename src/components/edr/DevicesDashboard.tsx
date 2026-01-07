@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import type { NormalizedDevice } from '@/types/edr';
+import { api } from '@/lib/api-client';
 
 interface DevicesResponse {
     devices: NormalizedDevice[];
@@ -51,7 +52,7 @@ export function DevicesDashboard() {
             if (filters.page) params.append('page', filters.page.toString());
             if (filters.limit) params.append('limit', filters.limit.toString());
 
-            const response = await fetch(`/api/edr/devices?${params}`);
+            const response = await api.get(`/api/edr/devices?${params}`);
 
             if (!response.ok) {
                 if (response.status === 401) {

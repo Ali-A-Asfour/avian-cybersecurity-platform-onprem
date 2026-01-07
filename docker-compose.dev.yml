@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Next.js application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: avian-app-dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://avian:avian_dev_password@postgres:5432/avian
+      - REDIS_URL=redis://:avian_dev_redis_password@redis:6379
+      - JWT_SECRET=dev_jwt_secret_change_in_production
+      - JWT_REFRESH_SECRET=dev_jwt_refresh_secret_change_in_production
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=dev_nextauth_secret_change_in_production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - avian-dev-network
+    volumes:
+      # Mount source code for hot reload in development
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+  # PostgreSQL database for development
+  postgres:
+    image: postgres:16-alpine
+    container_name: avian-postgres-dev
+    environment:
+      POSTGRES_DB: avian
+      POSTGRES_USER: avian
+      POSTGRES_PASSWORD: avian_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avian"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - avian-dev-network
+
+  # Redis for sessions and caching
+  redis:
+    image: redis:7-alpine
+    container_name: avian-redis-dev
+    command: redis-server --requirepass avian_dev_redis_password --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-dev-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - avian-dev-network
+
+volumes:
+  postgres-dev-data:
+    driver: local
+  redis-dev-data:
+    driver: local
+
+networks:
+  avian-dev-network:
+    driver: bridge

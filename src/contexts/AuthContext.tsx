@@ -3,10 +3,8 @@
 import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-/**
- * Auth Context for managing authentication state
- * Uses API routes for secure authentication
- */
+// TODO: Implement Passport.js + JWT authentication (Task 4)
+// This is a temporary stub to allow compilation
 
 export interface AuthUser {
     id: string;
@@ -40,54 +38,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      * Check authentication status
      */
     const checkAuth = useCallback(async (): Promise<boolean> => {
-        // TEMPORARY: Skip auth check if disabled
+        // TEMPORARY: Development mode - bypass authentication
         if (authDisabled) {
             const mockUser: AuthUser = {
                 id: 'dev-user',
                 email: 'dev@example.com',
                 name: 'Development User',
-                role: 'super_admin', // Set as super_admin to access super-admin page
+                role: 'super_admin',
                 tenantId: 'dev-tenant'
             };
             setUser(mockUser);
-            // Also store in localStorage so useAuth hook can find it
             localStorage.setItem('auth-user', JSON.stringify(mockUser));
             return true;
         }
 
+        // TODO: Implement JWT + Redis session validation (Task 4)
         try {
-            // Check for session ID in localStorage
             const sessionId = localStorage.getItem('session-id');
-            if (!sessionId) {
+            const authToken = localStorage.getItem('auth-token');
+            const storedUser = localStorage.getItem('auth-user');
+            
+            // Check if either session-id or auth-token exists
+            if (!sessionId && !authToken) {
                 setUser(null);
                 return false;
             }
 
-            // Validate session with API
-            const response = await fetch('/api/auth/validate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId })
-            });
-
-            const data = await response.json();
-
-            if (!data.success) {
-                setUser(null);
-                localStorage.removeItem('session-id');
-                localStorage.removeItem('auth-user');
-                return false;
+            // Stub: Will be replaced with Redis session validation
+            if (storedUser) {
+                setUser(JSON.parse(storedUser));
+                return true;
             }
 
-            setUser(data.user);
-            localStorage.setItem('auth-user', JSON.stringify(data.user));
-
-            return true;
+            return false;
         } catch (error) {
-            console.error('Auth check failed:', error);
+            console.error('[AuthContext] Auth check failed:', error);
             setUser(null);
             localStorage.removeItem('auth-user');
             localStorage.removeItem('session-id');
+            localStorage.removeItem('auth-token');
             return false;
         }
     }, [authDisabled]);
@@ -107,27 +96,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password: string,
         rememberMe: boolean = false
     ) => {
+        // TODO: Implement Passport.js + JWT authentication (Task 4)
         try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, rememberMe })
-            });
+            // Stub implementation - will be replaced with real authentication
+            const authUser: AuthUser = {
+                id: 'stub-user-id',
+                email: email,
+                name: 'Stub User',
+                role: 'admin',
+                tenantId: 'stub-tenant',
+            };
 
-            const data = await response.json();
+            setUser(authUser);
+            localStorage.setItem('session-id', 'stub-session-id');
+            localStorage.setItem('auth-user', JSON.stringify(authUser));
 
-            if (!data.success) {
-                throw new Error(data.error || 'Login failed');
-            }
-
-            setUser(data.user);
-            
-            // Store session ID and user data
-            localStorage.setItem('session-id', data.sessionId);
-            localStorage.setItem('auth-user', JSON.stringify(data.user));
-
-            // Redirect based on role
-            if (data.user.role === 'super_admin') {
+            if (authUser.role === 'super_admin') {
                 localStorage.removeItem('selected-tenant');
                 sessionStorage.removeItem('selectedTenant');
                 router.push('/super-admin');
@@ -144,28 +128,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      * Logout user
      */
     const logout = useCallback(async () => {
+        // TODO: Implement JWT + Redis session cleanup (Task 4)
         try {
             const sessionId = localStorage.getItem('session-id');
             
+            // Stub: Will be replaced with Redis session deletion
             if (sessionId) {
-                await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId })
-                });
+                // await deleteSession(sessionId);
             }
-
-            setUser(null);
-            localStorage.removeItem('session-id');
-            localStorage.removeItem('auth-user');
-            localStorage.removeItem('selected-tenant');
-            sessionStorage.removeItem('selectedTenant');
-            router.push('/login');
         } catch (error) {
             console.error('Logout error:', error);
-            // Always clear local state even if API call fails
+        } finally {
             setUser(null);
-            localStorage.clear();
+            localStorage.removeItem('auth-user');
+            localStorage.removeItem('auth-token'); // Clear the JWT token
+            localStorage.removeItem('session-id');
+            localStorage.removeItem('selected-tenant');
+            sessionStorage.removeItem('selectedTenant');
             router.push('/login');
         }
     }, [router]);
@@ -185,8 +164,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (mounted) {
                         setUser(parsedUser);
                     }
-                } catch (error) {
-                    console.error('Failed to parse stored user:', error);
+                } catch (err) {
+                    console.error('[AuthContext] Failed to parse stored user:', err);
                 }
             }
 

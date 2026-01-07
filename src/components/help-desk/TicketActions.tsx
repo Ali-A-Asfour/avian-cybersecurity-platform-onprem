@@ -17,6 +17,7 @@ import {
     Clock,
     AlertTriangle
 } from 'lucide-react';
+import { api } from '@/lib/api-client';
 
 interface TicketActionsProps {
     ticket: Ticket;
@@ -45,14 +46,8 @@ export function TicketActions({ ticket, userRole, userId, onTicketUpdated }: Tic
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/tickets/${ticket.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    status: newStatus,
-                }),
+            const response = await api.put(`/api/tickets/${ticket.id}`, {
+                status: newStatus,
             });
 
             if (!response.ok) {
@@ -84,16 +79,10 @@ export function TicketActions({ ticket, userRole, userId, onTicketUpdated }: Tic
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/tickets/${ticket.id}/resolve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    resolution: resolutionDescription.trim(),
-                    createKnowledgeArticle: createKnowledgeArticle,
-                    knowledgeArticleTitle: createKnowledgeArticle ? `Solution: ${ticket.title}` : undefined,
-                }),
+            const response = await api.post(`/api/tickets/${ticket.id}/resolve`, {
+                resolution: resolutionDescription.trim(),
+                createKnowledgeArticle: createKnowledgeArticle,
+                knowledgeArticleTitle: createKnowledgeArticle ? `Solution: ${ticket.title}` : undefined,
             });
 
             if (!response.ok) {
@@ -123,14 +112,8 @@ export function TicketActions({ ticket, userRole, userId, onTicketUpdated }: Tic
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/tickets/${ticket.id}/assign`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    assignee: userId,
-                }),
+            const response = await api.post(`/api/tickets/${ticket.id}/assign`, {
+                assignee: userId,
             });
 
             if (!response.ok) {

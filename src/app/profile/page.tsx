@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRequireAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ClientLayout } from '@/components/layout/ClientLayout';
+import { api } from '@/lib/api-client';
 
 /**
  * User Profile Page
@@ -214,15 +215,10 @@ function PasswordTab() {
         }
 
         try {
-            const response = await fetch('/api/auth/change-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    currentPassword: formData.currentPassword,
-                    newPassword: formData.newPassword,
-                    confirmPassword: formData.confirmPassword,
-                }),
+            const response = await api.post('/api/auth/change-password', {
+                currentPassword: formData.currentPassword,
+                newPassword: formData.newPassword,
+                confirmPassword: formData.confirmPassword,
             });
 
             const data = await response.json();
@@ -235,7 +231,7 @@ function PasswordTab() {
 
             setSuccess(true);
             setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        } catch (error) {
+        } catch {
             setError('An error occurred. Please try again.');
         } finally {
             setLoading(false);

@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { Plus, BarChart3 } from 'lucide-react';
 import { KnowledgeBaseSearch } from '../../../components/help-desk/KnowledgeBaseSearch';
 import { KnowledgeArticleDisplay } from '../../../components/help-desk/KnowledgeArticleDisplay';
 import { CreateKnowledgeArticle } from '../../../components/help-desk/CreateKnowledgeArticle';
 import { KnowledgeArticle } from '../../../services/help-desk/KnowledgeBaseService';
+import { api } from '@/lib/api-client';
 
 interface KnowledgeBaseStats {
     total: number;
@@ -15,16 +18,24 @@ interface KnowledgeBaseStats {
 }
 
 export default function KnowledgeBasePage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [stats, setStats] = useState<KnowledgeBaseStats | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
     // Load knowledge base statistics
     useEffect(() => {
         const loadStats = async () => {
             try {
-                const response = await fetch('/api/help-desk/knowledge-base/stats');
+                const response = await api.get('/api/help-desk/knowledge-base/stats');
                 if (response.ok) {
                     const statsData = await response.json();
                     setStats(statsData);
@@ -36,6 +47,11 @@ export default function KnowledgeBasePage() {
 
         loadStats();
     }, [refreshKey]);
+
+    // Early return after all hooks
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     const handleArticleSelect = (article: KnowledgeArticle) => {
         setSelectedArticle(article);
@@ -55,13 +71,7 @@ export default function KnowledgeBasePage() {
 
     const handleApprovalChange = async (articleId: string, isApproved: boolean) => {
         try {
-            const response = await fetch(`/api/help-desk/knowledge-base/${articleId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ is_approved: isApproved }),
-            });
+            const response = await api.patch(`/api/help-desk/knowledge-base/${articleId}`, { is_approved: isApproved });
 
             if (response.ok) {
                 const updatedArticle = await response.json();
@@ -78,9 +88,7 @@ export default function KnowledgeBasePage() {
 
     const handleDelete = async (articleId: string) => {
         try {
-            const response = await fetch(`/api/help-desk/knowledge-base/${articleId}`, {
-                method: 'DELETE',
-            });
+            const response = await api.delete(`/api/help-desk/knowledge-base/${articleId}`);
 
             if (response.ok) {
                 setSelectedArticle(null);

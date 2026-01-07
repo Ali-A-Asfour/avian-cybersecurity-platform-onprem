@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { BookOpen, Save, X } from 'lucide-react';
+import { api } from '@/lib/api-client';
+import { api } from '@/lib/api-client';
 
 interface CreateKnowledgeArticleProps {
     onArticleCreated?: (article: any) => void;
@@ -36,13 +38,7 @@ export function CreateKnowledgeArticle({
         setError(null);
 
         try {
-            const response = await fetch('/api/help-desk/knowledge-base', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
+            const response = await api.post('/api/help-desk/knowledge-base', formData);
 
             if (!response.ok) {
                 const errorData = await response.json();

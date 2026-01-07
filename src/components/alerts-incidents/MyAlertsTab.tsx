@@ -9,6 +9,7 @@ import { WorkflowGuidance } from './WorkflowGuidance';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api-client';
 
 interface MyAlertsTabProps {
     tenantId: string;
@@ -110,12 +111,7 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
                 ? '/api/alerts-incidents/demo/alerts'
                 : '/api/alerts-incidents/alerts';
 
-            const response = await fetch(`${apiEndpoint}?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.get(`${apiEndpoint}?${params.toString()}`);
 
             const result: AlertsResponse = await response.json();
 
@@ -176,15 +172,9 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
 
             console.log('📡 Calling API endpoint:', apiEndpoint);
 
-            const response = await fetch(apiEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    incidentTitle: `Security Incident from Alert ${alertId}`,
-                    incidentDescription: `Escalated from alert ${alertId} for further investigation`
-                }),
+            const response = await api.post(apiEndpoint, {
+                incidentTitle: `Security Incident from Alert ${alertId}`,
+                incidentDescription: `Escalated from alert ${alertId} for further investigation`
             });
 
             console.log('📥 API response status:', response.status);
@@ -245,15 +235,9 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
      */
     const handleResolveAsBenign = async (alertId: string, notes: string) => {
         try {
-            const response = await fetch(`/api/alerts-incidents/alerts/${alertId}/resolve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    outcome: 'benign',
-                    notes,
-                }),
+            const response = await api.post(`/api/alerts-incidents/alerts/${alertId}/resolve`, {
+                outcome: 'benign',
+                notes,
             });
 
             const result = await response.json();
@@ -301,15 +285,9 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
      */
     const handleResolveAsFalsePositive = async (alertId: string, notes: string) => {
         try {
-            const response = await fetch(`/api/alerts-incidents/alerts/${alertId}/resolve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    outcome: 'false_positive',
-                    notes,
-                }),
+            const response = await api.post(`/api/alerts-incidents/alerts/${alertId}/resolve`, {
+                outcome: 'false_positive',
+                notes,
             });
 
             const result = await response.json();

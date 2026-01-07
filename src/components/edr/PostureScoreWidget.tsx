@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { api } from '@/lib/api-client';
 
 interface PostureScoreWidgetProps {
     className?: string;
@@ -48,7 +49,7 @@ export function PostureScoreWidget({ className = '' }: PostureScoreWidgetProps) 
             setLoading(true);
             setError(null);
 
-            const response = await fetch('/api/edr/posture');
+            const response = await api.get('/api/edr/posture');
             const result: PostureResponse = await response.json();
 
             if (!response.ok) {

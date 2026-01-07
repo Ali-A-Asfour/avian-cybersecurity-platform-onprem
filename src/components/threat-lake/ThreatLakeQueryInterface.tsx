@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
+import { api } from '@/lib/api-client';
 
 interface QueryResult {
   id: string;
@@ -88,11 +89,9 @@ export function ThreatLakeQueryInterface() {
 
   const fetchSavedQueries = async () => {
     try {
-      const response = await fetch('/api/threat-lake/queries');
-      if (response.ok) {
-        const data = await response.json();
-        setSavedQueries(data.queries || []);
-      }
+      const response = await api.get('/api/threat-lake/queries');
+      const data = await response.json();
+      setSavedQueries(data.queries || []);
     } catch (error) {
       console.error('Failed to fetch saved queries:', error);
     }
@@ -103,24 +102,11 @@ export function ThreatLakeQueryInterface() {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/threat-lake/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ query, limit: 100 })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setResults(data.results || []);
-      } else {
-        const error = await response.json();
-        alert(`Query failed: ${error.message}`);
-      }
-    } catch (error) {
+      const data = await api.post('/api/threat-lake/query', { query, limit: 100 });
+      setResults(data.results || []);
+    } catch (error: any) {
       console.error('Failed to execute query:', error);
-      alert('Query execution failed');
+      alert(`Query failed: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -130,25 +116,17 @@ export function ThreatLakeQueryInterface() {
     if (!queryName.trim() || !query.trim()) return;
 
     try {
-      const response = await fetch('/api/threat-lake/queries', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: queryName,
-          description: queryDescription,
-          query
-        })
+      await api.post('/api/threat-lake/queries', {
+        name: queryName,
+        description: queryDescription,
+        query
       });
-
-      if (response.ok) {
-        setShowSaveDialog(false);
-        setQueryName('');
-        setQueryDescription('');
-        fetchSavedQueries();
-        alert('Query saved successfully');
-      }
+      
+      setShowSaveDialog(false);
+      setQueryName('');
+      setQueryDescription('');
+      fetchSavedQueries();
+      alert('Query saved successfully');
     } catch (error) {
       console.error('Failed to save query:', error);
       alert('Failed to save query');

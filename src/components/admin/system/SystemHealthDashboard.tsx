@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
+import { api } from '@/lib/api-client';
 
 interface SystemMetrics {
   cpu_usage: number;
@@ -55,19 +56,19 @@ export function SystemHealthDashboard() {
       setRefreshing(true);
 
       // Load system metrics
-      const metricsResponse = await fetch('/api/admin/system/metrics');
+      const metricsResponse = await api.get('/api/admin/system/metrics');
       if (metricsResponse.ok) {
         const metricsData = await metricsResponse.json();
         setMetrics(metricsData.data);
       }
 
       // Load service status
-      const servicesResponse = await fetch('/api/admin/system/services');
+      const servicesResponse = await api.get('/api/admin/system/services');
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json();
         setServices(servicesData.data);
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to load system health:', error);
     } finally {
       setLoading(false);

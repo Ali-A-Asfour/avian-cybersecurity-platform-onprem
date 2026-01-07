@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# Script to add authentication protection to all pages
+# This adds the standard auth check pattern to each page
+
+# List of pages that need protection (excluding already protected ones)
+PAGES=(
+  "src/app/agents/deploy/page.tsx"
+  "src/app/agents/[id]/analytics/page.tsx"
+  "src/app/alerts/page.tsx"
+  "src/app/alerts-incidents/page.tsx"
+  "src/app/alerts-incidents/demo/page.tsx"
+  "src/app/my-alerts/page.tsx"
+  "src/app/assets/page.tsx"
+  "src/app/cloud-cost/page.tsx"
+  "src/app/compliance/page.tsx"
+  "src/app/compliance/documents/page.tsx"
+  "src/app/dashboard/tenant-admin/page.tsx"
+  "src/app/data-sources/page.tsx"
+  "src/app/debug-escalation/page.tsx"
+  "src/app/edr/page.tsx"
+  "src/app/edr/alerts/page.tsx"
+  "src/app/edr/compliance/page.tsx"
+  "src/app/edr/devices/page.tsx"
+  "src/app/edr/devices/[id]/page.tsx"
+  "src/app/edr/posture/history/page.tsx"
+  "src/app/edr/vulnerabilities/page.tsx"
+  "src/app/firewall/page.tsx"
+  "src/app/help-desk/page.tsx"
+  "src/app/help-desk/knowledge-base/page.tsx"
+  "src/app/help-desk/tickets/new/page.tsx"
+  "src/app/help-desk/tickets/[id]/page.tsx"
+  "src/app/helpdesk-tickets/page.tsx"
+  "src/app/monitoring/page.tsx"
+  "src/app/performance/page.tsx"
+  "src/app/notifications/page.tsx"
+  "src/app/notifications/test/page.tsx"
+  "src/app/playbooks/page.tsx"
+  "src/app/playbooks/recommendations/[alertId]/page.tsx"
+  "src/app/settings/page.tsx"
+  "src/app/super-admin/page.tsx"
+  "src/app/super-admin-isolated/page.tsx"
+  "src/app/test/page.tsx"
+  "src/app/test-route/page.tsx"
+  "src/app/threat-lake/page.tsx"
+  "src/app/tickets/page.tsx"
+  "src/app/tickets/new/page.tsx"
+  "src/app/tickets/helpdesk/page.tsx"
+  "src/app/tickets/security/page.tsx"
+  "src/app/my-tickets/page.tsx"
+  "src/app/security-tickets/page.tsx"
+)
+
+echo "This script lists pages that need auth protection."
+echo "Total pages to protect: ${#PAGES[@]}"
+echo ""
+echo "Pages:"
+for page in "${PAGES[@]}"; do
+  echo "  - $page"
+done

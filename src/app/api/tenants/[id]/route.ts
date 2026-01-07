@@ -21,10 +21,10 @@ export async function GET(
 
     const { user } = authResult;
     const resolvedParams = await params;
-    const _tenantId = resolvedParams.id;
+    const tenantId = resolvedParams.id;
 
     // Get tenant
-    const _tenant = await TenantService.getTenantById(
+    const tenant = await TenantService.getTenantById(
       tenantId,
       user.user_id,
       user.role as UserRole,
@@ -103,7 +103,7 @@ export async function PUT(
     }
 
     // Update tenant
-    const _tenant = await TenantService.updateTenant(
+    const tenant = await TenantService.updateTenant(
       tenantId,
       {
         name,

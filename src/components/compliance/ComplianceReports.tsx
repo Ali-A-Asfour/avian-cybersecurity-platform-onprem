@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ComplianceFramework } from '../../types';
+import { api } from '@/lib/api-client';
 
 interface ComplianceReportsProps {
   frameworks: ComplianceFramework[];
@@ -16,18 +17,12 @@ export function ComplianceReports({ frameworks }: ComplianceReportsProps) {
     setGenerating(true);
 
     try {
-      const response = await fetch('/api/compliance/reports', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          framework_id: selectedFramework || undefined,
-          format: reportFormat,
-        }),
+      const response = await api.post('/api/compliance/reports', {
+        framework_id: selectedFramework || undefined,
+        format: reportFormat,
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         // In a real implementation, this would trigger a download
@@ -35,7 +30,7 @@ export function ComplianceReports({ frameworks }: ComplianceReportsProps) {
       } else {
         alert(result.error?.message || 'Failed to generate report');
       }
-    } catch (error) {
+    } catch {
       console.error('Error generating report:', error);
       alert('Failed to generate report');
     } finally {

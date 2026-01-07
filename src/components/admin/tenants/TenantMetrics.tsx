@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '../../ui/Card';
 import { MetricCard } from '../../dashboard/MetricCard';
 import { Tenant } from '../../../types';
+import { api } from '@/lib/api-client';
 
 interface TenantMetricsProps {
   tenants: Tenant[];
@@ -53,7 +54,7 @@ export function TenantMetrics({ tenants }: TenantMetricsProps) {
       const inactiveTenants = totalTenants - activeTenants;
 
       // Load additional metrics from API
-      const response = await fetch('/api/admin/tenants/metrics');
+      const response = await api.get('/api/admin/tenants/metrics');
       let additionalMetrics = {
         avgUsersPerTenant: 0,
         totalStorageUsed: 0,
@@ -73,7 +74,7 @@ export function TenantMetrics({ tenants }: TenantMetricsProps) {
         inactiveTenants,
         ...additionalMetrics,
       });
-    } catch (error) {
+    } catch {
       console.error('Failed to calculate tenant metrics:', error);
     } finally {
       setLoading(false);

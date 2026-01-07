@@ -4,9 +4,9 @@ import { complianceService } from '@/services/compliance.service';
 export async function GET(request: NextRequest) {
   try {
     // In a real implementation, extract tenant ID from JWT token
-    const _tenantId = 'dev-tenant-123';
+    const tenantId = 'dev-tenant-123';
 
-    const _result = await complianceService.getComplianceDashboardData(tenantId);
+    const result = await complianceService.getComplianceDashboardData(tenantId);
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });

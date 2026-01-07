@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     }
 
     // User filter
-    const _userId = searchParams.get('user_id');
+    const userId = searchParams.get('user_id');
     if (userId) {
       conditions.push(eq(auditLogs.user_id, userId));
     }

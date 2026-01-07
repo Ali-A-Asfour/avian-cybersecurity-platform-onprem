@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -8,10 +10,13 @@ import { Ticket } from '@/types';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { TicketResolutionModal } from '@/components/help-desk/TicketResolutionModal';
+import { api } from '@/lib/api-client';
 
 export const dynamic = 'force-dynamic';
 
 export default function MyTicketsPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [ticketsLoading, setTicketsLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -20,20 +25,27 @@ export default function MyTicketsPage() {
     const [ticketToResolve, setTicketToResolve] = useState<Ticket | null>(null);
 
     useEffect(() => {
-        fetchMyTickets();
-    }, []);
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchMyTickets();
+        }
+    }, [isAuthenticated]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     const fetchMyTickets = async () => {
         try {
             setTicketsLoading(true);
 
             // Fetch tickets assigned to the current user from the API
-            const response = await fetch('/api/tickets/my', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.get('/api/tickets/my');
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch tickets: ${response.status}`);
@@ -63,13 +75,7 @@ export default function MyTicketsPage() {
     const handleStatusUpdate = async (ticketId: string, status: string) => {
         try {
             // Update ticket status via API
-            const response = await fetch(`/api/tickets/${ticketId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ status }),
-            });
+            const response = await api.put(`/api/tickets/${ticketId}`, { status });
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -104,16 +110,10 @@ export default function MyTicketsPage() {
     const handleResolveTicket = async (ticketId: string, resolution: string, createKnowledgeArticle: boolean, knowledgeArticleTitle?: string) => {
         try {
             // Call the resolve endpoint with resolution data
-            const response = await fetch(`/api/tickets/${ticketId}/resolve`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    resolution,
-                    createKnowledgeArticle,
-                    knowledgeArticleTitle,
-                }),
+            const response = await api.post(`/api/tickets/${ticketId}/resolve`, {
+                resolution,
+                createKnowledgeArticle,
+                knowledgeArticleTitle,
             });
 
             if (!response.ok) {

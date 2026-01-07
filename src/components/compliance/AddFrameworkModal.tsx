@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ComplianceFrameworkDefinition } from '@/lib/compliance-frameworks';
+import { api } from '@/lib/api-client';
 
 interface AddFrameworkModalProps {
     isOpen: boolean;
@@ -23,7 +24,7 @@ export function AddFrameworkModal({ isOpen, onClose, onFrameworkAdded }: AddFram
 
     const fetchAvailableFrameworks = async () => {
         try {
-            const response = await fetch('/api/compliance/available-frameworks');
+            const response = await api.get('/api/compliance/available-frameworks');
             const result = await response.json();
 
             if (result.success) {
@@ -42,14 +43,8 @@ export function AddFrameworkModal({ isOpen, onClose, onFrameworkAdded }: AddFram
         setError(null);
 
         try {
-            const response = await fetch('/api/compliance/frameworks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    frameworkKey: selectedFramework,
-                }),
+            const response = await api.post('/api/compliance/frameworks', {
+                frameworkKey: selectedFramework,
             });
 
             const result = await response.json();

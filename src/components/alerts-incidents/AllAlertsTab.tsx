@@ -7,6 +7,7 @@ import { AlertFiltersPanel } from './AlertFiltersPanel';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api-client';
 
 interface AllAlertsTabProps {
     tenantId: string;
@@ -106,12 +107,7 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
                 ? '/api/alerts-incidents/demo/alerts'
                 : '/api/alerts-incidents/alerts';
 
-            const response = await fetch(`${apiEndpoint}?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.get(`${apiEndpoint}?${params.toString()}`);
 
             const result: AlertsResponse = await response.json();
 
@@ -156,12 +152,7 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
                 ? `/api/alerts-incidents/demo/alerts/${alertId}/investigate`
                 : `/api/alerts-incidents/alerts/${alertId}/assign`;
 
-            const response = await fetch(apiEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.post(apiEndpoint, {});
 
             const result = await response.json();
 

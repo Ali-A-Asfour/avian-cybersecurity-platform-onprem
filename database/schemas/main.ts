@@ -65,6 +65,8 @@ export const users = pgTable(
     last_failed_login: timestamp('last_failed_login'),
     locked_until: timestamp('locked_until'),
     password_hash: text('password_hash').notNull(),
+    password_changed_at: timestamp('password_changed_at').notNull().defaultNow(),
+    password_expires_at: timestamp('password_expires_at').notNull().defaultNow(),
     email_verified: boolean('email_verified').notNull().default(false),
     last_login: timestamp('last_login'),
     is_active: boolean('is_active').notNull().default(true),

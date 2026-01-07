@@ -21,11 +21,9 @@ import { eq, and } from 'drizzle-orm';
  */
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success || !authResult.user) {
@@ -58,7 +56,7 @@ export async function PUT(
             );
         }
 
-        const alertId = id;
+        const alertId = params.id;
 
         // Validate alert ID format (UUID)
         const uuidRegex =

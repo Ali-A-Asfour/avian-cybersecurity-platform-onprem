@@ -280,7 +280,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (_e: unknown) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -289,8 +289,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
       // TODO: Call API to create user
       console.log('Creating user:', formData);
       onClose();
-    } catch (error) {
-      console.error('Failed to create user:', error);
+    } catch {
       setError('Failed to create user');
     } finally {
       setLoading(false);

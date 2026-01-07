@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { InvestigationPlaybook, PlaybookStatus } from '@/types/alerts-incidents';
 import { PlaybookClassificationLinkInput } from '@/services/alerts-incidents/PlaybookManager';
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api-client';
 
 interface PlaybookWithClassifications {
     playbook: InvestigationPlaybook;
@@ -70,27 +71,19 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
                 : '/api/alerts-incidents/playbooks/classifications';
 
             const [playbooksResponse, classificationsResponse] = await Promise.all([
-                fetch(`${playbooksEndpoint}?${playbooksParams}`, {
-                    headers: {
-                        'x-user': JSON.stringify(user),
-                    },
-                }),
-                fetch(classificationsEndpoint, {
-                    headers: {
-                        'x-user': JSON.stringify(user),
-                    },
-                }),
+                api.get(`${playbooksEndpoint}?${playbooksParams}`),
+                api.get(classificationsEndpoint),
             ]);
 
             if (!playbooksResponse.ok || !classificationsResponse.ok) {
                 throw new Error('Failed to load data');
             }
 
-            const playbooksData = await playbooksResponse.json();
-            const classificationsData = await classificationsResponse.json();
+            const playbooksData = playbooksResponse;
+            const classificationsData = classificationsResponse;
 
-            setPlaybooks(playbooksData.data.playbooks || []);
-            setClassifications(Array.isArray(classificationsData.data) ? classificationsData.data : []);
+            setPlaybooks(playbooksData?.data?.playbooks || []);
+            setClassifications(Array.isArray(classificationsData?.data) ? classificationsData.data : []);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load data');
         } finally {
@@ -100,17 +93,13 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
 
     const handleViewPlaybook = async (playbookId: string) => {
         try {
-            const response = await fetch(`/api/alerts-incidents/playbooks/${playbookId}`, {
-                headers: {
-                    'x-user': JSON.stringify(user),
-                },
-            });
+            const response = await api.get(`/api/alerts-incidents/playbooks/${playbookId}`);
 
             if (!response.ok) {
                 throw new Error('Failed to load playbook details');
             }
 
-            const data = await response.json();
+            const data = response;
             setSelectedPlaybook({
                 playbook: data.data.playbook,
                 classifications: data.data.classifications.map((c: any) => ({
@@ -127,15 +116,10 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
         if (!isSuperAdmin) return;
 
         try {
-            const response = await fetch(`/api/alerts-incidents/playbooks/${playbookId}/activate`, {
-                method: 'POST',
-                headers: {
-                    'x-user': JSON.stringify(user),
-                },
-            });
+            const response = await api.post(`/api/alerts-incidents/playbooks/${playbookId}/activate`, {});
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = response;
                 throw new Error(errorData.error || 'Failed to activate playbook');
             }
 
@@ -149,15 +133,10 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
         if (!isSuperAdmin) return;
 
         try {
-            const response = await fetch(`/api/alerts-incidents/playbooks/${playbookId}/deprecate`, {
-                method: 'POST',
-                headers: {
-                    'x-user': JSON.stringify(user),
-                },
-            });
+            const response = await api.post(`/api/alerts-incidents/playbooks/${playbookId}/deprecate`, {});
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = response;
                 throw new Error(errorData.error || 'Failed to deprecate playbook');
             }
 
@@ -175,15 +154,10 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
         }
 
         try {
-            const response = await fetch(`/api/alerts-incidents/playbooks/${playbookId}`, {
-                method: 'DELETE',
-                headers: {
-                    'x-user': JSON.stringify(user),
-                },
-            });
+            const response = await api.delete(`/api/alerts-incidents/playbooks/${playbookId}`);
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = response;
                 throw new Error(errorData.error || 'Failed to delete playbook');
             }
 

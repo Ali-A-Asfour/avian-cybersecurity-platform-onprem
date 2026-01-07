@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Disable MFA for user
     await UserService.disableMFA(user.user_id);

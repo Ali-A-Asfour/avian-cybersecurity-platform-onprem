@@ -1,388 +1,614 @@
-// Use Web Performance API for Edge Runtime compatibility
-const getPerformance = () => {
-  if (typeof performance !== 'undefined') {
-    return performance;
-  }
-  // Fallback for environments without performance API
-  return {
-    now: () => Date.now(),
-    mark: () => {},
-    measure: () => {},
-  };
-};
+/**
+ * Monitoring and Metrics Collection Service
+ * 
+ * Provides metrics collection, error tracking, and performance monitoring
+ * for the AVIAN platform.
+ */
 
-export interface MetricData {
+import { getClient } from './database';
+
+// Metric types
+export enum MetricType {
+  COUNTER = 'counter',
+  GAUGE = 'gauge',
+  HISTOGRAM = 'histogram',
+  TIMER = 'timer',
+}
+
+// Metric categories
+export enum MetricCategory {
+  HTTP = 'http',
+  DATABASE = 'database',
+  REDIS = 'redis',
+  AUTH = 'auth',
+  EMAIL = 'email',
+  BUSINESS = 'business',
+}
+
+interface Metric {
   name: string;
+  type: MetricType;
+  category: MetricCategory;
   value: number;
-  timestamp: number;
-  labels?: Record<string, string>;
-  unit?: string;
+  tags?: Record<string, string>;
+  timestamp: Date;
 }
 
-export interface TraceSpan {
-  traceId: string;
-  spanId: string;
-  parentSpanId?: string;
-  operationName: string;
-  startTime: number;
-  endTime?: number;
-  duration?: number;
-  tags: Record<string, any>;
-  logs: Array<{
-    timestamp: number;
-    level: 'info' | 'warn' | 'error' | 'debug';
-    message: string;
-    fields?: Record<string, any>;
-  }>;
+interface ErrorEvent {
+  error: Error;
+  context?: Record<string, any>;
+  userId?: string;
+  tenantId?: string;
+  requestId?: string;
 }
 
-export interface PerformanceMetrics {
-  requestCount: number;
-  responseTime: number;
-  errorRate: number;
-  throughput: number;
-  memoryUsage: number;
-  cpuUsage: number;
+interface PerformanceEvent {
+  operation: string;
+  duration: number;
+  category: MetricCategory;
+  metadata?: Record<string, any>;
 }
 
-class MonitoringService {
-  private metrics: Map<string, MetricData[]> = new Map();
-  private traces: Map<string, TraceSpan> = new Map();
-  private activeSpans: Map<string, TraceSpan> = new Map();
-  private performanceData: PerformanceMetrics[] = [];
-  private maxMetricsHistory = 1000;
-  private maxTraceHistory = 500;
+/**
+ * Monitoring Service
+ * 
+ * Collects metrics, tracks errors, and monitors performance.
+ * In production, this would integrate with services like:
+ * - Prometheus for metrics
+ * - Sentry for error tracking
+ * - Grafana for visualization
+ */
+export class MonitoringService {
+  private static instance: MonitoringService;
+  private metrics: Metric[] = [];
+  private readonly BATCH_SIZE = 100;
+  private readonly FLUSH_INTERVAL = 60000; // 1 minute
+  private flushTimer?: NodeJS.Timeout;
+
+  private constructor() {
+    // Start periodic flush
+    this.startPeriodicFlush();
+  }
+
+  static getInstance(): MonitoringService {
+    if (!MonitoringService.instance) {
+      MonitoringService.instance = new MonitoringService();
+    }
+    return MonitoringService.instance;
+  }
 
   /**
-   * Record a metric value
+   * Record a counter metric (increments)
    */
-  recordMetric(name: string, value: number, labels?: Record<string, string>, unit?: string): void {
-    const metric: MetricData = {
+  counter(
+    name: string,
+    category: MetricCategory,
+    value: number = 1,
+    tags?: Record<string, string>
+  ): void {
+    this.recordMetric({
       name,
+      type: MetricType.COUNTER,
+      category,
       value,
-      timestamp: Date.now(),
-      labels,
-      unit,
-    };
-
-    if (!this.metrics.has(name)) {
-      this.metrics.set(name, []);
-    }
-
-    const metricHistory = this.metrics.get(name)!;
-    metricHistory.push(metric);
-
-    // Keep only recent metrics
-    if (metricHistory.length > this.maxMetricsHistory) {
-      metricHistory.shift();
-    }
+      tags,
+      timestamp: new Date(),
+    });
   }
 
   /**
-   * Start a new trace span
+   * Record a gauge metric (current value)
    */
-  startSpan(operationName: string, parentSpanId?: string): TraceSpan {
-    const traceId = parentSpanId ? 
-      this.activeSpans.get(parentSpanId)?.traceId || this.generateId() : 
-      this.generateId();
-    const spanId = this.generateId();
-
-    const span: TraceSpan = {
-      traceId,
-      spanId,
-      parentSpanId,
-      operationName,
-      startTime: getPerformance().now(),
-      tags: {},
-      logs: [],
-    };
-
-    this.activeSpans.set(spanId, span);
-    return span;
+  gauge(
+    name: string,
+    category: MetricCategory,
+    value: number,
+    tags?: Record<string, string>
+  ): void {
+    this.recordMetric({
+      name,
+      type: MetricType.GAUGE,
+      category,
+      value,
+      tags,
+      timestamp: new Date(),
+    });
   }
 
   /**
-   * Finish a trace span
+   * Record a histogram metric (distribution)
    */
-  finishSpan(spanId: string, tags?: Record<string, any>): void {
-    const span = this.activeSpans.get(spanId);
-    if (!span) return;
+  histogram(
+    name: string,
+    category: MetricCategory,
+    value: number,
+    tags?: Record<string, string>
+  ): void {
+    this.recordMetric({
+      name,
+      type: MetricType.HISTOGRAM,
+      category,
+      value,
+      tags,
+      timestamp: new Date(),
+    });
+  }
 
-    span.endTime = getPerformance().now();
-    span.duration = span.endTime - span.startTime;
-    
-    if (tags) {
-      span.tags = { ...span.tags, ...tags };
+  /**
+   * Record a timer metric (duration in milliseconds)
+   */
+  timer(
+    name: string,
+    category: MetricCategory,
+    duration: number,
+    tags?: Record<string, string>
+  ): void {
+    this.recordMetric({
+      name,
+      type: MetricType.TIMER,
+      category,
+      value: duration,
+      tags,
+      timestamp: new Date(),
+    });
+  }
+
+  /**
+   * Track an error event
+   */
+  async trackError(event: ErrorEvent): Promise<void> {
+    const { error, context, userId, tenantId, requestId } = event;
+
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error tracked:', {
+        message: error.message,
+        stack: error.stack,
+        context,
+        userId,
+        tenantId,
+        requestId,
+      });
     }
 
-    this.traces.set(spanId, span);
-    this.activeSpans.delete(spanId);
+    // Record error metric
+    this.counter('errors.total', MetricCategory.BUSINESS, 1, {
+      error_type: error.name,
+      user_id: userId || 'anonymous',
+      tenant_id: tenantId || 'none',
+    });
 
-    // Keep only recent traces
-    if (this.traces.size > this.maxTraceHistory) {
-      const oldestKey = this.traces.keys().next().value;
-      if (oldestKey) {
-        this.traces.delete(oldestKey);
+    // Store error in database for analysis
+    try {
+      const client = await getClient();
+      
+      // Verify client is properly initialized
+      if (!client || typeof client !== 'function') {
+        throw new Error('Database client not properly initialized');
+      }
+      
+      await client`
+        INSERT INTO error_tracking (
+          error_type,
+          error_message,
+          error_stack,
+          context,
+          user_id,
+          tenant_id,
+          request_id,
+          created_at
+        ) VALUES (
+          ${error.name},
+          ${error.message},
+          ${error.stack || null},
+          ${JSON.stringify(context || {})},
+          ${userId || null},
+          ${tenantId || null},
+          ${requestId || null},
+          NOW()
+        )
+      `;
+    } catch (dbError) {
+      // Silently fail - don't let error tracking break the application
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to store error in database:', dbError);
       }
     }
   }
 
   /**
-   * Add a log entry to a span
+   * Track a performance event
    */
-  logToSpan(spanId: string, level: 'info' | 'warn' | 'error' | 'debug', message: string, fields?: Record<string, any>): void {
-    const span = this.activeSpans.get(spanId);
-    if (!span) return;
+  trackPerformance(event: PerformanceEvent): void {
+    const { operation, duration, category, metadata } = event;
 
-    span.logs.push({
-      timestamp: getPerformance().now(),
-      level,
-      message,
-      fields,
+    // Record timer metric
+    this.timer(`performance.${operation}`, category, duration, {
+      operation,
+      ...metadata,
     });
+
+    // Log slow operations
+    const slowThreshold = this.getSlowThreshold(category);
+    if (duration > slowThreshold) {
+      console.warn(`Slow operation detected: ${operation} took ${duration}ms`, {
+        category,
+        metadata,
+      });
+
+      this.counter('performance.slow_operations', category, 1, {
+        operation,
+        category,
+      });
+    }
+  }
+
+  /**
+   * Create a timer for measuring operation duration
+   */
+  startTimer(operation: string, category: MetricCategory): () => void {
+    const start = Date.now();
+    return () => {
+      const duration = Date.now() - start;
+      this.trackPerformance({ operation, duration, category });
+    };
+  }
+
+  /**
+   * Record HTTP request metrics
+   */
+  recordHttpRequest(
+    method: string,
+    path: string,
+    statusCode: number,
+    duration: number
+  ): void {
+    this.counter('http.requests.total', MetricCategory.HTTP, 1, {
+      method,
+      path,
+      status: statusCode.toString(),
+    });
+
+    this.timer('http.request.duration', MetricCategory.HTTP, duration, {
+      method,
+      path,
+      status: statusCode.toString(),
+    });
+
+    // Track error responses
+    if (statusCode >= 400) {
+      this.counter('http.errors.total', MetricCategory.HTTP, 1, {
+        method,
+        path,
+        status: statusCode.toString(),
+      });
+    }
+  }
+
+  /**
+   * Record database query metrics
+   */
+  recordDatabaseQuery(query: string, duration: number, success: boolean): void {
+    this.counter('database.queries.total', MetricCategory.DATABASE, 1, {
+      success: success.toString(),
+    });
+
+    this.timer('database.query.duration', MetricCategory.DATABASE, duration);
+
+    if (!success) {
+      this.counter('database.errors.total', MetricCategory.DATABASE, 1);
+    }
+  }
+
+  /**
+   * Record Redis operation metrics
+   */
+  recordRedisOperation(
+    operation: string,
+    duration: number,
+    success: boolean
+  ): void {
+    this.counter('redis.operations.total', MetricCategory.REDIS, 1, {
+      operation,
+      success: success.toString(),
+    });
+
+    this.timer('redis.operation.duration', MetricCategory.REDIS, duration, {
+      operation,
+    });
+
+    if (!success) {
+      this.counter('redis.errors.total', MetricCategory.REDIS, 1, {
+        operation,
+      });
+    }
+  }
+
+  /**
+   * Record authentication metrics
+   */
+  recordAuthEvent(
+    event: 'login' | 'logout' | 'register' | 'password_reset',
+    success: boolean,
+    userId?: string
+  ): void {
+    this.counter('auth.events.total', MetricCategory.AUTH, 1, {
+      event,
+      success: success.toString(),
+    });
+
+    if (!success) {
+      this.counter('auth.failures.total', MetricCategory.AUTH, 1, {
+        event,
+      });
+    }
+  }
+
+  /**
+   * Record email metrics
+   */
+  recordEmailSent(type: string, success: boolean): void {
+    this.counter('email.sent.total', MetricCategory.EMAIL, 1, {
+      type,
+      success: success.toString(),
+    });
+
+    if (!success) {
+      this.counter('email.failures.total', MetricCategory.EMAIL, 1, {
+        type,
+      });
+    }
+  }
+
+  /**
+   * Get current metrics snapshot
+   */
+  getMetrics(): Metric[] {
+    return [...this.metrics];
+  }
+
+  /**
+   * Get metrics summary for health checks
+   */
+  async getMetricsSummary(): Promise<Record<string, any>> {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60000;
+
+    const recentMetrics = this.metrics.filter(
+      (m) => m.timestamp.getTime() > oneMinuteAgo
+    );
+
+    const summary: Record<string, any> = {
+      total_metrics: this.metrics.length,
+      recent_metrics: recentMetrics.length,
+      by_category: {} as Record<string, number>,
+      by_type: {} as Record<string, number>,
+    };
+
+    // Count by category
+    for (const metric of recentMetrics) {
+      summary.by_category[metric.category] =
+        (summary.by_category[metric.category] || 0) + 1;
+      summary.by_type[metric.type] = (summary.by_type[metric.type] || 0) + 1;
+    }
+
+    // Get error count from database
+    try {
+      const client = await getClient();
+      
+      // Verify client is properly initialized
+      if (!client || typeof client !== 'function') {
+        throw new Error('Database client not properly initialized');
+      }
+      
+      const result = await client`
+        SELECT COUNT(*) as count
+        FROM error_tracking
+        WHERE created_at > NOW() - INTERVAL '1 hour'
+      `;
+      summary.errors_last_hour = parseInt(result[0]?.count || '0');
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to get error count:', error);
+      }
+      summary.errors_last_hour = 0;
+    }
+
+    return summary;
+  }
+
+  /**
+   * Clear all metrics (for testing)
+   */
+  clearMetrics(): void {
+    this.metrics = [];
+  }
+
+  /**
+   * Flush metrics to storage
+   */
+  private async flushMetrics(): Promise<void> {
+    if (this.metrics.length === 0) {
+      return;
+    }
+
+    const metricsToFlush = this.metrics.splice(0, this.BATCH_SIZE);
+
+    try {
+      const client = await getClient();
+
+      // Verify client is a function (postgres.js uses tagged templates)
+      if (!client || typeof client !== 'function') {
+        throw new Error('Database client not properly initialized');
+      }
+
+      // Filter out invalid metrics BEFORE attempting to insert
+      const validMetrics = metricsToFlush.filter(metric => {
+        const isValid = !!(metric && metric.name && metric.type && metric.category && metric.value !== undefined);
+        
+        if (!isValid && process.env.NODE_ENV === 'development') {
+          console.warn('Filtering out invalid metric before flush:', {
+            name: metric?.name,
+            type: metric?.type,
+            category: metric?.category,
+            value: metric?.value,
+            timestamp: metric?.timestamp,
+            tags: metric?.tags,
+            fullMetric: JSON.stringify(metric),
+          });
+        }
+        
+        return isValid;
+      });
+
+      // Store valid metrics in database
+      for (const metric of validMetrics) {
+        await client`
+          INSERT INTO metrics (
+            name,
+            type,
+            category,
+            value,
+            tags,
+            created_at
+          ) VALUES (
+            ${metric.name},
+            ${metric.type},
+            ${metric.category},
+            ${metric.value},
+            ${JSON.stringify(metric.tags || {})},
+            ${metric.timestamp}
+          )
+        `;
+      }
+    } catch (error) {
+      // Only log in development to avoid spam
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to flush metrics:', error);
+        console.error('Metrics that failed to flush:', JSON.stringify(metricsToFlush, null, 2));
+      }
+      // Put metrics back if flush failed
+      this.metrics.unshift(...metricsToFlush);
+    }
+  }
+
+  /**
+   * Start periodic metric flushing
+   */
+  private startPeriodicFlush(): void {
+    this.flushTimer = setInterval(() => {
+      this.flushMetrics().catch((error) => {
+        console.error('Error in periodic flush:', error);
+      });
+    }, this.FLUSH_INTERVAL);
+  }
+
+  /**
+   * Stop periodic flushing (for cleanup)
+   */
+  stopPeriodicFlush(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = undefined;
+    }
+  }
+
+  /**
+   * Record a metric
+   */
+  private recordMetric(metric: Metric): void {
+    // Validate metric object exists
+    if (!metric) {
+      console.warn('Attempted to record null/undefined metric');
+      return;
+    }
+
+    // Validate metric has required fields with strict checks
+    if (!metric.name || typeof metric.name !== 'string' ||
+        !metric.type || typeof metric.type !== 'string' ||
+        !metric.category || typeof metric.category !== 'string' ||
+        metric.value === undefined || metric.value === null || typeof metric.value !== 'number') {
+      console.warn('Attempted to record invalid metric:', {
+        name: metric.name,
+        nameType: typeof metric.name,
+        type: metric.type,
+        typeType: typeof metric.type,
+        category: metric.category,
+        categoryType: typeof metric.category,
+        value: metric.value,
+        valueType: typeof metric.value,
+        timestamp: metric.timestamp,
+        tags: metric.tags,
+        fullMetric: JSON.stringify(metric),
+      });
+      return;
+    }
+
+    this.metrics.push(metric);
+
+    // Flush if batch size reached
+    if (this.metrics.length >= this.BATCH_SIZE) {
+      this.flushMetrics().catch((error) => {
+        console.error('Error flushing metrics:', error);
+      });
+    }
+  }
+
+  /**
+   * Get slow operation threshold for category
+   */
+  private getSlowThreshold(category: MetricCategory): number {
+    const thresholds: Record<MetricCategory, number> = {
+      [MetricCategory.HTTP]: 1000, // 1 second
+      [MetricCategory.DATABASE]: 500, // 500ms
+      [MetricCategory.REDIS]: 100, // 100ms
+      [MetricCategory.AUTH]: 2000, // 2 seconds
+      [MetricCategory.EMAIL]: 5000, // 5 seconds
+      [MetricCategory.BUSINESS]: 1000, // 1 second
+    };
+
+    return thresholds[category] || 1000;
+  }
+
+  /**
+   * Start a distributed tracing span
+   * Returns a span object with spanId for tagging
+   */
+  startSpan(operation: string): { spanId: string; startTime: number } {
+    const spanId = `span_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = Date.now();
+    
+    return { spanId, startTime };
+  }
+
+  /**
+   * Finish a distributed tracing span
+   * Records the span duration as a timer metric
+   */
+  finishSpan(span: { spanId: string; startTime: number }, operation: string, category: MetricCategory = MetricCategory.BUSINESS): void {
+    const duration = Date.now() - span.startTime;
+    this.timer(operation, category, duration, { span_id: span.spanId });
   }
 
   /**
    * Add tags to a span
+   * Tags are stored for later use when the span is finished
    */
   tagSpan(spanId: string, tags: Record<string, any>): void {
-    const span = this.activeSpans.get(spanId);
-    if (span) {
-      span.tags = { ...span.tags, ...tags };
+    // In a full distributed tracing implementation, this would store tags
+    // For now, we just log them in development
+    if (process.env.NODE_ENV === 'development') {
+      console.debug(`Span ${spanId} tagged:`, tags);
     }
-  }
-
-  /**
-   * Get metrics by name
-   */
-  getMetrics(name: string, limit?: number): MetricData[] {
-    const metrics = this.metrics.get(name) || [];
-    return limit ? metrics.slice(-limit) : metrics;
-  }
-
-  /**
-   * Get all metric names
-   */
-  getMetricNames(): string[] {
-    return Array.from(this.metrics.keys());
-  }
-
-  /**
-   * Get traces by operation name
-   */
-  getTraces(operationName?: string, limit?: number): TraceSpan[] {
-    let traces = Array.from(this.traces.values());
-    
-    if (operationName) {
-      traces = traces.filter(trace => trace.operationName === operationName);
-    }
-
-    traces.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
-    return limit ? traces.slice(0, limit) : traces;
-  }
-
-  /**
-   * Get trace by ID
-   */
-  getTrace(traceId: string): TraceSpan[] {
-    return Array.from(this.traces.values()).filter(span => span.traceId === traceId);
-  }
-
-  /**
-   * Record performance metrics
-   */
-  recordPerformanceMetrics(metrics: PerformanceMetrics): void {
-    this.performanceData.push({
-      ...metrics,
-    });
-
-    // Keep only recent performance data
-    if (this.performanceData.length > 100) {
-      this.performanceData.shift();
-    }
-  }
-
-  /**
-   * Get performance metrics
-   */
-  getPerformanceMetrics(limit?: number): PerformanceMetrics[] {
-    return limit ? this.performanceData.slice(-limit) : this.performanceData;
-  }
-
-  /**
-   * Get system health summary
-   */
-  getHealthSummary(): {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    metrics: {
-      avgResponseTime: number;
-      errorRate: number;
-      throughput: number;
-      memoryUsage: number;
-    };
-    checks: Array<{
-      name: string;
-      status: 'pass' | 'fail';
-      message?: string;
-    }>;
-  } {
-    const recentMetrics = this.getPerformanceMetrics(10);
-    
-    if (recentMetrics.length === 0) {
-      return {
-        status: 'healthy',
-        metrics: {
-          avgResponseTime: 0,
-          errorRate: 0,
-          throughput: 0,
-          memoryUsage: 0,
-        },
-        checks: [
-          { name: 'metrics_collection', status: 'pass' },
-        ],
-      };
-    }
-
-    const avgResponseTime = recentMetrics.reduce((sum, m) => sum + m.responseTime, 0) / recentMetrics.length;
-    const avgErrorRate = recentMetrics.reduce((sum, m) => sum + m.errorRate, 0) / recentMetrics.length;
-    const avgThroughput = recentMetrics.reduce((sum, m) => sum + m.throughput, 0) / recentMetrics.length;
-    const avgMemoryUsage = recentMetrics.reduce((sum, m) => sum + m.memoryUsage, 0) / recentMetrics.length;
-
-    const checks: Array<{
-      name: string;
-      status: 'pass' | 'fail';
-      message?: string;
-    }> = [
-      {
-        name: 'response_time',
-        status: avgResponseTime < 1000 ? 'pass' : 'fail',
-        message: avgResponseTime >= 1000 ? `High response time: ${avgResponseTime.toFixed(2)}ms` : undefined,
-      },
-      {
-        name: 'error_rate',
-        status: avgErrorRate < 0.05 ? 'pass' : 'fail',
-        message: avgErrorRate >= 0.05 ? `High error rate: ${(avgErrorRate * 100).toFixed(2)}%` : undefined,
-      },
-      {
-        name: 'memory_usage',
-        status: avgMemoryUsage < 0.8 ? 'pass' : 'fail',
-        message: avgMemoryUsage >= 0.8 ? `High memory usage: ${(avgMemoryUsage * 100).toFixed(2)}%` : undefined,
-      },
-    ];
-
-    const failedChecks = checks.filter(check => check.status === 'fail').length;
-    const status = failedChecks === 0 ? 'healthy' : failedChecks <= 1 ? 'degraded' : 'unhealthy';
-
-    return {
-      status,
-      metrics: {
-        avgResponseTime,
-        errorRate: avgErrorRate,
-        throughput: avgThroughput,
-        memoryUsage: avgMemoryUsage,
-      },
-      checks,
-    };
-  }
-
-  /**
-   * Clear all metrics and traces
-   */
-  clear(): void {
-    this.metrics.clear();
-    this.traces.clear();
-    this.activeSpans.clear();
-    this.performanceData = [];
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 }
 
-// Singleton instance
-export const monitoring = new MonitoringService();
+// Export singleton instance
+export const monitoring = MonitoringService.getInstance();
 
-/**
- * Decorator for automatic method tracing
- */
-export function trace(operationName?: string) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value;
-    const traceName = operationName || `${target.constructor.name}.${propertyKey}`;
-
-    descriptor.value = async function (...args: any[]) {
-      const span = monitoring.startSpan(traceName);
-      
-      try {
-        monitoring.tagSpan(span.spanId, {
-          method: propertyKey,
-          class: target.constructor.name,
-        });
-
-        const _result = await originalMethod.apply(this, args);
-        
-        monitoring.tagSpan(span.spanId, { success: true });
-        monitoring.finishSpan(span.spanId);
-        
-        return result;
-      } catch (error) {
-        monitoring.tagSpan(span.spanId, { 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-        monitoring.logToSpan(span.spanId, 'error', 'Method execution failed', { error });
-        monitoring.finishSpan(span.spanId);
-        
-        throw error;
-      }
-    };
-
-    return descriptor;
-  };
-}
-
-/**
- * Middleware for request tracing
- */
-export function createRequestTracer() {
-  return (req: any, res: any, next: any) => {
-    const span = monitoring.startSpan(`HTTP ${req.method} ${req.path}`);
-    const startTime = getPerformance().now();
-
-    monitoring.tagSpan(span.spanId, {
-      'http.method': req.method,
-      'http.url': req.url,
-      'http.path': req.path,
-      'user.agent': req.headers['user-agent'],
-    });
-
-    // Override res.end to capture response metrics
-    const originalEnd = res.end;
-    res.end = function (...args: any[]) {
-      const endTime = getPerformance().now();
-      const duration = endTime - startTime;
-
-      monitoring.tagSpan(span.spanId, {
-        'http.status_code': res.statusCode,
-        'response.time_ms': duration,
-      });
-
-      monitoring.recordMetric('http_requests_total', 1, {
-        method: req.method,
-        status: res.statusCode.toString(),
-        path: req.path,
-      });
-
-      monitoring.recordMetric('http_request_duration_ms', duration, {
-        method: req.method,
-        path: req.path,
-      });
-
-      monitoring.finishSpan(span.spanId);
-      originalEnd.apply(res, args);
-    };
-
-    next();
-  };
-}
+// Export convenience functions
+export const trackError = (event: ErrorEvent) => monitoring.trackError(event);
+export const trackPerformance = (event: PerformanceEvent) =>
+  monitoring.trackPerformance(event);
+export const startTimer = (operation: string, category: MetricCategory) =>
+  monitoring.startTimer(operation, category);

@@ -21,11 +21,9 @@ import { UserRole, RiskSeverity } from '@/types';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ deviceId: string }> }
+    { params }: { params: { deviceId: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { deviceId } = await params;
         // Check database connection
         if (!db) {
             return NextResponse.json(
@@ -73,6 +71,7 @@ export async function GET(
         }
 
         // Validate deviceId parameter
+        const deviceId = params.deviceId;
         if (!deviceId || typeof deviceId !== 'string' || deviceId.trim() === '') {
             return NextResponse.json(
                 {
@@ -146,8 +145,6 @@ export async function GET(
         // Retrieve risks from database
         let risks;
         try {
-    // Await params in Next.js 16
-    const { deviceId } = await params;
             if (severity) {
                 risks = await getRisksByDeviceAndSeverity(deviceId, severity);
             } else {
@@ -171,8 +168,6 @@ export async function GET(
         // Get risk counts by severity
         let riskCounts;
         try {
-    // Await params in Next.js 16
-    const { deviceId } = await params;
             riskCounts = await countRisksBySeverity(deviceId);
         } catch (error) {
             console.error('Failed to count risks:', error);

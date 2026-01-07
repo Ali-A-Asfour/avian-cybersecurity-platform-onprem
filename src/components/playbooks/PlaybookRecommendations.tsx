@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { PlaybookExecution } from './PlaybookExecution';
+import { api } from '@/lib/api-client';
 
 interface PlaybookRecommendationsProps {
   alertId: string;
@@ -26,7 +27,7 @@ export function PlaybookRecommendations({ alertId, onClose }: PlaybookRecommenda
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/playbooks/recommend/${alertId}`);
+      const response = await api.get(`/api/playbooks/recommend/${alertId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -34,7 +35,7 @@ export function PlaybookRecommendations({ alertId, onClose }: PlaybookRecommenda
       } else {
         setError(data.error?.message || 'Failed to fetch recommendations');
       }
-    } catch (error) {
+    } catch {
       setError('Failed to fetch recommendations');
     } finally {
       setLoading(false);

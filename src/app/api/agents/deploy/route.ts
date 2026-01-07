@@ -1,23 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Only Super Admins and Tenant Admins can deploy agents
     if (!['super_admin', 'tenant_admin'].includes(user.role)) {
@@ -47,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Generate installation script
     const script = await agentService.generateInstallationScript(
-      tenant.id,
+      tenant!.id,
       os_type,
       deployment_id
     );

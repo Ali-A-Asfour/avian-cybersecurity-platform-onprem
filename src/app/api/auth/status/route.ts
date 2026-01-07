@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enhancedAuthMiddleware } from '../../../../middleware/enhanced-auth.middleware';
-import { SessionService } from '../../../../lib/redis';
+import { SessionService } from '../../../../lib/session-service-compat';
 import { AuthenticationService } from '../../../../services/auth.service';
 
 /**
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const _user = authResult.user!;
+    const user = authResult.user!;
 
     // Handle development mode bypass
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {

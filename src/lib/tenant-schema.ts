@@ -1,4 +1,4 @@
-import { db } from './database';
+import { db, getDb } from './database';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 
@@ -223,15 +223,12 @@ export class TenantSchemaManager {
  * Get a database connection for a specific tenant
  */
 export async function getTenantDatabase(tenantId: string) {
-  if (!db) {
-    throw new Error('Database connection not available. Please configure DATABASE_URL environment variable.');
-  }
+  const database = await getDb();
 
-  const schemaName = TenantSchemaManager.getTenantSchemaName(tenantId);
+  // For now, use the public schema for all tenants
+  // Tenant isolation is handled by the tenant_id column in each table
+  // In a production environment with full multi-tenancy, you would use separate schemas
+  await database.execute(sql.raw(`SET search_path TO public`));
 
-  // For now, we'll use the same database connection but set the search path
-  // In a production environment, you might want to use separate databases per tenant
-  await db.execute(sql.raw(`SET search_path TO "${schemaName}", public`));
-
-  return db;
+  return database;
 }

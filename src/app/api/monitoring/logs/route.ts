@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const level = url.searchParams.get('level');
     const query = url.searchParams.get('query');
-    const _userId = url.searchParams.get('userId');
+    const userId = url.searchParams.get('userId');
     const traceId = url.searchParams.get('traceId');
     const limit = parseInt(url.searchParams.get('limit') || '100');
     const format = url.searchParams.get('format') || 'json';

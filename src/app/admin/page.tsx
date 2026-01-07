@@ -1,21 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 
-import { TenantForm, TenantFormData } from '@/components/admin/tenants/TenantForm';
+import { TenantForm } from '@/components/admin/tenants/TenantForm';
 import { TenantMetrics } from '@/components/admin/tenants/TenantMetrics';
 import { SystemHealthDashboard } from '@/components/admin/system/SystemHealthDashboard';
 import { AuditLogViewer } from '@/components/admin/audit/AuditLogViewer';
 import { PlatformMetrics } from '@/components/admin/platform/PlatformMetrics';
 import { UserManagement } from '@/components/admin/users/UserManagement';
 import { Tenant, User } from '@/types';
+import { api } from '@/lib/api-client';
 
 export default function AdminPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'users' | 'audit' | 'system'>('overview');
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -24,27 +29,49 @@ export default function AdminPage() {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
+
+  if (authLoading) {
+    return (
+      <ClientLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </ClientLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const loadData = async () => {
     try {
       setLoading(true);
 
       // Load tenants
-      const tenantsResponse = await fetch('/api/tenants');
+      const tenantsResponse = await api.get('/api/tenants');
       if (tenantsResponse.ok) {
         const tenantsData = await tenantsResponse.json();
         setTenants(tenantsData.data.tenants || []);
       }
 
       // Load users (cross-tenant for super admin)
-      const usersResponse = await fetch('/api/users');
+      const usersResponse = await api.get('/api/users');
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();
         setUsers(usersData.data.users || []);
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to load admin data:', error);
     } finally {
       setLoading(false);
@@ -61,18 +88,14 @@ export default function AdminPage() {
     setShowTenantModal(true);
   };
 
-  const handleTenantSaved = async (formData: TenantFormData) => {
+  const handleTenantSaved = async (formData: Record<string, unknown>) => {
     try {
       const url = selectedTenant ? `/api/tenants/${selectedTenant.id}` : '/api/tenants';
       const method = selectedTenant ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = selectedTenant 
+        ? await api.put(url, formData)
+        : await api.post(url, formData);
 
       if (response.ok) {
         setShowTenantModal(false);
@@ -82,7 +105,7 @@ export default function AdminPage() {
         const error = await response.json();
         alert(error.error?.message || 'Failed to save tenant');
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to save tenant:', error);
       alert('Failed to save tenant');
     }

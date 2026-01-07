@@ -17,6 +17,7 @@ import {
     FileText,
     Download
 } from 'lucide-react';
+import { authenticatedFetch, api } from '@/lib/api-client';
 
 interface TicketTimelineProps {
     ticketId: string;
@@ -92,15 +93,9 @@ export function TicketTimeline({
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/tickets/${ticketId}/comments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    content: newComment.trim(),
-                    is_internal: isInternal,
-                }),
+            const response = await api.post(`/api/tickets/${ticketId}/comments`, {
+                content: newComment.trim(),
+                is_internal: isInternal,
             });
 
             if (!response.ok) {
@@ -135,7 +130,7 @@ export function TicketTimeline({
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch(`/api/tickets/${ticketId}/attachments`, {
+            const response = await authenticatedFetch(`/api/tickets/${ticketId}/attachments`, {
                 method: 'POST',
                 body: formData,
             });

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { TicketList } from '@/components/tickets/TicketList';
 import { TicketForm } from '@/components/tickets/TicketForm';
@@ -11,12 +13,24 @@ import { useDemoContext } from '@/contexts/DemoContext';
 export const dynamic = 'force-dynamic';
 
 export default function SecurityTicketsPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const { currentUser } = useDemoContext();
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showEditForm, setShowEditForm] = useState(false);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [ticketFieldPermissions, setTicketFieldPermissions] = useState<Record<string, { canEdit: boolean; reason?: string }> | null>(null);
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     // Only super admin can edit tickets
     const canEditTickets = currentUser.role === UserRole.SUPER_ADMIN;

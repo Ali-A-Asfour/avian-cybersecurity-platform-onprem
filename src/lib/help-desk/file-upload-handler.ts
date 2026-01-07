@@ -6,6 +6,7 @@
  */
 
 import { HelpDeskValidator, HelpDeskErrors, HelpDeskRetryManager } from './error-handling';
+import { api } from '@/lib/api-client';
 
 export interface FileUploadConfig {
     maxFileSize: number; // in bytes
@@ -171,9 +172,10 @@ export class HelpDeskFileUploadHandler {
         formData.append('file', file);
         formData.append('path', filePath);
 
-        const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
+        const response = await api.post('/api/upload', formData, {
+            headers: {
+                // Don't set Content-Type - let browser set it with boundary for FormData
+            }
         });
 
         if (!response.ok) {
@@ -295,13 +297,7 @@ export class HelpDeskFileUploadHandler {
      */
     static async deleteFile(filePath: string): Promise<void> {
         try {
-            await fetch('/api/upload', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ path: filePath }),
-            });
+            await api.delete('/api/upload', { path: filePath });
         } catch (error) {
             console.error('Failed to delete file:', error);
             // Don't throw error - this is cleanup

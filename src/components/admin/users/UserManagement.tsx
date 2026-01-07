@@ -7,6 +7,7 @@ import { Input } from '../../ui/Input';
 import { DataTable } from '../../ui/DataTable';
 import { Modal } from '../../ui/Modal';
 import { User, Tenant, UserRole } from '../../../types';
+import { api } from '@/lib/api-client';
 
 interface UserManagementProps {
   users: User[];
@@ -81,13 +82,7 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
       const url = selectedUser ? `/api/users/${selectedUser.id}` : '/api/users';
       const method = selectedUser ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await api[method === 'PUT' ? 'put' : 'post'](url, formData);
 
       if (response.ok) {
         setShowUserModal(false);
@@ -97,7 +92,7 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
         const error = await response.json();
         alert(error.error?.message || 'Failed to save user');
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to save user:', error);
       alert('Failed to save user');
     } finally {
@@ -105,19 +100,13 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
     }
   };
 
-  const handleDeactivateUser = async (_userId: string) => {
+  const handleDeactivateUser = async (userId: string) => {
     if (!confirm('Are you sure you want to deactivate this user?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_active: false }),
-      });
+      const response = await api.put(`/api/users/${userId}`, { is_active: false });
 
       if (response.ok) {
         onUserUpdated();
@@ -125,27 +114,21 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
         const error = await response.json();
         alert(error.error?.message || 'Failed to deactivate user');
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to deactivate user:', error);
       alert('Failed to deactivate user');
     }
   };
 
-  const handleResetPassword = async (_userId: string) => {
+  const handleResetPassword = async (userId: string) => {
     if (!confirm('Are you sure you want to reset this user\'s password?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}/password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          new_password: 'TempPassword123!',
-          reset_required: true 
-        }),
+      const response = await api.put(`/api/users/${userId}/password`, { 
+        new_password: 'TempPassword123!',
+        reset_required: true 
       });
 
       if (response.ok) {
@@ -154,7 +137,7 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
         const error = await response.json();
         alert(error.error?.message || 'Failed to reset password');
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to reset password:', error);
       alert('Failed to reset password');
     }
@@ -171,8 +154,8 @@ export function UserManagement({ users, tenants, onUserUpdated }: UserManagement
     }
   };
 
-  const getTenantName = (_tenantId: string) => {
-    const _tenant = tenants.find(t => t.id === tenantId);
+  const getTenantName = (tenantId: string) => {
+    const tenant = tenants.find(t => t.id === tenantId);
     return tenant?.name || 'Unknown';
   };
 
@@ -378,7 +361,7 @@ function UserForm({ user, tenants, onSave, onCancel, loading }: UserFormProps) {
     mfa_enabled: user?.mfa_enabled || false,
   });
 
-  const handleSubmit = (_e: unknown) => {
+  const handleSubmit = (e: unknown) => {
     e.preventDefault();
     onSave(formData);
   };

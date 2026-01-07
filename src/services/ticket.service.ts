@@ -120,9 +120,16 @@ export class TicketService {
       })
       .returning();
 
-    // Initialize SLA timer for the new ticket
-    const { StateManagementService } = await import('./help-desk/StateManagementService');
-    StateManagementService.initializeSLATimer(ticket.id, slaDeadline, TicketStatus.NEW);
+    // Initialize SLA timer for the new ticket (optional - don't fail if service unavailable)
+    try {
+      const { StateManagementService } = await import('./help-desk/StateManagementService');
+      if (StateManagementService && StateManagementService.initializeSLATimer) {
+        StateManagementService.initializeSLATimer(ticket.id, slaDeadline, TicketStatus.NEW);
+      }
+    } catch (error) {
+      // SLA timer initialization is optional - log but don't fail ticket creation
+      console.warn('Failed to initialize SLA timer:', error);
+    }
 
     return this.formatTicket(ticket);
   }

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth as useAuthContext } from '@/contexts/AuthContext';
 import { TenantSelector } from '@/components/admin/TenantSelector';
 import { Card, Button, Badge } from '@/components/ui';
 import { useTenant } from '@/contexts/TenantContext';
@@ -21,11 +23,22 @@ interface Tenant {
 }
 
 export default function SuperAdminPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authContextLoading } = useAuthContext();
   const { user, loading: authLoading } = useAuth(true);
   const { selectedTenant, setSelectedTenant } = useTenant();
-  const [showTenantSelector, setShowTenantSelector] = useState(!selectedTenant);
+  
+  // All useState hooks must be at the top, before any conditional returns
+  const [showTenantSelector, setShowTenantSelector] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Authentication check
+  useEffect(() => {
+    if (!authContextLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authContextLoading, isAuthenticated, router]);
 
   // Handle hydration
   useEffect(() => {
@@ -38,6 +51,11 @@ export default function SuperAdminPage() {
       setError('Failed to initialize component');
     }
   }, [selectedTenant]);
+
+  // Early return after all hooks
+  if (authContextLoading || !isAuthenticated) {
+    return null;
+  }
 
   const handleTenantSelect = (tenant: Tenant) => {
     try {

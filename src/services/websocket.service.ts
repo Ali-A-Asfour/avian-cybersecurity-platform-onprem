@@ -163,9 +163,9 @@ export class WebSocketService {
 // pages/api/ws.ts or app/api/ws/route.ts
 import { WebSocketService } from '@/services/websocket.service';
 
-export function GET(_request: Request) {
+export function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const _userId = searchParams.get('user_id');
+  const userId = searchParams.get('user_id');
   
   if (!userId) {
     return new Response('Missing user_id', { status: 400 });

@@ -2,30 +2,49 @@ import { NextRequest, NextResponse } from 'next/server';
 import { assetService } from '@/services/asset.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { ApiResponse, ComplianceStatus } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Get format from query parameters
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'csv';
 
     // Get assets for the tenant
-    const assets = await assetService.getAssetsByTenant(tenant.id);
+    const assets = await assetService.getAssetsByTenant(tenant!.id);
 
     if (format === 'csv') {
       const csvContent = generateCSVReport(assets, tenant);

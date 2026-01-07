@@ -32,7 +32,10 @@ npm run dev
 
 ## 📚 Documentation
 
-- **[Full Documentation](docs/README.md)** - Complete setup and usage guide
+- **[Documentation Index](docs/INDEX.md)** - Complete documentation overview
+- **[Setup Guide](SETUP.md)** - Detailed setup instructions
+- **[User Roles & Credentials](docs/guides/USER_ROLES_AND_CREDENTIALS.md)** - User account information
+- **[Troubleshooting](docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
 - **[API Documentation](src/app/api/)** - API endpoints and usage
 - **[Database Schema](database/schemas/)** - Database structure
 

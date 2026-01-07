@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
+import { api } from '@/lib/api-client';
 
 interface AgentListProps {
   tenantId: string;
@@ -23,7 +24,7 @@ export function AgentList({ tenantId }: AgentListProps) {
   const fetchAgents = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/agents');
+      const response = await api.get('/api/agents');
       const data = await response.json();
 
       if (data.success) {
@@ -31,7 +32,7 @@ export function AgentList({ tenantId }: AgentListProps) {
       } else {
         setError(data.error?.message || 'Failed to fetch agents');
       }
-    } catch (error) {
+    } catch {
       setError('Failed to fetch agents');
     } finally {
       setLoading(false);

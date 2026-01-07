@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '../lib/auth';
-import { SessionService } from '../lib/redis';
+import { SessionService } from '../lib/session-service-compat';
 import { AuthAuditLogger } from '../lib/auth-audit';
 import { JWTPayload, UserRole } from '../types';
 import { monitoring } from '../lib/monitoring';

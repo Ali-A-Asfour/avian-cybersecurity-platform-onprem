@@ -37,7 +37,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           setSelectedTenant(JSON.parse(storedTenant));
         }
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to parse stored tenant:', error);
     } finally {
       setIsLoading(false);

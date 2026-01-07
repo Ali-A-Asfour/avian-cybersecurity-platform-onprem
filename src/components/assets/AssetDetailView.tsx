@@ -8,6 +8,7 @@ import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
+import { api } from '@/lib/api-client';
 
 interface AssetDetailViewProps {
   assetId: string;
@@ -27,7 +28,7 @@ export function AssetDetailView({ assetId, onClose }: AssetDetailViewProps) {
   const fetchAssetDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/assets/${assetId}`);
+      const response = await api.get(`/api/assets/${assetId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -35,7 +36,7 @@ export function AssetDetailView({ assetId, onClose }: AssetDetailViewProps) {
       } else {
         setError(data.error?.message || 'Failed to fetch asset details');
       }
-    } catch (error) {
+    } catch {
       setError('Failed to fetch asset details');
     } finally {
       setLoading(false);
@@ -44,9 +45,7 @@ export function AssetDetailView({ assetId, onClose }: AssetDetailViewProps) {
 
   const handleScanAsset = async () => {
     try {
-      const response = await fetch(`/api/assets/${assetId}/scan`, {
-        method: 'POST',
-      });
+      const response = await api.post(`/api/assets/${assetId}/scan`);
       const data = await response.json();
 
       if (data.success) {
@@ -55,7 +54,7 @@ export function AssetDetailView({ assetId, onClose }: AssetDetailViewProps) {
       } else {
         alert(`Scan failed: ${data.error?.message}`);
       }
-    } catch (error) {
+    } catch {
       alert('Failed to initiate scan');
     }
   };

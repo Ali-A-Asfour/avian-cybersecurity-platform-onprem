@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
+import { api } from '@/lib/api-client';
 import {
   BarChart,
   Bar,
@@ -166,12 +167,9 @@ export default function ThreatLakeDashboard() {
         include_predictions: 'true'
       });
 
-      const response = await fetch(`/api/threat-lake/analytics?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
-      }
-    } catch (error) {
+      const data = await api.get(`/api/threat-lake/analytics?${params}`);
+      setAnalytics(data);
+    } catch {
       console.error('Failed to load threat analytics:', error);
     } finally {
       setLoading(false);
@@ -185,12 +183,9 @@ export default function ThreatLakeDashboard() {
         ...searchFilters
       });
 
-      const response = await fetch(`/api/threat-lake/events?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setEvents(data.events || []);
-      }
-    } catch (error) {
+      const data = await api.get(`/api/threat-lake/events?${params}`);
+      setEvents(data.events || []);
+    } catch {
       console.error('Failed to load recent events:', error);
     }
   };
@@ -212,19 +207,16 @@ export default function ThreatLakeDashboard() {
         ...searchFilters
       });
 
-      const response = await fetch(`/api/threat-lake/events/export?${params}`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `threat-lake-events-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-    } catch (error) {
+      const blob = await api.getBlob(`/api/threat-lake/events/export?${params}`);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `threat-lake-events-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
       console.error('Failed to export data:', error);
     }
   };
@@ -296,7 +288,7 @@ export default function ThreatLakeDashboard() {
       </div>
 
       {/* Key Metrics */}
-      {analytics && (
+      {analytics && analytics.severity_distribution && analytics.correlation_status && analytics.top_threat_indicators && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -359,7 +351,7 @@ export default function ThreatLakeDashboard() {
       )}
 
       {/* Charts Row */}
-      {analytics && (
+      {analytics && analytics.severity_distribution && analytics.category_distribution && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Severity Distribution */}
           <Card className="p-6">
@@ -417,7 +409,7 @@ export default function ThreatLakeDashboard() {
       )}
 
       {/* Trends and Predictions */}
-      {analytics?.trends && (
+      {analytics?.trends?.severity_trends && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Severity Trends */}
           <Card className="p-6">

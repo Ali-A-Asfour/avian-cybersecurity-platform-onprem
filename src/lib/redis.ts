@@ -1,480 +1,519 @@
-import { createClient } from 'redis';
-import crypto from 'crypto';
+/**
+ * Redis Connection Manager
+ * 
+ * Provides centralized Redis connection with:
+ * - Connection pooling
+ * - Automatic retry logic with exponential backoff
+ * - TLS support for production
+ * - Health checking
+ * 
+ * Requirements: 2.1, 2.6, 2.7
+ */
+
+import { createClient, RedisClientType } from 'redis';
+import { logger } from './logger';
 import { config } from './config';
 
-// Redis client configuration (only if Redis URL is configured)
-const redisClient = config.redis.url ? createClient({
-  url: config.redis.url,
-}) : null;
+let redisClient: RedisClientType | null = null;
+let isConnecting = false;
 
-// Connection event handlers (only if Redis client exists)
-if (redisClient) {
-  redisClient.on('error', (err) => {
-    if (config.app.nodeEnv === 'development') {
-      // In development, just log once and suppress further errors
-      if (!redisErrorLogged) {
-        console.warn('⚠️ Redis not available in development mode');
-        redisErrorLogged = true;
-      }
-    } else {
-      console.error('Redis Client Error:', err);
-    }
-  });
-
-  redisClient.on('connect', () => {
-    console.log('✅ Connected to Redis');
-    redisErrorLogged = false;
-  });
-
-  redisClient.on('disconnect', () => {
-    console.log('❌ Disconnected from Redis');
-  });
+/**
+ * Redis connection options
+ */
+interface RedisConnectionOptions {
+  maxRetries?: number;
+  retryDelay?: number;
+  connectTimeout?: number;
 }
 
-let redisErrorLogged = false;
+/**
+ * Initialize Redis connection with retry logic
+ */
+export async function connectRedis(options: RedisConnectionOptions = {}): Promise<RedisClientType> {
+  // Return existing connection if available
+  if (redisClient && redisClient.isOpen) {
+    return redisClient;
+  }
 
-// Connect to Redis
-let isConnected = false;
-
-export async function connectRedis() {
-  if (!redisClient) {
-    if (config.app.nodeEnv === 'development') {
-      console.warn('⚠️ Redis not configured in development mode, continuing without Redis');
-      return null;
-    } else {
-      throw new Error('Redis client not configured');
+  // Prevent multiple simultaneous connection attempts
+  if (isConnecting) {
+    // Wait for existing connection attempt
+    while (isConnecting) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (redisClient && redisClient.isOpen) {
+      return redisClient;
     }
   }
-  
-  if (!isConnected) {
-    try {
-      await redisClient.connect();
-      isConnected = true;
-    } catch (error) {
-      if (config.app.nodeEnv === 'development') {
-        console.warn('⚠️ Redis connection failed in development mode, continuing without Redis');
-        isConnected = false;
-        return null;
-      } else {
-        throw error;
-      }
-    }
+
+  isConnecting = true;
+
+  try {
+    const {
+      maxRetries = 10,
+      retryDelay = 1000,
+      connectTimeout = 10000,
+    } = options;
+
+    logger.info('Initializing Redis connection', {
+      url: config.redis.url.replace(/:([^:@]+)@/, ':****@'), // Mask password in logs
+      maxRetries,
+      connectTimeout,
+    });
+
+    // Parse Redis URL to determine if TLS is needed
+    const useTLS = config.redis.url.startsWith('rediss://');
+
+    // Create Redis client
+    redisClient = createClient({
+      url: config.redis.url,
+      socket: {
+        connectTimeout,
+        reconnectStrategy: (retries) => {
+          if (retries > maxRetries) {
+            logger.error('Redis max retries exceeded', new Error('Max retries exceeded'), {
+              retries,
+              maxRetries,
+            });
+            return new Error('Max retries exceeded');
+          }
+
+          // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s (max)
+          const delay = Math.min(retryDelay * Math.pow(2, retries), 32000);
+          logger.warn('Redis connection retry', {
+            retries,
+            delay,
+            nextRetryIn: `${delay}ms`,
+          });
+          return delay;
+        },
+        ...(useTLS && config.app.nodeEnv === 'production' ? {
+          tls: true,
+          rejectUnauthorized: true,
+        } : {}),
+      },
+    });
+
+    // Set up event handlers
+    redisClient.on('error', (error) => {
+      logger.error('Redis client error', error instanceof Error ? error : new Error(String(error)));
+    });
+
+    redisClient.on('connect', () => {
+      logger.info('Redis client connecting');
+    });
+
+    redisClient.on('ready', () => {
+      logger.info('Redis client ready');
+    });
+
+    redisClient.on('reconnecting', () => {
+      logger.warn('Redis client reconnecting');
+    });
+
+    redisClient.on('end', () => {
+      logger.info('Redis client connection closed');
+    });
+
+    // Connect to Redis
+    await redisClient.connect();
+
+    logger.info('Redis connection established successfully');
+
+    return redisClient;
+  } catch (error) {
+    logger.error('Failed to connect to Redis', error instanceof Error ? error : new Error(String(error)));
+    redisClient = null;
+    throw error;
+  } finally {
+    isConnecting = false;
+  }
+}
+
+/**
+ * Get existing Redis connection or create new one
+ */
+export async function getRedisClient(): Promise<RedisClientType> {
+  if (!redisClient || !redisClient.isOpen) {
+    return await connectRedis();
   }
   return redisClient;
 }
 
-// Session management utilities
+/**
+ * Close Redis connection gracefully
+ */
+export async function disconnectRedis(): Promise<void> {
+  if (redisClient && redisClient.isOpen) {
+    try {
+      await redisClient.quit();
+      logger.info('Redis connection closed gracefully');
+    } catch (error) {
+      logger.error('Error closing Redis connection', error instanceof Error ? error : new Error(String(error)));
+      // Force close if graceful close fails
+      await redisClient.disconnect();
+    } finally {
+      redisClient = null;
+    }
+  }
+}
+
+/**
+ * Check Redis connection health
+ */
+export async function checkRedisHealth(): Promise<{
+  healthy: boolean;
+  latency?: number;
+  error?: string;
+}> {
+  const startTime = Date.now();
+
+  try {
+    const client = await getRedisClient();
+    
+    // Ping Redis to check connectivity
+    const pong = await client.ping();
+    
+    if (pong !== 'PONG') {
+      return {
+        healthy: false,
+        error: 'Redis ping returned unexpected response',
+      };
+    }
+
+    const latency = Date.now() - startTime;
+    return {
+      healthy: true,
+      latency,
+    };
+  } catch (error) {
+    logger.error('Redis health check failed', error instanceof Error ? error : new Error(String(error)));
+    return {
+      healthy: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Execute Redis command with automatic retry
+ */
+export async function executeRedisCommand<T>(
+  command: (client: RedisClientType) => Promise<T>,
+  retries = 3
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const client = await getRedisClient();
+      return await command(client);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      logger.warn('Redis command failed, retrying', {
+        attempt: attempt + 1,
+        maxRetries: retries,
+        error: lastError.message,
+      });
+
+      if (attempt < retries - 1) {
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+    }
+  }
+
+  logger.error('Redis command failed after all retries', lastError!);
+  throw lastError;
+}
+
+/**
+ * Session Service for managing user sessions, rate limiting, and authentication state
+ */
 export class SessionService {
-  private static readonly SESSION_PREFIX = 'session:';
-  private static readonly REFRESH_TOKEN_PREFIX = 'refresh:';
-  private static readonly MFA_PREFIX = 'mfa:';
-  private static readonly RATE_LIMIT_PREFIX = 'rate_limit:';
-  private static readonly AUTH_STATUS_PREFIX = 'auth_status:';
-  private static readonly FAILED_ATTEMPTS_PREFIX = 'failed_attempts:';
-  
-  // Session timeout configurations
-  private static readonly DEFAULT_SESSION_TIMEOUT = 3600; // 1 hour
-  private static readonly EXTENDED_SESSION_TIMEOUT = 28800; // 8 hours
-  private static readonly IDLE_TIMEOUT = 1800; // 30 minutes
-  private static readonly MAX_FAILED_ATTEMPTS = 5;
-  private static readonly LOCKOUT_DURATION = 900; // 15 minutes
-
   /**
-   * Store user session
+   * Store session data
    */
-  static async storeSession(userId: string, sessionData: any, expiresIn: number = 3600): Promise<void> {
-    const client = await connectRedis();
-    if (!client) return; // Skip if Redis not available
-    const key = `${this.SESSION_PREFIX}${userId}`;
-    await client.setEx(key, expiresIn, JSON.stringify(sessionData));
+  static async storeSession(userId: string, sessionData: any, ttlSeconds: number = 3600): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const key = `session:${userId}`;
+      await client.setEx(key, ttlSeconds, JSON.stringify(sessionData));
+    });
   }
 
   /**
-   * Get user session
+   * Store enhanced session with options
    */
-  static async getSession(_userId: string): Promise<any | null> {
-    const client = await connectRedis();
-    if (!client) return null; // Skip if Redis not available
-    const key = `${this.SESSION_PREFIX}${userId}`;
-    const data = await client.get(key);
-    return data ? JSON.parse(data) : null;
+  static async storeEnhancedSession(
+    userId: string,
+    sessionData: any,
+    options: { extendedSession?: boolean; rememberMe?: boolean } = {}
+  ): Promise<void> {
+    const ttl = options.extendedSession ? 86400 : options.rememberMe ? 2592000 : 3600; // 24h, 30d, or 1h
+    await this.storeSession(userId, sessionData, ttl);
   }
 
   /**
-   * Delete user session
+   * Get session data
    */
-  static async deleteSession(_userId: string): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.SESSION_PREFIX}${userId}`;
-    await client.del(key);
+  static async getSession(userId: string): Promise<any | null> {
+    return await executeRedisCommand(async (client) => {
+      const key = `session:${userId}`;
+      const data = await client.get(key);
+      return data ? JSON.parse(data) : null;
+    });
+  }
+
+  /**
+   * Delete session
+   */
+  static async deleteSession(userId: string): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const key = `session:${userId}`;
+      await client.del(key);
+    });
   }
 
   /**
    * Store refresh token
    */
-  static async storeRefreshToken(userId: string, tokenHash: string, expiresIn: number = 604800): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.REFRESH_TOKEN_PREFIX}${userId}`;
-    await client.setEx(key, expiresIn, tokenHash);
+  static async storeRefreshToken(userId: string, token: string, ttlSeconds: number = 604800): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const key = `refresh_token:${userId}`;
+      await client.setEx(key, ttlSeconds, token);
+    });
   }
 
   /**
    * Verify refresh token
    */
-  static async verifyRefreshToken(userId: string, tokenHash: string): Promise<boolean> {
-    const client = await connectRedis();
-    const key = `${this.REFRESH_TOKEN_PREFIX}${userId}`;
-    const storedHash = await client.get(key);
-    return storedHash === tokenHash;
+  static async verifyRefreshToken(userId: string, token: string): Promise<boolean> {
+    return await executeRedisCommand(async (client) => {
+      const key = `refresh_token:${userId}`;
+      const storedToken = await client.get(key);
+      return storedToken === token;
+    });
   }
 
   /**
    * Delete refresh token
    */
-  static async deleteRefreshToken(_userId: string): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.REFRESH_TOKEN_PREFIX}${userId}`;
-    await client.del(key);
+  static async deleteRefreshToken(userId: string): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const key = `refresh_token:${userId}`;
+      await client.del(key);
+    });
   }
 
   /**
-   * Store MFA verification code
+   * Check rate limit
    */
-  static async storeMFACode(userId: string, code: string, expiresIn: number = 300): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.MFA_PREFIX}${userId}`;
-    await client.setEx(key, expiresIn, code);
+  static async checkRateLimit(
+    key: string,
+    maxRequests: number,
+    windowSeconds: number
+  ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+    return await executeRedisCommand(async (client) => {
+      const now = Date.now();
+      const windowStart = now - windowSeconds * 1000;
+      const rateLimitKey = `rate_limit:${key}`;
+
+      // Remove old entries
+      await client.zRemRangeByScore(rateLimitKey, 0, windowStart);
+
+      // Count current requests
+      const count = await client.zCard(rateLimitKey);
+
+      if (count >= maxRequests) {
+        // Get oldest entry to calculate reset time
+        const oldest = await client.zRange(rateLimitKey, 0, 0, { REV: false });
+        const resetTime = oldest.length > 0 ? parseInt(oldest[0]) + windowSeconds * 1000 : now + windowSeconds * 1000;
+
+        return {
+          allowed: false,
+          remaining: 0,
+          resetTime,
+        };
+      }
+
+      // Add current request
+      await client.zAdd(rateLimitKey, { score: now, value: `${now}` });
+      await client.expire(rateLimitKey, windowSeconds);
+
+      return {
+        allowed: true,
+        remaining: maxRequests - count - 1,
+        resetTime: now + windowSeconds * 1000,
+      };
+    });
+  }
+
+  /**
+   * Clear rate limit
+   */
+  static async clearRateLimit(key: string): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const rateLimitKey = `rate_limit:${key}`;
+      await client.del(rateLimitKey);
+    });
+  }
+
+  /**
+   * Track failed login attempt
+   */
+  static async trackFailedAttempt(key: string, attemptData: any): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const failedKey = `failed_attempts:${key}`;
+      const now = Date.now();
+
+      // Add attempt to sorted set
+      await client.zAdd(failedKey, { score: now, value: JSON.stringify({ ...attemptData, timestamp: now }) });
+
+      // Set expiry (30 minutes)
+      await client.expire(failedKey, 1800);
+
+      // Check if account should be locked (5 failed attempts in 15 minutes)
+      const fifteenMinutesAgo = now - 900000;
+      const recentAttempts = await client.zCount(failedKey, fifteenMinutesAgo, now);
+
+      if (recentAttempts >= 5) {
+        // Lock account for 30 minutes
+        const lockKey = `locked:${key}`;
+        await client.setEx(lockKey, 1800, JSON.stringify({ lockedAt: now, attemptCount: recentAttempts }));
+      }
+    });
+  }
+
+  /**
+   * Clear failed attempts
+   */
+  static async clearFailedAttempts(key: string): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const failedKey = `failed_attempts:${key}`;
+      const lockKey = `locked:${key}`;
+      await client.del(failedKey);
+      await client.del(lockKey);
+    });
+  }
+
+  /**
+   * Check if account is locked
+   */
+  static async isLocked(key: string): Promise<{ isLocked: boolean; attemptCount?: number; timeRemaining?: number }> {
+    return await executeRedisCommand(async (client) => {
+      const lockKey = `locked:${key}`;
+      const lockData = await client.get(lockKey);
+
+      if (!lockData) {
+        return { isLocked: false };
+      }
+
+      const { lockedAt, attemptCount } = JSON.parse(lockData);
+      const now = Date.now();
+      const timeRemaining = 1800000 - (now - lockedAt); // 30 minutes in ms
+
+      if (timeRemaining <= 0) {
+        // Lock expired, clean up
+        await client.del(lockKey);
+        return { isLocked: false };
+      }
+
+      return {
+        isLocked: true,
+        attemptCount,
+        timeRemaining: Math.ceil(timeRemaining / 1000), // Convert to seconds
+      };
+    });
+  }
+
+  /**
+   * Store MFA code
+   */
+  static async storeMFACode(userId: string, code: string, ttlSeconds: number = 300): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const key = `mfa_code:${userId}`;
+      await client.setEx(key, ttlSeconds, code);
+    });
   }
 
   /**
    * Verify MFA code
    */
   static async verifyMFACode(userId: string, code: string): Promise<boolean> {
-    const client = await connectRedis();
-    const key = `${this.MFA_PREFIX}${userId}`;
-    const storedCode = await client.get(key);
-    if (storedCode === code) {
-      await client.del(key); // Delete after successful verification
-      return true;
-    }
-    return false;
+    return await executeRedisCommand(async (client) => {
+      const key = `mfa_code:${userId}`;
+      const storedCode = await client.get(key);
+      return storedCode === code;
+    });
   }
 
   /**
-   * Rate limiting
+   * Store authentication status
    */
-  static async checkRateLimit(identifier: string, maxAttempts: number = 5, windowSeconds: number = 900): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
-    const client = await connectRedis();
-    const key = `${this.RATE_LIMIT_PREFIX}${identifier}`;
-    
-    const current = await client.get(key);
-    const attempts = current ? parseInt(current) : 0;
-    
-    if (attempts >= maxAttempts) {
-      const ttl = await client.ttl(key);
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime: Date.now() + (ttl * 1000),
-      };
-    }
-
-    const newAttempts = attempts + 1;
-    if (attempts === 0) {
-      await client.setEx(key, windowSeconds, newAttempts.toString());
-    } else {
-      await client.incr(key);
-    }
-
-    return {
-      allowed: true,
-      remaining: maxAttempts - newAttempts,
-      resetTime: Date.now() + (windowSeconds * 1000),
-    };
-  }
-
-  /**
-   * Clear rate limit
-   */
-  static async clearRateLimit(identifier: string): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.RATE_LIMIT_PREFIX}${identifier}`;
-    await client.del(key);
-  }
-
-  /**
-   * Store enhanced session with timeout and activity tracking
-   */
-  static async storeEnhancedSession(
-    userId: string, 
-    sessionData: any, 
-    options: {
-      expiresIn?: number;
-      extendedSession?: boolean;
-      rememberMe?: boolean;
-    } = {}
-  ): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.SESSION_PREFIX}${userId}`;
-    
-    const enhancedSessionData = {
-      ...sessionData,
-      created_at: new Date().toISOString(),
-      last_activity: new Date().toISOString(),
-      extended_session: options.extendedSession || false,
-      remember_me: options.rememberMe || false,
-      session_id: crypto.randomUUID(),
-    };
-
-    let expiresIn = options.expiresIn || this.DEFAULT_SESSION_TIMEOUT;
-    
-    if (options.extendedSession) {
-      expiresIn = this.EXTENDED_SESSION_TIMEOUT;
-    }
-    
-    if (options.rememberMe) {
-      expiresIn = 604800; // 7 days
-    }
-
-    await client.setEx(key, expiresIn, JSON.stringify(enhancedSessionData));
-  }
-
-  /**
-   * Update session activity timestamp
-   */
-  static async updateSessionActivity(_userId: string): Promise<boolean> {
-    const client = await connectRedis();
-    const key = `${this.SESSION_PREFIX}${userId}`;
-    
-    const sessionData = await client.get(key);
-    if (!sessionData) {
-      return false;
-    }
-
-    const session = JSON.parse(sessionData);
-    session.last_activity = new Date().toISOString();
-
-    const ttl = await client.ttl(key);
-    if (ttl > 0) {
-      await client.setEx(key, ttl, JSON.stringify(session));
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Check if session is idle and needs re-authentication
-   */
-  static async checkSessionIdleTimeout(_userId: string): Promise<{ 
-    isValid: boolean; 
-    needsReauth: boolean; 
-    timeRemaining?: number 
-  }> {
-    const client = await connectRedis();
-    const key = `${this.SESSION_PREFIX}${userId}`;
-    
-    const sessionData = await client.get(key);
-    if (!sessionData) {
-      return { isValid: false, needsReauth: true };
-    }
-
-    const session = JSON.parse(sessionData);
-    const lastActivity = new Date(session.last_activity);
-    const now = new Date();
-    const idleTime = (now.getTime() - lastActivity.getTime()) / 1000;
-
-    if (idleTime > this.IDLE_TIMEOUT) {
-      return { 
-        isValid: true, 
-        needsReauth: true,
-        timeRemaining: 0
-      };
-    }
-
-    return { 
-      isValid: true, 
-      needsReauth: false,
-      timeRemaining: this.IDLE_TIMEOUT - idleTime
-    };
-  }
-
-  /**
-   * Store authentication status for middleware checking
-   */
-  static async storeAuthStatus(
-    userId: string, 
-    status: 'authenticated' | 'needs_mfa' | 'locked' | 'expired',
-    metadata: any = {}
-  ): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.AUTH_STATUS_PREFIX}${userId}`;
-    
-    const authStatus = {
-      status,
-      timestamp: new Date().toISOString(),
-      metadata,
-    };
-
-    await client.setEx(key, 3600, JSON.stringify(authStatus));
+  static async storeAuthStatus(userId: string, status: string, metadata: any = {}): Promise<void> {
+    await executeRedisCommand(async (client) => {
+      const key = `auth_status:${userId}`;
+      const data = { status, metadata, timestamp: Date.now() };
+      await client.setEx(key, 3600, JSON.stringify(data));
+    });
   }
 
   /**
    * Get authentication status
    */
-  static async getAuthStatus(_userId: string): Promise<{
-    status: 'authenticated' | 'needs_mfa' | 'locked' | 'expired' | 'unknown';
-    timestamp?: string;
-    metadata?: any;
-  }> {
-    const client = await connectRedis();
-    const key = `${this.AUTH_STATUS_PREFIX}${userId}`;
-    
-    const data = await client.get(key);
-    if (!data) {
-      return { status: 'unknown' };
-    }
-
-    return JSON.parse(data);
-  }
-
-  /**
-   * Track failed authentication attempts
-   */
-  static async trackFailedAttempt(
-    identifier: string, 
-    attemptData: {
-      userId?: string;
-      email?: string;
-      ipAddress?: string;
-      userAgent?: string;
-      attemptType: 'login' | 'mfa' | 'backup_code';
-      reason: string;
-    }
-  ): Promise<{ 
-    attemptCount: number; 
-    isLocked: boolean; 
-    lockoutTimeRemaining?: number 
-  }> {
-    const client = await connectRedis();
-    const key = `${this.FAILED_ATTEMPTS_PREFIX}${identifier}`;
-    
-    // Get current attempts
-    const currentData = await client.get(key);
-    const attempts = currentData ? JSON.parse(currentData) : { count: 0, attempts: [] };
-    
-    // Add new attempt
-    attempts.count += 1;
-    attempts.attempts.push({
-      ...attemptData,
-      timestamp: new Date().toISOString(),
-    });
-
-    // Keep only recent attempts (last 24 hours)
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    attempts.attempts = attempts.attempts.filter(
-      (attempt: any) => new Date(attempt.timestamp) > oneDayAgo
-    );
-    attempts.count = attempts.attempts.length;
-
-    // Check if account should be locked
-    const isLocked = attempts.count >= this.MAX_FAILED_ATTEMPTS;
-    let lockoutTimeRemaining = 0;
-
-    if (isLocked) {
-      const ttl = await client.ttl(key);
-      lockoutTimeRemaining = ttl > 0 ? ttl : this.LOCKOUT_DURATION;
-      await client.setEx(key, this.LOCKOUT_DURATION, JSON.stringify(attempts));
-    } else {
-      await client.setEx(key, 86400, JSON.stringify(attempts)); // 24 hours
-    }
-
-    return {
-      attemptCount: attempts.count,
-      isLocked,
-      lockoutTimeRemaining: isLocked ? lockoutTimeRemaining : undefined,
-    };
-  }
-
-  /**
-   * Clear failed attempts on successful authentication
-   */
-  static async clearFailedAttempts(identifier: string): Promise<void> {
-    const client = await connectRedis();
-    const key = `${this.FAILED_ATTEMPTS_PREFIX}${identifier}`;
-    await client.del(key);
-  }
-
-  /**
-   * Check if identifier is currently locked due to failed attempts
-   */
-  static async isLocked(identifier: string): Promise<{ 
-    isLocked: boolean; 
-    timeRemaining?: number;
-    attemptCount?: number;
-  }> {
-    const client = await connectRedis();
-    const key = `${this.FAILED_ATTEMPTS_PREFIX}${identifier}`;
-    
-    const data = await client.get(key);
-    if (!data) {
-      return { isLocked: false };
-    }
-
-    const attempts = JSON.parse(data);
-    const isLocked = attempts.count >= this.MAX_FAILED_ATTEMPTS;
-    
-    if (isLocked) {
-      const ttl = await client.ttl(key);
-      return {
-        isLocked: true,
-        timeRemaining: ttl > 0 ? ttl : 0,
-        attemptCount: attempts.count,
-      };
-    }
-
-    return { 
-      isLocked: false, 
-      attemptCount: attempts.count 
-    };
-  }
-
-  /**
-   * Force session expiration (for security events)
-   */
-  static async expireSession(userId: string, reason: string = 'security_event'): Promise<void> {
-    const client = await connectRedis();
-    
-    // Delete session
-    await this.deleteSession(userId);
-    
-    // Delete refresh token
-    await this.deleteRefreshToken(userId);
-    
-    // Update auth status
-    await this.storeAuthStatus(userId, 'expired', { reason, timestamp: new Date().toISOString() });
-  }
-
-  /**
-   * Get all active sessions for a user (for security monitoring)
-   */
-  static async getActiveSessions(_userId: string): Promise<any[]> {
-    const client = await connectRedis();
-    const pattern = `${this.SESSION_PREFIX}${userId}*`;
-    
-    const keys = await client.keys(pattern);
-    const sessions = [];
-    
-    for (const key of keys) {
+  static async getAuthStatus(userId: string): Promise<{ status: string; metadata: any; timestamp: number }> {
+    return await executeRedisCommand(async (client) => {
+      const key = `auth_status:${userId}`;
       const data = await client.get(key);
-      if (data) {
-        sessions.push(JSON.parse(data));
+      return data ? JSON.parse(data) : { status: 'unknown', metadata: {}, timestamp: 0 };
+    });
+  }
+
+  /**
+   * Check session idle timeout
+   */
+  static async checkSessionIdleTimeout(userId: string): Promise<{ isValid: boolean; lastActivity?: number; idleTime?: number }> {
+    return await executeRedisCommand(async (client) => {
+      const key = `session_activity:${userId}`;
+      const lastActivity = await client.get(key);
+
+      if (!lastActivity) {
+        return { isValid: false };
       }
-    }
-    
-    return sessions;
+
+      const lastActivityTime = parseInt(lastActivity);
+      const now = Date.now();
+      const idleTime = now - lastActivityTime;
+      const maxIdleTime = 1800000; // 30 minutes in ms
+
+      if (idleTime > maxIdleTime) {
+        return {
+          isValid: false,
+          lastActivity: lastActivityTime,
+          idleTime: Math.ceil(idleTime / 1000),
+        };
+      }
+
+      return {
+        isValid: true,
+        lastActivity: lastActivityTime,
+        idleTime: Math.ceil(idleTime / 1000),
+      };
+    });
+  }
+
+  /**
+   * Update session activity
+   */
+  static async updateSessionActivity(userId: string): Promise<boolean> {
+    return await executeRedisCommand(async (client) => {
+      const key = `session_activity:${userId}`;
+      const now = Date.now();
+      await client.setEx(key, 3600, now.toString());
+      return true;
+    });
   }
 }
 
-export { redisClient };
-export default redisClient;
+// Export client type for use in other modules
+export type { RedisClientType };

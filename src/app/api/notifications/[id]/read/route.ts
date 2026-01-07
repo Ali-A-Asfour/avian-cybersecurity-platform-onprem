@@ -5,25 +5,41 @@ import { tenantMiddleware } from '@/middleware/tenant.middleware';
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Apply authentication and tenant middleware
         const authResult = await authMiddleware(request);
-        if (authResult instanceof NextResponse) {
-            return authResult;
+        if (!authResult.success || !authResult.user) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: 'UNAUTHORIZED',
+                        message: authResult.error || 'Authentication required',
+                    },
+                },
+                { status: 401 }
+            );
         }
 
-        const tenantResult = await tenantMiddleware(request, authResult.user!);
-        if (tenantResult instanceof NextResponse) {
-            return tenantResult;
+        const tenantResult = await tenantMiddleware(request, authResult.user);
+        if (!tenantResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: tenantResult.error || {
+                        code: 'TENANT_ERROR',
+                        message: 'Failed to process tenant context',
+                    },
+                },
+                { status: 500 }
+            );
         }
 
         const { tenant } = tenantResult;
-        const user = authResult.user!;
-        const notificationId = id;
+        const user = authResult.user;
+        const notificationId = params.id;
 
         // Mark notification as read
         const success = await NotificationService.markAsRead(

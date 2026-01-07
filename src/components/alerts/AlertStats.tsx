@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertSeverity, AlertCategory } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface AlertStatsData {
   total: number;
@@ -23,7 +24,7 @@ export function AlertStats() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/alerts/stats');
+      const response = await api.get('/api/alerts/stats');
       
       if (response.ok) {
         const result = await response.json();

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Loader2, User, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 interface UnassignedTicketQueueProps {
     userRole: UserRole;
@@ -59,7 +60,7 @@ export function UnassignedTicketQueue({
                 filters.severity.forEach(severity => params.append('severity', severity));
             }
 
-            const response = await fetch(`/api/help-desk/queue/unassigned?${params}`);
+            const response = await api.get(`/api/help-desk/queue/unassigned?${params}`);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -82,14 +83,8 @@ export function UnassignedTicketQueue({
         try {
             setAssigningTickets(prev => new Set(prev).add(ticketId));
 
-            const response = await fetch(`/api/tickets/${ticketId}/assign`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    assignee: userId,
-                }),
+            const response = await api.post(`/api/tickets/${ticketId}/assign`, {
+                assignee: userId,
             });
 
             if (!response.ok) {
@@ -229,7 +224,7 @@ export function UnassignedTicketQueue({
                                                 </p>
 
                                                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                    <span>Requester: {ticket.requester}</span>
+                                                    <span>Requester: {typeof ticket.requester === 'string' ? ticket.requester : ticket.requester?.email || 'Unknown'}</span>
                                                     <span className="flex items-center gap-1">
                                                         <Clock className="h-4 w-4" />
                                                         {formatTimeAgo(ticket.created_at)}

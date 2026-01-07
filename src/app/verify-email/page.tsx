@@ -3,6 +3,7 @@
 import { useEffect, Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
@@ -22,13 +23,7 @@ function VerifyEmailContent() {
             }
 
             try {
-                const response = await fetch('/api/auth/verify-email', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ token }),
-                });
+                const response = await api.post('/api/auth/verify-email', { token });
 
                 const data = await response.json();
 
@@ -41,7 +36,7 @@ function VerifyEmailContent() {
                 // Success
                 setSuccess(true);
                 setVerifying(false);
-            } catch (error) {
+            } catch {
                 setError('An error occurred during verification');
                 setVerifying(false);
             }

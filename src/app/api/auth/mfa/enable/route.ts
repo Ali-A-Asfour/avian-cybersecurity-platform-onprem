@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Parse and validate request body
     const body = await request.json();

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DemoStateManager } from '@/lib/demo-state';
+import { api } from '@/lib/api-client';
 
 /**
  * Debug component to test escalation workflow
@@ -25,10 +26,7 @@ export function EscalationTest() {
     const testInvestigate = async () => {
         try {
             addLog('Testing investigate API...');
-            const response = await fetch('/api/alerts-incidents/demo/alerts/alert-001/investigate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
+            const response = await api.post('/api/alerts-incidents/demo/alerts/alert-001/investigate', {});
             const result = await response.json();
             addLog(`Investigate result: ${JSON.stringify(result)}`);
             refreshStates();
@@ -40,13 +38,9 @@ export function EscalationTest() {
     const testEscalate = async () => {
         try {
             addLog('Testing escalate API...');
-            const response = await fetch('/api/alerts-incidents/demo/alerts/alert-001/escalate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    incidentTitle: 'Debug Test Incident',
-                    incidentDescription: 'Testing escalation from debug component'
-                })
+            const response = await api.post('/api/alerts-incidents/demo/alerts/alert-001/escalate', {
+                incidentTitle: 'Debug Test Incident',
+                incidentDescription: 'Testing escalation from debug component'
             });
             const result = await response.json();
             addLog(`Escalate result: ${JSON.stringify(result)}`);
@@ -59,7 +53,7 @@ export function EscalationTest() {
     const testMyAlerts = async () => {
         try {
             addLog('Testing My Alerts API...');
-            const response = await fetch('/api/alerts-incidents/demo/alerts?queue=my');
+            const response = await api.get('/api/alerts-incidents/demo/alerts?queue=my');
             const result = await response.json();
             addLog(`My Alerts count: ${result.data?.alerts?.length || 0}`);
             addLog(`My Alerts: ${JSON.stringify(result.data?.alerts?.map((a: any) => a.id) || [])}`);
@@ -71,7 +65,7 @@ export function EscalationTest() {
     const testMyIncidents = async () => {
         try {
             addLog('Testing My Incidents API...');
-            const response = await fetch('/api/alerts-incidents/demo/incidents?queue=my');
+            const response = await api.get('/api/alerts-incidents/demo/incidents?queue=my');
             const result = await response.json();
             addLog(`My Incidents count: ${result.data?.incidents?.length || 0}`);
             addLog(`My Incidents: ${JSON.stringify(result.data?.incidents?.map((i: any) => i.id) || [])}`);

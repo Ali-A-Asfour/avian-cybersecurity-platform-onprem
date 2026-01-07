@@ -1,382 +1,404 @@
 /**
- * Rate Limiting Utility
- * Provides rate limiting for API endpoints
- * Part of production authentication system (Task 4.2)
+ * Rate Limiter
+ * 
+ * Implements rate limiting using Redis with:
+ * - Sliding window algorithm
+ * - Multiple rate limit policies (login, API, registration, password reset)
+ * - Exponential backoff for repeated violations
+ * - Distributed rate limiting across multiple instances
+ * 
+ * Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { getRedisClient } from './redis';
+import { logger } from './logger';
 
 /**
- * Rate limit configuration
+ * Rate limit policy configuration
  */
-export interface RateLimitConfig {
-  windowMs: number; // Time window in milliseconds
-  maxRequests: number; // Max requests per window
-  message?: string; // Custom error message
-  skipSuccessfulRequests?: boolean; // Don't count successful requests
-  skipFailedRequests?: boolean; // Don't count failed requests
-  keyGenerator?: (req: NextRequest) => string; // Custom key generator
+export interface RateLimitPolicy {
+  windowMs: number;      // Time window in milliseconds
+  maxRequests: number;   // Maximum requests allowed in window
+  blockDurationMs?: number; // How long to block after exceeding limit
 }
 
 /**
- * Rate limit record
+ * Rate limit result
  */
-interface RateLimitRecord {
-  count: number;
-  resetAt: number;
-  requests: Array<{ timestamp: number; success?: boolean }>;
-}
-
-/**
- * In-memory rate limit store
- * In production, replace with Redis for distributed rate limiting
- */
-class RateLimitStore {
-  private store: Map<string, RateLimitRecord> = new Map();
-  private cleanupInterval: NodeJS.Timeout | null = null;
-
-  constructor() {
-    // Clean up expired records every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup();
-    }, 5 * 60 * 1000);
-  }
-
-  /**
-   * Get or create rate limit record
-   */
-  get(key: string, windowMs: number): RateLimitRecord {
-    const now = Date.now();
-    const record = this.store.get(key);
-
-    if (!record || now > record.resetAt) {
-      const newRecord: RateLimitRecord = {
-        count: 0,
-        resetAt: now + windowMs,
-        requests: [],
-      };
-      this.store.set(key, newRecord);
-      return newRecord;
-    }
-
-    return record;
-  }
-
-  /**
-   * Increment request count
-   */
-  increment(key: string, windowMs: number, success?: boolean): RateLimitRecord {
-    const record = this.get(key, windowMs);
-    record.count++;
-    record.requests.push({ timestamp: Date.now(), success });
-    return record;
-  }
-
-  /**
-   * Reset rate limit for a key
-   */
-  reset(key: string): void {
-    this.store.delete(key);
-  }
-
-  /**
-   * Clean up expired records
-   */
-  cleanup(): void {
-    const now = Date.now();
-    for (const [key, record] of this.store.entries()) {
-      if (now > record.resetAt) {
-        this.store.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Get store size (for monitoring)
-   */
-  size(): number {
-    return this.store.size;
-  }
-
-  /**
-   * Clear all records (for testing)
-   */
-  clear(): void {
-    this.store.clear();
-  }
-
-  /**
-   * Destroy store and cleanup interval
-   */
-  destroy(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-    this.store.clear();
-  }
-}
-
-// Global rate limit store
-const globalStore = new RateLimitStore();
-
-/**
- * Get client identifier from request
- */
-function getClientIdentifier(req: NextRequest): string {
-  // Try to get real IP from headers (for proxied requests)
-  const forwardedFor = req.headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
-  }
-
-  const realIp = req.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp;
-  }
-
-  // Fallback to connection IP (may not be available in all environments)
-  return 'unknown';
-}
-
-/**
- * Create a rate limiter middleware
- */
-export function createRateLimiter(config: RateLimitConfig) {
-  const {
-    windowMs,
-    maxRequests,
-    message = 'Too many requests, please try again later.',
-    skipSuccessfulRequests = false,
-    skipFailedRequests = false,
-    keyGenerator = getClientIdentifier,
-  } = config;
-
-  return async (
-    req: NextRequest,
-    handler: (req: NextRequest) => Promise<NextResponse>
-  ): Promise<NextResponse> => {
-    // Generate rate limit key
-    const key = keyGenerator(req);
-
-    // Get current rate limit record
-    const record = globalStore.get(key, windowMs);
-
-    // Check if limit exceeded
-    if (record.count >= maxRequests) {
-      const retryAfter = Math.ceil((record.resetAt - Date.now()) / 1000);
-
-      return NextResponse.json(
-        {
-          error: message,
-          retryAfter,
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': retryAfter.toString(),
-            'X-RateLimit-Limit': maxRequests.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': new Date(record.resetAt).toISOString(),
-          },
-        }
-      );
-    }
-
-    // Increment counter (before request if not skipping)
-    if (!skipSuccessfulRequests && !skipFailedRequests) {
-      globalStore.increment(key, windowMs);
-    }
-
-    // Execute handler
-    const response = await handler(req);
-
-    // Increment counter based on response (if skipping certain types)
-    if (skipSuccessfulRequests || skipFailedRequests) {
-      const isSuccess = response.status >= 200 && response.status < 400;
-
-      if (
-        (!skipSuccessfulRequests || !isSuccess) &&
-        (!skipFailedRequests || isSuccess)
-      ) {
-        globalStore.increment(key, windowMs, isSuccess);
-      }
-    }
-
-    // Add rate limit headers to response
-    const updatedRecord = globalStore.get(key, windowMs);
-    const remaining = Math.max(0, maxRequests - updatedRecord.count);
-
-    response.headers.set('X-RateLimit-Limit', maxRequests.toString());
-    response.headers.set('X-RateLimit-Remaining', remaining.toString());
-    response.headers.set('X-RateLimit-Reset', new Date(updatedRecord.resetAt).toISOString());
-
-    return response;
-  };
-}
-
-/**
- * Predefined rate limiters for common use cases
- */
-
-// Strict rate limiter for sensitive endpoints (login, password reset)
-export const strictRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5,
-  message: 'Too many attempts. Please try again in 15 minutes.',
-  skipSuccessfulRequests: true, // Only count failed attempts
-});
-
-// Standard rate limiter for auth endpoints
-export const authRateLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 20,
-  message: 'Too many requests. Please try again later.',
-});
-
-// Lenient rate limiter for general API endpoints
-export const apiRateLimiter = createRateLimiter({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  maxRequests: 100,
-  message: 'Rate limit exceeded. Please slow down.',
-});
-
-// Very strict rate limiter for password reset
-export const passwordResetRateLimiter = createRateLimiter({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  maxRequests: 3,
-  message: 'Too many password reset requests. Please try again in 1 hour.',
-});
-
-/**
- * User-based rate limiter (requires authentication)
- */
-export function createUserRateLimiter(config: RateLimitConfig) {
-  return createRateLimiter({
-    ...config,
-    keyGenerator: (req: NextRequest) => {
-      // Try to extract user ID from token/session
-      // This is a simplified version - adjust based on your auth implementation
-      const authHeader = req.headers.get('authorization');
-      if (authHeader) {
-        // Extract user ID from token (you'll need to decode JWT here)
-        return `user:${authHeader.substring(0, 20)}`;
-      }
-
-      // Fallback to IP-based
-      return `ip:${getClientIdentifier(req)}`;
-    },
-  });
-}
-
-/**
- * Combined IP and user rate limiter
- */
-export function createCombinedRateLimiter(
-  ipConfig: RateLimitConfig,
-  userConfig: RateLimitConfig
-) {
-  const ipLimiter = createRateLimiter(ipConfig);
-  const userLimiter = createUserRateLimiter(userConfig);
-
-  return async (
-    req: NextRequest,
-    handler: (req: NextRequest) => Promise<NextResponse>
-  ): Promise<NextResponse> => {
-    // Check IP rate limit first
-    return ipLimiter(req, async (req) => {
-      // Then check user rate limit
-      return userLimiter(req, handler);
-    });
-  };
-}
-
-/**
- * Reset rate limit for a specific key (admin function)
- */
-export function resetRateLimit(key: string): void {
-  globalStore.reset(key);
-}
-
-/**
- * Get rate limit info for a key
- */
-export function getRateLimitInfo(key: string, windowMs: number): {
-  count: number;
+export interface RateLimitResult {
+  allowed: boolean;
   remaining: number;
   resetAt: Date;
-} {
-  const record = globalStore.get(key, windowMs);
-  return {
-    count: record.count,
-    remaining: Math.max(0, 100 - record.count), // Assuming max 100
-    resetAt: new Date(record.resetAt),
-  };
+  retryAfter?: number; // Seconds until retry allowed
 }
 
 /**
- * Get store statistics (for monitoring)
+ * Rate limit policies
  */
-export function getRateLimitStats(): {
-  totalKeys: number;
-  storeSize: number;
-} {
-  return {
-    totalKeys: globalStore.size(),
-    storeSize: globalStore.size(),
-  };
-}
+export const RateLimitPolicies = {
+  LOGIN: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 5,
+    blockDurationMs: 30 * 60 * 1000, // 30 minutes
+  },
+  API: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 100,
+  },
+  REGISTRATION: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 3,
+    blockDurationMs: 60 * 60 * 1000, // 1 hour
+  },
+  PASSWORD_RESET: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 3,
+    blockDurationMs: 60 * 60 * 1000, // 1 hour
+  },
+  EMAIL_VERIFICATION: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 5,
+  },
+} as const;
 
-/**
- * Clear all rate limits (for testing)
- */
-export function clearAllRateLimits(): void {
-  globalStore.clear();
-}
+export class RateLimiter {
+  private static readonly RATE_LIMIT_PREFIX = 'ratelimit:';
+  private static readonly BLOCK_PREFIX = 'ratelimit:block:';
+  private static readonly VIOLATION_PREFIX = 'ratelimit:violations:';
 
-/**
- * Cleanup function (call on app shutdown)
- */
-export function destroyRateLimiter(): void {
-  globalStore.destroy();
-}
+  /**
+   * Check if request is allowed under rate limit
+   * Requirements: 8.1, 8.2, 8.3
+   */
+  static async checkRateLimit(
+    identifier: string,
+    policy: RateLimitPolicy,
+    policyName: string = 'default'
+  ): Promise<RateLimitResult> {
+    try {
+      const client = await getRedisClient();
+      const now = Date.now();
+      const windowStart = now - policy.windowMs;
 
-// Export store for advanced usage
-export { globalStore as rateLimitStore };
-
-/**
- * Simple rate limit check (returns error response if rate limited)
- */
-export async function checkRateLimit(
-  request: NextRequest,
-  config: RateLimitConfig
-): Promise<NextResponse | null> {
-  const {
-    windowMs,
-    maxRequests,
-    message = 'Too many requests, please try again later.',
-    keyGenerator = getClientIdentifier,
-  } = config;
-
-  const key = keyGenerator(request);
-  const record = globalStore.get(key, windowMs);
-
-  if (record.count >= maxRequests) {
-    const retryAfter = Math.ceil((record.resetAt - Date.now()) / 1000);
-    return NextResponse.json(
-      { error: message, retryAfter },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': retryAfter.toString(),
-          'X-RateLimit-Limit': maxRequests.toString(),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': new Date(record.resetAt).toISOString(),
-        },
+      // Check if identifier is currently blocked
+      const blockKey = this.getBlockKey(identifier, policyName);
+      const blockExpiry = await client.get(blockKey);
+      
+      if (blockExpiry) {
+        const retryAfter = Math.ceil((parseInt(blockExpiry) - now) / 1000);
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: new Date(parseInt(blockExpiry)),
+          retryAfter: Math.max(0, retryAfter),
+        };
       }
-    );
+
+      // Use sorted set for sliding window
+      const key = this.getRateLimitKey(identifier, policyName);
+
+      // Remove old entries outside the window
+      await client.zRemRangeByScore(key, 0, windowStart);
+
+      // Count requests in current window
+      const requestCount = await client.zCard(key);
+
+      // Check if limit exceeded
+      if (requestCount >= policy.maxRequests) {
+        // Log violation
+        await this.logViolation(identifier, policyName);
+
+        // Check for repeated violations and apply exponential backoff
+        const violations = await this.getViolationCount(identifier, policyName);
+        const blockDuration = this.calculateBlockDuration(policy, violations);
+
+        if (blockDuration > 0) {
+          const blockUntil = now + blockDuration;
+          await client.setEx(
+            blockKey,
+            Math.ceil(blockDuration / 1000),
+            blockUntil.toString()
+          );
+
+          logger.warn('Rate limit exceeded, user blocked', {
+            identifier,
+            policyName,
+            violations,
+            blockDurationMs: blockDuration,
+          });
+        }
+
+        const resetAt = new Date(now + policy.windowMs);
+        // If no block duration, retryAfter is time until window resets
+        const retryAfter = blockDuration > 0 
+          ? Math.ceil(blockDuration / 1000)
+          : Math.ceil(policy.windowMs / 1000);
+        
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt,
+          retryAfter,
+        };
+      }
+
+      // Add current request to window
+      await client.zAdd(key, {
+        score: now,
+        value: `${now}-${Math.random()}`, // Unique value for each request
+      });
+
+      // Set expiration on the key
+      await client.expire(key, Math.ceil(policy.windowMs / 1000));
+
+      const remaining = policy.maxRequests - requestCount - 1;
+      const resetAt = new Date(now + policy.windowMs);
+
+      return {
+        allowed: true,
+        remaining,
+        resetAt,
+      };
+    } catch (error) {
+      logger.error('Rate limit check failed', error instanceof Error ? error : new Error(String(error)), {
+        identifier,
+        policyName,
+      });
+      
+      // Fail open - allow request if rate limiting fails
+      return {
+        allowed: true,
+        remaining: 0,
+        resetAt: new Date(Date.now() + policy.windowMs),
+      };
+    }
   }
 
-  globalStore.increment(key, windowMs);
-  return null;
+  /**
+   * Calculate block duration with exponential backoff
+   * Requirements: 8.6
+   */
+  private static calculateBlockDuration(
+    policy: RateLimitPolicy,
+    violations: number
+  ): number {
+    if (!policy.blockDurationMs || violations === 0) {
+      return 0;
+    }
+
+    // Exponential backoff: base * 2^(violations-1)
+    // First violation: 1x, second: 2x, third: 4x, etc.
+    const multiplier = Math.pow(2, violations - 1);
+    const duration = policy.blockDurationMs * multiplier;
+
+    // Cap at 24 hours
+    return Math.min(duration, 24 * 60 * 60 * 1000);
+  }
+
+  /**
+   * Log rate limit violation
+   * Requirements: 8.7
+   */
+  private static async logViolation(
+    identifier: string,
+    policyName: string
+  ): Promise<void> {
+    try {
+      const client = await getRedisClient();
+      const violationKey = this.getViolationKey(identifier, policyName);
+      const now = Date.now();
+
+      // Add violation timestamp
+      await client.zAdd(violationKey, {
+        score: now,
+        value: now.toString(),
+      });
+
+      // Keep violations for 24 hours
+      await client.expire(violationKey, 24 * 60 * 60);
+
+      // Remove violations older than 24 hours
+      const dayAgo = now - (24 * 60 * 60 * 1000);
+      await client.zRemRangeByScore(violationKey, 0, dayAgo);
+
+      logger.warn('Rate limit violation logged', {
+        identifier,
+        policyName,
+        timestamp: new Date(now).toISOString(),
+      });
+    } catch (error) {
+      logger.error('Failed to log violation', error instanceof Error ? error : new Error(String(error)), {
+        identifier,
+        policyName,
+      });
+    }
+  }
+
+  /**
+   * Get violation count in last 24 hours
+   */
+  private static async getViolationCount(
+    identifier: string,
+    policyName: string
+  ): Promise<number> {
+    try {
+      const client = await getRedisClient();
+      const violationKey = this.getViolationKey(identifier, policyName);
+      const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
+
+      return await client.zCount(violationKey, dayAgo, '+inf');
+    } catch (error) {
+      logger.error('Failed to get violation count', error instanceof Error ? error : new Error(String(error)), {
+        identifier,
+        policyName,
+      });
+      return 0;
+    }
+  }
+
+  /**
+   * Reset rate limit for identifier
+   */
+  static async resetRateLimit(
+    identifier: string,
+    policyName: string = 'default'
+  ): Promise<void> {
+    try {
+      const client = await getRedisClient();
+      const key = this.getRateLimitKey(identifier, policyName);
+      const blockKey = this.getBlockKey(identifier, policyName);
+      const violationKey = this.getViolationKey(identifier, policyName);
+
+      await Promise.all([
+        client.del(key),
+        client.del(blockKey),
+        client.del(violationKey),
+      ]);
+
+      logger.info('Rate limit reset', {
+        identifier,
+        policyName,
+      });
+    } catch (error) {
+      logger.error('Failed to reset rate limit', error instanceof Error ? error : new Error(String(error)), {
+        identifier,
+        policyName,
+      });
+    }
+  }
+
+  /**
+   * Get current rate limit status
+   */
+  static async getRateLimitStatus(
+    identifier: string,
+    policy: RateLimitPolicy,
+    policyName: string = 'default'
+  ): Promise<{
+    requestCount: number;
+    remaining: number;
+    resetAt: Date;
+    isBlocked: boolean;
+    blockExpiresAt?: Date;
+  }> {
+    try {
+      const client = await getRedisClient();
+      const now = Date.now();
+      const windowStart = now - policy.windowMs;
+
+      // Check if blocked
+      const blockKey = this.getBlockKey(identifier, policyName);
+      const blockExpiry = await client.get(blockKey);
+      const isBlocked = !!blockExpiry;
+
+      // Get request count
+      const key = this.getRateLimitKey(identifier, policyName);
+      await client.zRemRangeByScore(key, 0, windowStart);
+      const requestCount = await client.zCard(key);
+
+      const remaining = Math.max(0, policy.maxRequests - requestCount);
+      const resetAt = new Date(now + policy.windowMs);
+
+      return {
+        requestCount,
+        remaining,
+        resetAt,
+        isBlocked,
+        blockExpiresAt: blockExpiry ? new Date(parseInt(blockExpiry)) : undefined,
+      };
+    } catch (error) {
+      logger.error('Failed to get rate limit status', error instanceof Error ? error : new Error(String(error)), {
+        identifier,
+        policyName,
+      });
+      
+      return {
+        requestCount: 0,
+        remaining: policy.maxRequests,
+        resetAt: new Date(Date.now() + policy.windowMs),
+        isBlocked: false,
+      };
+    }
+  }
+
+  /**
+   * Get rate limit key for Redis
+   */
+  private static getRateLimitKey(identifier: string, policyName: string): string {
+    return `${this.RATE_LIMIT_PREFIX}${policyName}:${identifier}`;
+  }
+
+  /**
+   * Get block key for Redis
+   */
+  private static getBlockKey(identifier: string, policyName: string): string {
+    return `${this.BLOCK_PREFIX}${policyName}:${identifier}`;
+  }
+
+  /**
+   * Get violation key for Redis
+   */
+  private static getViolationKey(identifier: string, policyName: string): string {
+    return `${this.VIOLATION_PREFIX}${policyName}:${identifier}`;
+  }
+}
+
+/**
+ * Express/Next.js middleware helper for rate limiting
+ */
+export function createRateLimitMiddleware(
+  policy: RateLimitPolicy,
+  policyName: string,
+  getIdentifier: (req: any) => string = (req) => req.ip || 'unknown'
+) {
+  return async (req: any, res: any, next: any) => {
+    try {
+      const identifier = getIdentifier(req);
+      const result = await RateLimiter.checkRateLimit(identifier, policy, policyName);
+
+      // Set rate limit headers (Requirements: 8.5)
+      res.setHeader('X-RateLimit-Limit', policy.maxRequests.toString());
+      res.setHeader('X-RateLimit-Remaining', result.remaining.toString());
+      res.setHeader('X-RateLimit-Reset', result.resetAt.toISOString());
+
+      if (!result.allowed) {
+        if (result.retryAfter) {
+          res.setHeader('Retry-After', result.retryAfter.toString());
+        }
+
+        return res.status(429).json({
+          error: 'Too Many Requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          retryAfter: result.retryAfter,
+          resetAt: result.resetAt.toISOString(),
+        });
+      }
+
+      next();
+    } catch (error) {
+      logger.error('Rate limit middleware error', error instanceof Error ? error : new Error(String(error)));
+      // Fail open - allow request if middleware fails
+      next();
+    }
+  };
 }

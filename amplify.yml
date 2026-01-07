@@ -1,17 +1,29 @@
 version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - '# No backend build needed - using CDK infrastructure'
 frontend:
   phases:
     preBuild:
       commands:
-        - npm install
+        - npm ci
     build:
       commands:
+        - env | grep -e AWS_REGION >> .env.production
+        - env | grep -e DATABASE_SECRET_NAME >> .env.production
+        - env | grep -e DYNAMODB_SESSIONS_TABLE >> .env.production
+        - env | grep -e S3_FIREWALL_CONFIG_BUCKET >> .env.production
+        - env | grep -e S3_REPORTS_BUCKET >> .env.production
+        - env | grep -e AWS_S3_BUCKET >> .env.production
+        - env | grep -e NEXT_PUBLIC_ >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next
     files:
-      - "**/*"
+      - '**/*'
   cache:
     paths:
-      - .next/cache/**/*
       - node_modules/**/*
+      - .next/cache/**/*

@@ -7,6 +7,7 @@ import { IncidentFiltersPanel } from './IncidentFiltersPanel';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api-client';
 
 interface AllSecurityIncidentsTabProps {
     tenantId: string;
@@ -112,12 +113,7 @@ export function AllSecurityIncidentsTab({ tenantId, className, demoMode = false 
                 ? '/api/alerts-incidents/demo/incidents'
                 : '/api/alerts-incidents/incidents';
 
-            const response = await fetch(`${apiEndpoint}?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.get(`${apiEndpoint}?${params.toString()}`);
 
             const result: IncidentsResponse = await response.json();
 

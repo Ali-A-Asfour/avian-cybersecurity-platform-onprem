@@ -1,4 +1,4 @@
-import { monitoring, PerformanceMetrics } from './monitoring';
+import { monitoring, PerformanceMetrics, MetricCategory } from './monitoring';
 // import { logger } from './logger';
 
 export interface SystemMetrics {
@@ -110,13 +110,13 @@ class PerformanceMonitor {
     }
 
     // Record individual metrics
-    monitoring.recordMetric('http_requests_total', 1, {
+    monitoring.counter('http.requests', MetricCategory.HTTP, 1, {
       method,
       path,
       status: statusCode.toString(),
     });
 
-    monitoring.recordMetric('http_request_duration_ms', responseTime, {
+    monitoring.timer('http.request_duration', MetricCategory.HTTP, responseTime, {
       method,
       path,
     });
@@ -127,7 +127,7 @@ class PerformanceMonitor {
    */
   incrementActiveRequests(): void {
     this.activeRequests++;
-    monitoring.recordMetric('http_active_requests', this.activeRequests);
+    monitoring.gauge('http.active_requests', MetricCategory.HTTP, this.activeRequests);
   }
 
   /**
@@ -135,7 +135,7 @@ class PerformanceMonitor {
    */
   decrementActiveRequests(): void {
     this.activeRequests = Math.max(0, this.activeRequests - 1);
-    monitoring.recordMetric('http_active_requests', this.activeRequests);
+    monitoring.gauge('http.active_requests', MetricCategory.HTTP, this.activeRequests);
   }
 
   /**
@@ -146,12 +146,12 @@ class PerformanceMonitor {
       const metrics = await this.gatherSystemMetrics();
       
       // Record metrics
-      monitoring.recordMetric('memory_usage_percentage', metrics.memory.percentage);
-      monitoring.recordMetric('cpu_usage_percentage', metrics.cpu.usage);
-      monitoring.recordMetric('database_connections', metrics.database.activeConnections);
-      monitoring.recordMetric('database_avg_query_time', metrics.database.avgQueryTime);
-      monitoring.recordMetric('redis_memory_used', metrics.redis.memoryUsed);
-      monitoring.recordMetric('redis_connected_clients', metrics.redis.connectedClients);
+      monitoring.gauge('memory.usage_percentage', MetricCategory.BUSINESS, metrics.memory.percentage);
+      monitoring.gauge('cpu.usage_percentage', MetricCategory.BUSINESS, metrics.cpu.usage);
+      monitoring.gauge('database.connections', MetricCategory.DATABASE, metrics.database.activeConnections);
+      monitoring.timer('database.avg_query_time', MetricCategory.DATABASE, metrics.database.avgQueryTime);
+      monitoring.gauge('redis.memory_used', MetricCategory.REDIS, metrics.redis.memoryUsed);
+      monitoring.gauge('redis.connected_clients', MetricCategory.REDIS, metrics.redis.connectedClients);
 
       // Calculate API metrics
       const avgResponseTime = this.responseTimes.length > 0 
@@ -351,7 +351,7 @@ class PerformanceMonitor {
     });
 
     // Record alert metric
-    monitoring.recordMetric('performance_alerts_total', 1, {
+    monitoring.counter('performance.alerts', MetricCategory.BUSINESS, 1, {
       metric: threshold.metric,
       severity: threshold.severity,
     });

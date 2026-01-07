@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
+import { api } from '@/lib/api-client';
 
 interface AssetComplianceReportProps {
   tenantId: string;
@@ -61,7 +62,7 @@ export function AssetComplianceReport({ tenantId }: AssetComplianceReportProps) 
   const fetchComplianceReport = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/assets/compliance-report?tenant_id=${tenantId}`);
+      const response = await api.get(`/api/assets/compliance-report?tenant_id=${tenantId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -69,7 +70,7 @@ export function AssetComplianceReport({ tenantId }: AssetComplianceReportProps) 
       } else {
         setError(data.error?.message || 'Failed to fetch compliance report');
       }
-    } catch (error) {
+    } catch {
       setError('Failed to fetch compliance report');
     } finally {
       setLoading(false);
@@ -78,9 +79,7 @@ export function AssetComplianceReport({ tenantId }: AssetComplianceReportProps) 
 
   const exportReport = async (format: 'pdf' | 'csv') => {
     try {
-      const response = await fetch(`/api/assets/compliance-report/export?format=${format}&tenant_id=${tenantId}`, {
-        method: 'POST',
-      });
+      const response = await api.post(`/api/assets/compliance-report/export?format=${format}&tenant_id=${tenantId}`);
 
       if (response.ok) {
         const blob = await response.blob();
@@ -95,7 +94,7 @@ export function AssetComplianceReport({ tenantId }: AssetComplianceReportProps) 
       } else {
         alert('Failed to export report');
       }
-    } catch (error) {
+    } catch {
       alert('Failed to export report');
     }
   };

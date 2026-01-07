@@ -148,14 +148,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Create ticket with validated data
+    // Note: requester should be the user's email, not user_id
+    // We'll use user_id as a fallback if email is not available
+    // Map severity to priority: critical -> urgent, others stay the same
+    const priorityMap: Record<string, string> = {
+      'critical': 'urgent',
+      'high': 'high',
+      'medium': 'medium',
+      'low': 'low',
+    };
+    
     const ticketData: CreateTicketRequest = {
       title: validatedData.title,
       description: validatedData.description,
       category: category,
       severity: validatedData.impactLevel,
-      priority: validatedData.impactLevel, // Map impact level to priority
-      requester: authResult.user!.user_id,
+      priority: priorityMap[validatedData.impactLevel] || validatedData.impactLevel,
       phoneNumber: validatedData.phoneNumber,
+      requester: (authResult.user as any).email || authResult.user!.user_id,
     };
 
     const ticket = await TicketService.createTicket(

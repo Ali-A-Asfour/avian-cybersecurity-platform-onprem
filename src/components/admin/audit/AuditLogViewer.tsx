@@ -6,6 +6,7 @@ import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { DataTable } from '../../ui/DataTable';
 import { AuditLog } from '../../../types';
+import { api } from '@/lib/api-client';
 
 interface AuditLogFilters {
   search?: string;
@@ -44,13 +45,13 @@ export function AuditLogViewer() {
         }
       });
 
-      const response = await fetch(`/api/admin/audit/logs?${queryParams}`);
+      const response = await api.get(`/api/admin/audit/logs?${queryParams}`);
       if (response.ok) {
         const data = await response.json();
         setLogs(data.data.logs || []);
         setTotalCount(data.data.total || 0);
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to load audit logs:', error);
     } finally {
       setLoading(false);
@@ -85,7 +86,7 @@ export function AuditLogViewer() {
         }
       });
 
-      const response = await fetch(`/api/admin/audit/logs/export?${queryParams}`);
+      const response = await api.getBlob(`/api/admin/audit/logs/export?${queryParams}`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -97,7 +98,7 @@ export function AuditLogViewer() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to export audit logs:', error);
     }
   };

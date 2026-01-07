@@ -8,6 +8,7 @@ import { RoleBasedDashboard } from '@/components/dashboard/RoleBasedDashboard';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDemoContext } from '@/contexts/DemoContext';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -17,11 +18,19 @@ export default function DashboardPage() {
   const { simulateNotification } = useNotifications();
   const { currentUser } = useDemoContext();
   const { selectedTenant } = useTenant();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   // Fast loading in development mode
   const [isLoading, setIsLoading] = React.useState(
     process.env.NODE_ENV === 'development' ? false : true
   );
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -42,6 +51,22 @@ export default function DashboardPage() {
       router.push('/dashboard/tenant-admin');
     }
   }, [currentUser.role, selectedTenant, router]);
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <ClientLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </ClientLayout>
+    );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // Show loading state while redirecting admin users
   if (currentUser.role === UserRole.SUPER_ADMIN && !selectedTenant) {

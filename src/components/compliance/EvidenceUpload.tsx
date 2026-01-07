@@ -5,6 +5,7 @@ import { ComplianceEvidence } from '../../types';
 import { DocumentUpload } from './DocumentUpload';
 import { DocumentAnalysisViewer } from './DocumentAnalysisViewer';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api-client';
 
 interface EvidenceUploadProps {
   controlId: string;
@@ -20,7 +21,7 @@ export function EvidenceUpload({ controlId, frameworkId, onEvidenceUploaded }: E
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDrag = (_e: unknown) => {
+  const handleDrag = (e: unknown) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -30,7 +31,7 @@ export function EvidenceUpload({ controlId, frameworkId, onEvidenceUploaded }: E
     }
   };
 
-  const handleDrop = (_e: unknown) => {
+  const handleDrop = (e: unknown) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -40,7 +41,7 @@ export function EvidenceUpload({ controlId, frameworkId, onEvidenceUploaded }: E
     }
   };
 
-  const handleFileInput = (_e: unknown) => {
+  const handleFileInput = (e: unknown) => {
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
     }
@@ -76,12 +77,9 @@ export function EvidenceUpload({ controlId, frameworkId, onEvidenceUploaded }: E
       formData.append('file', file);
       formData.append('description', description);
 
-      const response = await fetch(`/api/compliance/controls/${controlId}/evidence`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await api.post(`/api/compliance/controls/${controlId}/evidence`, formData, true);
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         onEvidenceUploaded(result.data);
@@ -92,7 +90,7 @@ export function EvidenceUpload({ controlId, frameworkId, onEvidenceUploaded }: E
       } else {
         alert(result.error?.message || 'Failed to upload evidence');
       }
-    } catch (error) {
+    } catch {
       console.error('Error uploading evidence:', error);
       alert('Failed to upload evidence');
     } finally {

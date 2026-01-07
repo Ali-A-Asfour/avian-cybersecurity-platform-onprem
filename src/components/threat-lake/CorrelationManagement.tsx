@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { api } from '@/lib/api-client';
 import {
   Plus,
   Edit,
@@ -128,11 +129,9 @@ export default function CorrelationManagement() {
 
   const loadCorrelationRules = async () => {
     try {
-      const response = await fetch('/api/threat-lake/correlation-rules');
-      if (response.ok) {
-        const data = await response.json();
-        setRules(data.rules || []);
-      }
+      const response = await api.get('/api/threat-lake/correlation-rules');
+      const data = await response.json();
+      setRules(data.rules || []);
     } catch (error) {
       console.error('Failed to load correlation rules:', error);
     }
@@ -144,7 +143,7 @@ export default function CorrelationManagement() {
       // For now, we'll use mock data
       setCorrelations([]);
       setLoading(false);
-    } catch (error) {
+    } catch {
       console.error('Failed to load event correlations:', error);
       setLoading(false);
     }
@@ -167,20 +166,10 @@ export default function CorrelationManagement() {
         threshold_count: ruleForm.threshold_count
       };
 
-      const response = await fetch('/api/threat-lake/correlation-rules', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(ruleData)
-      });
-
-      if (response.ok) {
-        const newRule = await response.json();
-        setRules([newRule, ...rules]);
-        setShowRuleForm(false);
-        resetRuleForm();
-      }
+      const newRule = await api.post('/api/threat-lake/correlation-rules', ruleData);
+      setRules([newRule, ...rules]);
+      setShowRuleForm(false);
+      resetRuleForm();
     } catch (error) {
       console.error('Failed to create correlation rule:', error);
     }
@@ -198,7 +187,7 @@ export default function CorrelationManagement() {
       setEditingRule(null);
       setShowRuleForm(false);
       resetRuleForm();
-    } catch (error) {
+    } catch {
       console.error('Failed to update correlation rule:', error);
     }
   };
@@ -211,7 +200,7 @@ export default function CorrelationManagement() {
     try {
       // In a real implementation, this would delete via API
       setRules(rules.filter(rule => rule.id !== ruleId));
-    } catch (error) {
+    } catch {
       console.error('Failed to delete correlation rule:', error);
     }
   };
@@ -223,7 +212,7 @@ export default function CorrelationManagement() {
         rule.id === ruleId ? { ...rule, enabled } : rule
       );
       setRules(updatedRules);
-    } catch (error) {
+    } catch {
       console.error('Failed to toggle correlation rule:', error);
     }
   };

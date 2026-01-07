@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Tenant, ApiResponse, UserRole } from '../../../types';
+import { api } from '@/lib/api-client';
 
 interface TenantListProps {
   userRole: UserRole;
@@ -51,12 +52,7 @@ export default function TenantList({ userRole, onTenantSelect, onCreateTenant }:
         params.append('search', state.filters.search);
       }
 
-      const response = await fetch(`/api/tenants?${params}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get(`/api/tenants?${params}`);
 
       const result: ApiResponse<Tenant[]> = await response.json();
 
@@ -70,7 +66,7 @@ export default function TenantList({ userRole, onTenantSelect, onCreateTenant }:
         total: result.meta?.total || 0,
         loading: false,
       }));
-    } catch (error) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to fetch tenants',

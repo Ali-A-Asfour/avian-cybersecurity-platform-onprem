@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DataTable } from '@/components/ui/DataTable';
+import { api } from '@/lib/api-client';
 
 interface Tenant {
   id: string;
@@ -22,23 +25,37 @@ interface Tenant {
 }
 
 export default function TenantsPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
   useEffect(() => {
-    fetchTenants();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTenants();
+    }
+  }, [isAuthenticated]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/tenants/demo');
+      const response = await api.get('/api/tenants/demo');
       if (response.ok) {
         const data = await response.json();
         setTenants(data.tenants || []);
       }
-    } catch (error) {
+    } catch {
       console.error('Failed to fetch tenants:', error);
     } finally {
       setLoading(false);

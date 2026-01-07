@@ -36,8 +36,8 @@ export async function POST(
       return NextResponse.json(tenantResult, { status: 403 });
     }
 
-    const _user = authResult.user!;
-    const _tenant = tenantResult.tenant!;
+    const user = authResult.user!;
+    const tenant = tenantResult.tenant!;
     const { id: alertId } = await params;
 
     // Only Security Analysts can escalate alerts to incidents

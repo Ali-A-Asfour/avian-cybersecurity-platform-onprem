@@ -10,6 +10,7 @@ import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card } from '@/components/ui/Card';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { api } from '@/lib/api-client';
 
 interface AlertsDashboardProps {
     className?: string;
@@ -73,7 +74,7 @@ export function AlertsDashboard({ className = '' }: AlertsDashboardProps) {
                 params.append('deviceId', deviceIdFilter);
             }
 
-            const response = await fetch(`/api/edr/alerts?${params.toString()}`);
+            const response = await api.get(`/api/edr/alerts?${params.toString()}`);
             const result: AlertsResponse = await response.json();
 
             if (!response.ok) {

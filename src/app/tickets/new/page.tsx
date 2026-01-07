@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { Button } from '@/components/ui/Button';
 import { useDemoContext } from '@/contexts/DemoContext';
@@ -9,6 +10,7 @@ import { UserRole } from '@/types';
 
 export default function NewTicketPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentUser } = useDemoContext();
   const [formData, setFormData] = useState({
     title: '',
@@ -19,6 +21,16 @@ export default function NewTicketPage() {
     severity: 'medium',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const isUser = currentUser.role === UserRole.USER;
 
@@ -73,7 +85,7 @@ export default function NewTicketPage() {
       
       // Redirect to tickets list
       router.push('/tickets');
-    } catch (error) {
+    } catch {
       console.error('Error creating ticket:', error);
     } finally {
       setIsSubmitting(false);

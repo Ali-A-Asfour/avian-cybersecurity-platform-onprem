@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { UserRole } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface TenantOption {
   id: string;
@@ -28,14 +29,14 @@ export function TenantSwitcher({ userRole }: TenantSwitcherProps) {
   const switchTenant = async (tenant: TenantOption) => {
     try {
       // Call auth status with tenant switch parameter to update session
-      await fetch(`/api/auth/status?switch_tenant=${tenant.key}`);
+      await api.get(`/api/auth/status?switch_tenant=${tenant.key}`);
       
       setCurrentTenant(tenant);
       setIsOpen(false);
       
       // Reload the page to reflect changes
       window.location.reload();
-    } catch (error) {
+    } catch {
       console.error('Failed to switch tenant:', error);
     }
   };

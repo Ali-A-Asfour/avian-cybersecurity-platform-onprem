@@ -20,6 +20,7 @@ import {
     ErrorMonitor,
     GracefulDegradationManager,
 } from '@/lib/errorHandling';
+import { api } from '@/lib/api-client';
 
 /**
  * Custom error class for dashboard API errors
@@ -204,10 +205,7 @@ class DashboardApiService {
                 const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
 
                 try {
-                    const response = await fetch(url, {
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                    const response = await api.get(url, {
                         signal: controller.signal,
                     });
 

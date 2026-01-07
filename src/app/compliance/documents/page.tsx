@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DocumentUpload } from '@/components/compliance/DocumentUpload';
@@ -10,8 +12,20 @@ import { DocumentAnalysisViewer } from '@/components/compliance/DocumentAnalysis
 type ViewMode = 'upload' | 'pending' | 'analysis';
 
 export default function DocumentsPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('upload');
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const handleAnalysisComplete = (analysisId: string) => {
     setCurrentAnalysisId(analysisId);

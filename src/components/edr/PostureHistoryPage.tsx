@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api-client';
 
 interface PostureHistoryPageProps {
     className?: string;
@@ -66,7 +67,7 @@ export function PostureHistoryPage({ className = '' }: PostureHistoryPageProps) 
                 params.append('endDate', endDateTime.toISOString());
             }
 
-            const response = await fetch(`/api/edr/posture/history?${params.toString()}`);
+            const response = await api.get(`/api/edr/posture/history?${params.toString()}`);
             const result: PostureHistoryResponse = await response.json();
 
             if (!response.ok) {

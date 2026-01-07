@@ -38,7 +38,7 @@ export function ContactPreferences({ ticket }: ContactPreferencesProps) {
                             <User className="h-5 w-5 text-gray-700" />
                             <div>
                                 <div className="font-semibold text-gray-900">
-                                    {ticket.requester}
+                                    {typeof ticket.requester === 'string' ? ticket.requester : ticket.requester?.email || 'Unknown'}
                                 </div>
                                 <div className="text-sm text-gray-600">
                                     Primary Contact
@@ -59,7 +59,7 @@ export function ContactPreferences({ ticket }: ContactPreferencesProps) {
                             </div>
 
                             <div className="text-sm text-gray-700 ml-6 font-mono bg-white px-2 py-1 rounded border">
-                                {ticket.requester}
+                                {typeof ticket.requester === 'string' ? ticket.requester : ticket.requester?.email || 'Unknown'}
                             </div>
 
                             {hasPhoneNumber && (

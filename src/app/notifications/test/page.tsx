@@ -1,14 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api-client';
 
 export default function NotificationTestPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, any>>({});
   const { addToast } = useToast();
@@ -26,6 +31,16 @@ export default function NotificationTestPage() {
     type: 'info' as 'info' | 'success' | 'warning' | 'error',
   });
 
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
+
   const testToastNotification = (type: 'info' | 'success' | 'warning' | 'error') => {
     addToast({
       title: `${type.charAt(0).toUpperCase() + type.slice(1)} Toast`,
@@ -38,13 +53,7 @@ export default function NotificationTestPage() {
   const testInAppNotification = async () => {
     setLoading('in-app');
     try {
-      const response = await fetch('/api/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(customNotification),
-      });
+      const response = await api.post('/api/notifications', customNotification);
 
       const data = await response.json();
       setResults(prev => ({ ...prev, 'in-app': data }));
@@ -71,13 +80,7 @@ export default function NotificationTestPage() {
   const testEmailNotification = async () => {
     setLoading('email');
     try {
-      const response = await fetch('/api/notifications/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailData),
-      });
+      const response = await api.post('/api/notifications/email', emailData);
 
       const data = await response.json();
       setResults(prev => ({ ...prev, email: data }));
@@ -104,16 +107,10 @@ export default function NotificationTestPage() {
   const testWebSocketNotification = async () => {
     setLoading('websocket');
     try {
-      const response = await fetch('/api/notifications/websocket', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'send_test_notification',
-          user_id: 'test-user',
-          message: 'This is a test WebSocket notification.',
-        }),
+      const response = await api.post('/api/notifications/websocket', {
+        action: 'send_test_notification',
+        user_id: 'test-user',
+        message: 'This is a test WebSocket notification.',
       });
 
       const data = await response.json();
@@ -141,19 +138,13 @@ export default function NotificationTestPage() {
   const testSLABreachNotification = async () => {
     setLoading('sla-breach');
     try {
-      const response = await fetch('/api/notifications/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await api.post('/api/notifications/email', {
+        template_type: 'sla_breach',
+        template_data: {
+          ticket_title: 'Critical Security Incident - Data Breach Investigation',
+          ticket_id: 'TICKET-2024-001',
+          hours_overdue: 4,
         },
-        body: JSON.stringify({
-          template_type: 'sla_breach',
-          template_data: {
-            ticket_title: 'Critical Security Incident - Data Breach Investigation',
-            ticket_id: 'TICKET-2024-001',
-            hours_overdue: 4,
-          },
-        }),
       });
 
       const data = await response.json();

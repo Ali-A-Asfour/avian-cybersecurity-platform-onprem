@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api-client';
 
 interface UserTicket {
   id: string;
@@ -36,10 +37,12 @@ export function UserDashboard() {
   const fetchUserTickets = async () => {
     try {
       // Fetch tickets created by the current user (limit to 3 most recent)
-      const response = await fetch('/api/tickets/user?limit=3&sort_by=created_at&sort_order=desc');
+      const response = await api.get('/api/tickets/user?limit=3&sort_by=created_at&sort_order=desc');
 
       if (!response.ok) {
-        throw new Error('Failed to fetch tickets');
+        console.warn('Failed to fetch tickets, showing empty state');
+        setTickets([]);
+        return;
       }
 
       const result = await response.json();
@@ -56,10 +59,12 @@ export function UserDashboard() {
         }));
 
         setTickets(userTickets);
+      } else {
+        setTickets([]);
       }
     } catch (error) {
-      console.error('Error fetching user tickets:', error);
-      // Set empty array on error
+      console.warn('Error fetching user tickets:', error);
+      // Set empty array on error - user will see "No open tickets" message
       setTickets([]);
     } finally {
       setLoading(false);
@@ -190,23 +195,6 @@ export function UserDashboard() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Create New Ticket
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/help-desk')}
-          className="flex-1 sm:flex-none"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
-          </svg>
-          Help Desk
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/help-desk')}
-          className="flex-1 sm:flex-none"
-        >
-          View All My Tickets
         </Button>
       </div>
 

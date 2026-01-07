@@ -8,6 +8,7 @@ import { IncidentResolutionModal } from './IncidentResolutionModal';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api-client';
 
 interface MySecurityIncidentsTabProps {
     tenantId: string;
@@ -117,12 +118,7 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
                 ? '/api/alerts-incidents/demo/incidents'
                 : '/api/alerts-incidents/incidents';
 
-            const response = await fetch(`${apiEndpoint}?${params.toString()}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.get(`${apiEndpoint}?${params.toString()}`);
 
             const result: IncidentsResponse = await response.json();
 
@@ -165,12 +161,7 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
      */
     const handleStartWork = async (incidentId: string) => {
         try {
-            const response = await fetch(`/api/alerts-incidents/incidents/${incidentId}/start-work`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+            const response = await api.post(`/api/alerts-incidents/incidents/${incidentId}/start-work`, {});
 
             const result = await response.json();
 
@@ -230,13 +221,7 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
                 ? { summary: input.summary }
                 : { justification: input.justification };
 
-            const response = await fetch(`/api/alerts-incidents/incidents/${input.incidentId}/${endpoint}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-            });
+            const response = await api.post(`/api/alerts-incidents/incidents/${input.incidentId}/${endpoint}`, body);
 
             const result = await response.json();
 

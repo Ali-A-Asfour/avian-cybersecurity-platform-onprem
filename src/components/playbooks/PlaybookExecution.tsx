@@ -5,6 +5,7 @@ import { SecurityPlaybook, PlaybookExecution as PlaybookExecutionType, PlaybookS
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { api } from '@/lib/api-client';
 
 interface PlaybookExecutionProps {
   playbook: SecurityPlaybook;
@@ -27,15 +28,9 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
   const startExecution = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/playbooks/${playbook.id}/execute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          alertId,
-          incidentId
-        }),
+      const response = await api.post(`/api/playbooks/${playbook.id}/execute`, {
+        alertId,
+        incidentId
       });
 
       const data = await response.json();
@@ -46,7 +41,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       } else {
         setError(data.error?.message || 'Failed to start execution');
       }
-    } catch (error) {
+    } catch {
       setError('Failed to start execution');
     } finally {
       setLoading(false);
@@ -58,15 +53,9 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/playbooks/executions/${execution.id}/steps/${stepId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          notes: currentStepNotes,
-          verificationStatus
-        }),
+      const response = await api.put(`/api/playbooks/executions/${execution.id}/steps/${stepId}`, {
+        notes: currentStepNotes,
+        verificationStatus
       });
 
       const data = await response.json();
@@ -77,7 +66,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       } else {
         setError(data.error?.message || 'Failed to complete step');
       }
-    } catch (error) {
+    } catch {
       setError('Failed to complete step');
     } finally {
       setLoading(false);
@@ -88,14 +77,8 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
     if (!execution) return;
 
     try {
-      const response = await fetch(`/api/playbooks/executions/${execution.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          notes: executionNotes
-        }),
+      const response = await api.put(`/api/playbooks/executions/${execution.id}`, {
+        notes: executionNotes
       });
 
       const data = await response.json();
@@ -112,14 +95,8 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
     if (!execution) return;
 
     try {
-      const response = await fetch(`/api/playbooks/executions/${execution.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: ExecutionStatus.PAUSED
-        }),
+      const response = await api.put(`/api/playbooks/executions/${execution.id}`, {
+        status: ExecutionStatus.PAUSED
       });
 
       const data = await response.json();
@@ -127,7 +104,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       if (data.success) {
         setExecution(data.data);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to pause execution');
     }
   };
@@ -136,14 +113,8 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
     if (!execution) return;
 
     try {
-      const response = await fetch(`/api/playbooks/executions/${execution.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: ExecutionStatus.IN_PROGRESS
-        }),
+      const response = await api.put(`/api/playbooks/executions/${execution.id}`, {
+        status: ExecutionStatus.IN_PROGRESS
       });
 
       const data = await response.json();
@@ -151,7 +122,7 @@ export function PlaybookExecution({ playbook, alertId, incidentId, onClose }: Pl
       if (data.success) {
         setExecution(data.data);
       }
-    } catch (error) {
+    } catch {
       setError('Failed to resume execution');
     }
   };

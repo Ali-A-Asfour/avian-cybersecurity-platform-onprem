@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api-client';
 
 interface NotificationPreference {
   id: string;
@@ -88,7 +89,7 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
 
   const loadPreferences = async () => {
     try {
-      const response = await fetch('/api/notifications/preferences');
+      const response = await api.get('/api/notifications/preferences');
       const data = await response.json();
       
       if (data.success) {
@@ -114,7 +115,7 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
           );
         }
       }
-    } catch (error) {
+    } catch {
       console.error('Error loading preferences:', error);
     } finally {
       setLoading(false);
@@ -160,13 +161,7 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
         notification_types: notificationTypes,
       };
 
-      const response = await fetch('/api/notifications/preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(preferencesData),
-      });
+      const response = await api.put('/api/notifications/preferences', preferencesData);
 
       if (response.ok) {
         setSaved(true);
@@ -174,7 +169,7 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
       } else {
         throw new Error('Failed to save preferences');
       }
-    } catch (error) {
+    } catch {
       console.error('Error saving preferences:', error);
       // You could add error handling UI here
     } finally {

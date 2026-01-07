@@ -3,12 +3,10 @@ import { documentAnalysisService } from '@/services/document-analysis.service';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    // Await params in Next.js 16
-    const { id } = await params;
-    const analysisId = id;
+    const analysisId = params.id;
     const _tenantId = request.headers.get('x-tenant-id');
     
     if (!tenantId) {

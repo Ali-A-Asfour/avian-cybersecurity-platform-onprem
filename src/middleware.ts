@@ -1,7 +1,11 @@
 /**
- * Next.js Middleware for Cognito Authentication
+ * Next.js Middleware for Authentication and Security
  * 
- * Protects routes and validates Cognito tokens
+ * Handles:
+ * - HTTPS enforcement in production
+ * - Route protection (authentication)
+ * 
+ * Requirements: 13.1, 13.2, 13.3
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -35,6 +39,19 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/icons/')
   ) {
     return NextResponse.next();
+  }
+
+  // HTTPS Enforcement in Production (Requirements: 13.1, 13.2)
+  // Redirect HTTP to HTTPS in production environment
+  if (process.env.NODE_ENV === 'production') {
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('host');
+    
+    // If request is HTTP, redirect to HTTPS
+    if (protocol === 'http' && host) {
+      const httpsUrl = `https://${host}${pathname}${request.nextUrl.search}`;
+      return NextResponse.redirect(httpsUrl, 301); // Permanent redirect
+    }
   }
 
   // Check if auth is disabled for development

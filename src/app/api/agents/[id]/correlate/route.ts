@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -11,20 +11,39 @@ interface RouteParams {
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const { id: agentId } = await params;
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
-    const _agentId = params.id;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Only Security Analysts, Tenant Admins, and Super Admins can perform correlation
     if (!['super_admin', 'tenant_admin', 'security_analyst'].includes(user.role)) {
@@ -76,7 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to correlate agent data', { error, agentId: params.id });
+    logger.error('Failed to correlate agent data', { error, agentId });
     
     const response: ApiResponse = {
       success: false,
@@ -91,21 +110,39 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id: _id } = await params;
+  const { id: agentId } = await params;
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
-    const _agentId = params.id;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Only Security Analysts, Tenant Admins, and Super Admins can view correlation data
     if (!['super_admin', 'tenant_admin', 'security_analyst'].includes(user.role)) {
@@ -120,7 +157,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { searchParams } = new URL(request.url);
-    const _timeRange = searchParams.get('time_range') || '24h';
+    const timeRange = searchParams.get('time_range') || '24h';
     const correlationType = searchParams.get('type') || 'all';
 
     // Get correlation history for the agent
@@ -133,7 +170,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to get correlation history', { error, agentId: params.id });
+    logger.error('Failed to get correlation history', { error, agentId });
     
     const response: ApiResponse = {
       success: false,

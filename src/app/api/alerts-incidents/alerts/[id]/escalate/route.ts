@@ -14,11 +14,9 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success) {
@@ -46,7 +44,7 @@ export async function POST(
             );
         }
 
-        const alertId = id;
+        const alertId = params.id;
 
         // Validate alert ID format (UUID)
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -146,7 +144,7 @@ export async function POST(
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         logger.error('Error in POST /api/alerts-incidents/alerts/[id]/escalate', error instanceof Error ? error : new Error(String(error)), {
-            alertId: id,
+            alertId: params.id,
         });
 
         // Handle specific business logic errors

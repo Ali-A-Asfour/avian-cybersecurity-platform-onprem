@@ -10,19 +10,37 @@ export async function PATCH(
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
     
     const { id: notificationId } = await params;
 
-    const tenantResult = await tenantMiddleware(request, authResult.user!);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    const tenantResult = await tenantMiddleware(request, authResult.user);
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
     const { tenant } = tenantResult;
-    const _user = authResult.user!;
+    const user = authResult.user;
     const body = await request.json();
 
     if (body.action === 'mark_read') {

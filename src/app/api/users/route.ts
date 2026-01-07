@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const validatedParams = listUsersSchema.parse(queryParams);
 
     // List users
-    const _result = await UserService.listUsers(
+    const result = await UserService.listUsers(
       validatedParams,
       user.user_id,
       user.role,
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Parse and validate request body
     const body = await request.json();

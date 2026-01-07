@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ComplianceFramework } from '../../types';
 import { AddFrameworkModal } from './AddFrameworkModal';
+import { api } from '@/lib/api-client';
 
 interface ComplianceFrameworkListProps {
   frameworks: ComplianceFramework[];
@@ -31,7 +32,7 @@ export function ComplianceFrameworkList({ frameworks, onFrameworkSelect, onFrame
       const scores: Record<string, FrameworkScore> = {};
 
       for (const framework of frameworks) {
-        const response = await fetch(`/api/compliance/score?framework_id=${framework.id}`);
+        const response = await api.get(`/api/compliance/score?framework_id=${framework.id}`);
         const result = await response.json();
 
         if (result.success) {

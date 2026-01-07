@@ -1,17 +1,16 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { logger } from './logger';
-import { getDatabaseCredentials } from './aws/parameter-store';
+import { config } from './config';
 
-// Database connection configuration with AWS Secrets Manager integration
-let connectionString: string | null = null;
+// Database connection configuration
 let client: postgres.Sql | null = null;
 
 // Skip database connection during build time
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
 
 /**
- * Initialize database connection using AWS Secrets Manager or local DATABASE_URL
+ * Initialize database connection using DATABASE_URL with retry logic
  */
 async function initializeDatabaseConnection(): Promise<postgres.Sql> {
   if (client) {
@@ -23,53 +22,74 @@ async function initializeDatabaseConnection(): Promise<postgres.Sql> {
     throw new Error('Database not available during build');
   }
 
-  try {
-    // Check if we're in AWS environment (has DATABASE_SECRET_ARN)
-    const databaseSecretArn = process.env.DATABASE_SECRET_ARN;
-    
-    if (databaseSecretArn) {
-      // AWS environment - use Secrets Manager
-      logger.info('Initializing database connection with AWS Secrets Manager');
+  const maxRetries = 5;
+  const baseDelay = 1000; // 1 second
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const connectionString = config.database.url;
       
-      const credentials = await getDatabaseCredentials();
-      connectionString = `postgresql://${credentials.username}:${credentials.password}@${credentials.host}:${credentials.port}/${credentials.dbname}?sslmode=require`;
-    } else if (process.env.DATABASE_URL) {
-      // Local development - use DATABASE_URL
-      logger.info('Using DATABASE_URL for local development');
-      connectionString = process.env.DATABASE_URL;
-    } else {
-      throw new Error('No database configuration found. Set DATABASE_SECRET_ARN (AWS) or DATABASE_URL (local)');
+      logger.info('Initializing database connection', { attempt, maxRetries });
+
+      // Validate connection string format
+      if (!connectionString.match(/^postgresql:\/\/[^\/]+\/[^\/\s]+/)) {
+        throw new Error('Invalid database connection string format');
+      }
+
+      // Create postgres client with security configurations
+      client = postgres(connectionString, {
+        max: 10, // Connection pool size
+        idle_timeout: 20,
+        connect_timeout: 10,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false,
+        prepare: true, // Use prepared statements
+        transform: {
+          undefined: null, // Convert undefined to null
+        },
+        onnotice: (notice) => {
+          logger.warn('Database notice', { notice: notice.message });
+        },
+      });
+
+      // Test the connection
+      await client`SELECT 1 as connection_test`;
+      logger.info('Database connection established successfully', { attempt });
+
+      return client;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      logger.warn('Database connection attempt failed', lastError, { 
+        attempt, 
+        maxRetries,
+        willRetry: attempt < maxRetries 
+      });
+
+      // Clean up failed client
+      if (client) {
+        try {
+          await client.end();
+        } catch (endError) {
+          logger.warn('Error closing failed connection', endError instanceof Error ? endError : new Error(String(endError)));
+        }
+        client = null;
+      }
+
+      // If this was the last attempt, throw the error
+      if (attempt === maxRetries) {
+        logger.error('Failed to initialize database connection after all retries', lastError);
+        throw lastError;
+      }
+
+      // Exponential backoff: wait before retrying
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      logger.info('Waiting before retry', { delay, nextAttempt: attempt + 1 });
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-
-    // Validate connection string format
-    if (!connectionString.match(/^postgresql:\/\/[^\/]+\/[^\/\s]+/)) {
-      throw new Error('Invalid database connection string format');
-    }
-
-    // Create postgres client with security configurations
-    client = postgres(connectionString, {
-      max: 10, // Connection pool size
-      idle_timeout: 20,
-      connect_timeout: 10,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false,
-      prepare: true, // Use prepared statements
-      transform: {
-        undefined: null, // Convert undefined to null
-      },
-      onnotice: (notice) => {
-        logger.warn('Database notice', { notice: notice.message });
-      },
-    });
-
-    // Test the connection
-    await client`SELECT 1 as connection_test`;
-    logger.info('Database connection established successfully');
-
-    return client;
-  } catch (error) {
-    logger.error('Failed to initialize database connection', error instanceof Error ? error : new Error(String(error)));
-    throw error;
   }
+
+  // This should never be reached, but TypeScript needs it
+  throw lastError || new Error('Failed to initialize database connection');
 }
 
 /**
@@ -83,20 +103,34 @@ async function getDatabase() {
 }
 
 // Create drizzle instance with lazy initialization
-export const db = client ? drizzle(client, {
-  logger: process.env.NODE_ENV === 'development' ? {
-    logQuery: (query, params) => {
-      logger.debug('Database Query', {
-        query: query.replace(/\$\d+/g, '?'), // Replace parameter placeholders for logging
-        paramCount: params?.length || 0,
-        category: 'database',
-      });
-    },
-  } : false,
-}) : null;
+let dbInstance: ReturnType<typeof drizzle> | null = null;
 
 /**
- * Database transaction wrapper with AWS integration
+ * Get drizzle database instance (lazy initialization)
+ */
+export async function getDb() {
+  if (!dbInstance) {
+    const database = await getDatabase();
+    dbInstance = drizzle(database, {
+      logger: process.env.NODE_ENV === 'development' ? {
+        logQuery: (query, params) => {
+          logger.debug('Database Query', {
+            query: query.replace(/\$\d+/g, '?'), // Replace parameter placeholders for logging
+            paramCount: params?.length || 0,
+            category: 'database',
+          });
+        },
+      } : false,
+    });
+  }
+  return dbInstance;
+}
+
+// Export synchronous db for backwards compatibility (will be null until initialized)
+export const db = dbInstance;
+
+/**
+ * Database transaction wrapper
  */
 export async function withTransaction<T>(
   callback: (tx: typeof db) => Promise<T>
@@ -187,7 +221,7 @@ export class SafeQueryBuilder {
 }
 
 /**
- * Database health check with AWS integration
+ * Database health check
  */
 export async function checkDatabaseHealth(): Promise<{
   healthy: boolean;

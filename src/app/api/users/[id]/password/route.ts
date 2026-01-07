@@ -30,11 +30,11 @@ export async function PUT(
       );
     }
 
-    const _user = authResult.user;
+    const user = authResult.user;
 
     // Validate user ID parameter
     const resolvedParams = await params;
-    const _userId = resolvedParams.id;
+    const userId = resolvedParams.id;
     if (!userId || typeof userId !== 'string') {
       return NextResponse.json(
         {

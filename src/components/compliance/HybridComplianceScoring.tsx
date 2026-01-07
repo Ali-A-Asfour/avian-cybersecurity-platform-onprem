@@ -15,6 +15,7 @@ import {
   AutomatedComplianceStatus,
   ManualComplianceStatus
 } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface HybridComplianceScoringProps {
   tenantId: string;
@@ -42,7 +43,7 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
         loadRecommendations(),
         loadScoreHistory()
       ]);
-    } catch (error) {
+    } catch {
       console.error('Error loading compliance data:', error);
     } finally {
       setLoading(false);
@@ -53,8 +54,8 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
     const params = new URLSearchParams({ tenant_id: tenantId });
     if (frameworkId) params.append('framework_id', frameworkId);
 
-    const response = await fetch(`/api/compliance/hybrid-score?${params}`);
-    const _result = await response.json();
+    const response = await api.get(`/api/compliance/hybrid-score?${params}`);
+    const result = await response.json();
 
     if (result.success) {
       setCurrentScore(result.data);
@@ -65,8 +66,8 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
     const params = new URLSearchParams({ tenant_id: tenantId, period: 'weekly' });
     if (frameworkId) params.append('framework_id', frameworkId);
 
-    const response = await fetch(`/api/compliance/trends?${params}`);
-    const _result = await response.json();
+    const response = await api.get(`/api/compliance/trends?${params}`);
+    const result = await response.json();
 
     if (result.success) {
       setTrends(result.data);
@@ -77,8 +78,8 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
     const params = new URLSearchParams({ tenant_id: tenantId });
     if (frameworkId) params.append('framework_id', frameworkId);
 
-    const response = await fetch(`/api/compliance/recommendations?${params}`);
-    const _result = await response.json();
+    const response = await api.get(`/api/compliance/recommendations?${params}`);
+    const result = await response.json();
 
     if (result.success) {
       setRecommendations(result.data);
@@ -89,8 +90,8 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
     const params = new URLSearchParams({ tenant_id: tenantId, limit: '5' });
     if (frameworkId) params.append('framework_id', frameworkId);
 
-    const response = await fetch(`/api/compliance/score-history?${params}`);
-    const _result = await response.json();
+    const response = await api.get(`/api/compliance/score-history?${params}`);
+    const result = await response.json();
 
     if (result.success) {
       setScoreHistory(result.data);
@@ -100,17 +101,16 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
   const triggerAssessment = async () => {
     setAssessmentLoading(true);
     try {
-      const response = await fetch('/api/compliance/hybrid-score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantId, framework_id: frameworkId })
+      const response = await api.post('/api/compliance/hybrid-score', { 
+        tenant_id: tenantId, 
+        framework_id: frameworkId 
       });
 
-      const _result = await response.json();
+      const result = await response.json();
       if (result.success) {
         await loadComplianceData(); // Reload all data
       }
-    } catch (error) {
+    } catch {
       console.error('Error triggering assessment:', error);
     } finally {
       setAssessmentLoading(false);
@@ -119,22 +119,18 @@ export function HybridComplianceScoring({ tenantId, frameworkId }: HybridComplia
 
   const generateReport = async (reportType: string, format: string) => {
     try {
-      const response = await fetch('/api/compliance/hybrid-reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          framework_id: frameworkId,
-          report_type: reportType,
-          format: format
-        })
+      const response = await api.post('/api/compliance/hybrid-reports', {
+        tenant_id: tenantId,
+        framework_id: frameworkId,
+        report_type: reportType,
+        format: format
       });
 
-      const _result = await response.json();
+      const result = await response.json();
       if (result.success && result.data.download_url) {
         window.open(result.data.download_url, '_blank');
       }
-    } catch (error) {
+    } catch {
       console.error('Error generating report:', error);
     }
   };

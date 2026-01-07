@@ -1,12 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { NotificationHistory, NotificationPreferences } from '@/components/notifications';
 import { cn } from '@/lib/utils';
 
 export default function NotificationsPage() {
+  const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'history' | 'preferences'>('history');
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   const tabs = [
     { id: 'history', label: 'Notification History', icon: 'history' },

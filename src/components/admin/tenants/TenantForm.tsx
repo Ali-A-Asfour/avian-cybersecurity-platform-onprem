@@ -12,7 +12,7 @@ interface TenantFormProps {
   loading?: boolean;
 }
 
-export interface TenantFormData {
+interface TenantFormData {
   name: string;
   domain: string;
   logo_url?: string;

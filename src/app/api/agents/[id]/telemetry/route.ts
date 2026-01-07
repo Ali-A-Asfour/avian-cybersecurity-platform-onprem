@@ -1,27 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const agentId = params.id;
   try {
-    // Await params in Next.js 16
-    const { id } = await params;
-    
     // Apply authentication middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
-    const _agentId = id;
-    const _telemetryData = await request.json();
+    const telemetryData = await request.json();
 
     // Validate telemetry data structure
     if (!telemetryData || typeof telemetryData !== 'object') {
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to process agent telemetry', { error, agentId: params.id });
+    logger.error('Failed to process agent telemetry', { error, agentId });
     
     const response: ApiResponse = {
       success: false,
@@ -76,23 +82,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const agentId = params.id;
   try {
-    // Await params in Next.js 16
-    const { id } = await params;
-    
     // Apply authentication middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
-    const _agentId = id;
     const { searchParams } = new URL(request.url);
-    const _timeRange = searchParams.get('time_range') || '24h';
+    const timeRange = searchParams.get('time_range') || '24h';
     const dataTypes = searchParams.get('data_types')?.split(',') || [];
 
     // Get telemetry data for the specified time range
-    const _telemetryData = await getTelemetryData(agentId, timeRange, dataTypes);
+    const telemetryData = await getTelemetryData(agentId, timeRange, dataTypes);
 
     const response: ApiResponse = {
       success: true,
@@ -101,7 +113,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to get agent telemetry', { error, agentId: params.id });
+    logger.error('Failed to get agent telemetry', { error, agentId });
     
     const response: ApiResponse = {
       success: false,

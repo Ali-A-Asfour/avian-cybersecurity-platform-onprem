@@ -22,21 +22,13 @@ jest.mock('../../lib/microsoft-graph-client');
 jest.mock('../../lib/edr-database-operations');
 jest.mock('../../lib/edr-posture-calculator');
 
-// Mock AWS SDK
-const mockSend = jest.fn();
-jest.mock('@aws-sdk/client-secrets-manager', () => ({
-    SecretsManagerClient: jest.fn().mockImplementation(() => ({
-        send: mockSend,
-    })),
-    GetSecretValueCommand: jest.fn().mockImplementation((params) => params),
-}));
+// TODO: Update mocks when implementing new authentication (Task 4)
 
 describe('EDRPollingWorker', () => {
     let worker: EDRPollingWorker;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        mockSend.mockReset();
 
         worker = new EDRPollingWorker({
             maxRetries: 2,

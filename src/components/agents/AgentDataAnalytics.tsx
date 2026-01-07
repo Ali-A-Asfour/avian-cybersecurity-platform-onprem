@@ -8,6 +8,7 @@ import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
+import { api } from '@/lib/api-client';
 
 interface AgentDataAnalyticsProps {
   agentId: string;
@@ -114,7 +115,7 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
       setError(null);
 
       // Fetch telemetry data
-      const telemetryResponse = await fetch(`/api/agents/${agentId}/telemetry?time_range=${timeRange}`);
+      const telemetryResponse = await api.get(`/api/agents/${agentId}/telemetry?time_range=${timeRange}`);
       const telemetryResult = await telemetryResponse.json();
 
       if (telemetryResult.success) {
@@ -122,7 +123,7 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
       }
 
       // Fetch correlation data
-      const correlationResponse = await fetch(`/api/agents/${agentId}/correlate?time_range=${timeRange}`);
+      const correlationResponse = await api.get(`/api/agents/${agentId}/correlate?time_range=${timeRange}`);
       const correlationResult = await correlationResponse.json();
 
       if (correlationResult.success) {
@@ -130,14 +131,14 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
       }
 
       // Fetch alert data
-      const alertResponse = await fetch(`/api/agents/${agentId}/alerts?time_range=${timeRange}`);
+      const alertResponse = await api.get(`/api/agents/${agentId}/alerts?time_range=${timeRange}`);
       const alertResult = await alertResponse.json();
 
       if (alertResult.success) {
         setAlertData(alertResult.data);
       }
 
-    } catch (error) {
+    } catch {
       setError('Failed to fetch agent data');
     } finally {
       setLoading(false);
@@ -146,21 +147,15 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
 
   const triggerCorrelation = async () => {
     try {
-      const response = await fetch(`/api/agents/${agentId}/correlate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await api.post(`/api/agents/${agentId}/correlate`, {
+        event_data: {
+          time_range: timeRange,
+          include_all_events: true,
         },
-        body: JSON.stringify({
-          event_data: {
-            time_range: timeRange,
-            include_all_events: true,
-          },
-          generate_insights: true,
-        }),
+        generate_insights: true,
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         alert('Correlation analysis completed successfully');
@@ -168,7 +163,7 @@ export function AgentDataAnalytics({ agentId }: AgentDataAnalyticsProps) {
       } else {
         alert(`Correlation failed: ${result.error?.message}`);
       }
-    } catch (error) {
+    } catch {
       alert('Failed to trigger correlation analysis');
     }
   };

@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AlertFilters } from '@/components/alerts/AlertFilters';
 import { Button } from '@/components/ui/Button';
@@ -12,16 +14,29 @@ import { SecurityAlert } from '@/types/alerts-incidents';
 export const dynamic = 'force-dynamic';
 
 export default function MyAlertsPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [alertsLoading, setAlertsLoading] = useState(true);
     const [filters, setFilters] = useState<AlertFiltersType>({});
     const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
 
     useEffect(() => {
-        fetchMyAlerts();
-    }, [filters]);
+        if (isAuthenticated) {
+            fetchMyAlerts();
+        }
+    }, [filters, isAuthenticated]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     const fetchMyAlerts = async () => {
         try {

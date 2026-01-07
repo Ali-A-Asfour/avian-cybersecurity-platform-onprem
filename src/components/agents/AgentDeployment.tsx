@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { api } from '@/lib/api-client';
 
 interface AgentDeploymentProps {
   tenantId: string;
@@ -49,15 +50,9 @@ export function AgentDeployment({ tenantId }: AgentDeploymentProps) {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/agents/deploy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          os_type: osType,
-          deployment_name: deploymentName || `${osType}-deployment-${Date.now()}`,
-        }),
+      const response = await api.post('/api/agents/deploy', {
+        os_type: osType,
+        deployment_name: deploymentName || `${osType}-deployment-${Date.now()}`,
       });
 
       const data = await response.json();
@@ -72,7 +67,7 @@ export function AgentDeployment({ tenantId }: AgentDeploymentProps) {
       } else {
         alert(`Failed to generate script: ${data.error?.message}`);
       }
-    } catch (error) {
+    } catch {
       alert('Failed to generate deployment script');
     } finally {
       setLoading(false);

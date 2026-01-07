@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/database';
+// import { db } from '@/lib/database';
 import { authAuditLogs, users } from '../../../../../database/schemas/main';
 import { eq, and, gte, lte, desc, or, ilike } from 'drizzle-orm';
 import { extractTokenFromCookie, verifyToken } from '@/lib/jwt';
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        const _user = authResult.user;
+        const user = authResult.user;
         const { searchParams } = new URL(req.url);
 
         // Parse query parameters
@@ -84,8 +84,8 @@ export async function GET(req: NextRequest) {
         const offset = (page - 1) * limit;
 
         const action = searchParams.get('action');
-        const _result = searchParams.get('result');
-        const _userId = searchParams.get('userId');
+        const result = searchParams.get('result');
+        const userId = searchParams.get('userId');
         const email = searchParams.get('email');
         const ipAddress = searchParams.get('ipAddress');
         const startDate = searchParams.get('startDate');

@@ -16,6 +16,7 @@ import {
   TicketSeverity,
   TicketPriority
 } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface TicketDetailProps {
   isOpen: boolean;
@@ -50,8 +51,8 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
 
     try {
       setCommentsLoading(true);
-      const response = await fetch(`/api/tickets/${ticket.id}/comments`);
-      const _result = await response.json();
+      const response = await api.get(`/api/tickets/${ticket.id}/comments`);
+      const result = await response.json();
 
       if (result.success) {
         setComments(result.data);
@@ -69,8 +70,8 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
     if (!ticket) return;
 
     try {
-      const response = await fetch(`/api/tickets/${ticket.id}/attachments`);
-      const _result = await response.json();
+      const response = await api.get(`/api/tickets/${ticket.id}/attachments`);
+      const result = await response.json();
 
       if (result.success) {
         setAttachments(result.data);
@@ -89,18 +90,12 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/tickets/${ticket.id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: newComment.trim(),
-          is_internal: isInternal,
-        }),
+      const response = await api.post(`/api/tickets/${ticket.id}/comments`, {
+        content: newComment.trim(),
+        is_internal: isInternal,
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         setComments(prev => [...prev, result.data]);
@@ -128,12 +123,9 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`/api/tickets/${ticket.id}/attachments`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await api.post(`/api/tickets/${ticket.id}/attachments`, formData, true);
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         setAttachments(prev => [...prev, result.data]);
@@ -157,17 +149,11 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/tickets/${ticket.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
+      const response = await api.put(`/api/tickets/${ticket.id}`, {
+        status: newStatus,
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         // Update the ticket in parent component
@@ -196,18 +182,12 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/tickets/${ticket.id}/reassign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          assignee: reassignEmail.trim(),
-          reason: reassignReason.trim() || undefined,
-        }),
+      const response = await api.post(`/api/tickets/${ticket.id}/reassign`, {
+        assignee: reassignEmail.trim(),
+        reason: reassignReason.trim() || undefined,
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         setShowReassignModal(false);
@@ -230,18 +210,12 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/tickets/auto-assign', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ticket_id: ticket.id,
-          severity: ticket.severity,
-        }),
+      const response = await api.post('/api/tickets/auto-assign', {
+        ticket_id: ticket.id,
+        severity: ticket.severity,
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         if (result.data.assigned) {

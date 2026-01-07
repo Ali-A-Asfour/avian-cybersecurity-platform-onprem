@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 // import { db } from '../lib/database';
 import { users, tenants, auditLogs } from '../../database/schemas/main';
 import { AuthService, RBACService } from '../lib/auth';
-import { SessionService } from '../lib/redis';
+import { SessionService } from '../lib/session-service-compat';
 import { BackupCodeService } from '../lib/backup-codes';
 import { AuthAuditLogger } from '../lib/auth-audit';
 import { LoginRequest, LoginResponse, JWTPayload, User, Tenant, UserRole } from '../types';
@@ -404,7 +404,7 @@ export class AuthenticationService {
     userAgent?: string
   ): Promise<void> {
     // Get user for audit logging
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -444,7 +444,7 @@ export class AuthenticationService {
       }
 
       // Get user to ensure they're still active
-      const _user = await db
+      const user = await db
         .select()
         .from(users)
         .where(and(eq(users.id, payload.user_id), eq(users.is_active, true)))
@@ -489,7 +489,7 @@ export class AuthenticationService {
     }
 
     // Get user
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(and(eq(users.id, data.user_id), eq(users.is_active, true)))
@@ -555,8 +555,8 @@ export class AuthenticationService {
   /**
    * Get current user profile
    */
-  static async getCurrentUser(_userId: string): Promise<Omit<User, 'password_hash' | 'mfa_secret'> | null> {
-    const _user = await db
+  static async getCurrentUser(userId: string): Promise<Omit<User, 'password_hash' | 'mfa_secret'> | null> {
+    const user = await db
       .select()
       .from(users)
       .where(and(eq(users.id, userId), eq(users.is_active, true)))
@@ -575,7 +575,7 @@ export class AuthenticationService {
   /**
    * Validate session
    */
-  static async validateSession(_userId: string): Promise<boolean> {
+  static async validateSession(userId: string): Promise<boolean> {
     const session = await SessionService.getSession(userId);
     return session !== null;
   }
@@ -589,7 +589,7 @@ export class AuthenticationService {
     userAgent?: string
   ): Promise<BackupCodeGenerationResponse> {
     // Get user
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(and(eq(users.id, userId), eq(users.is_active, true)))
@@ -634,8 +634,8 @@ export class AuthenticationService {
   /**
    * Get remaining backup codes count
    */
-  static async getRemainingBackupCodesCount(_userId: string): Promise<number> {
-    const _user = await db
+  static async getRemainingBackupCodesCount(userId: string): Promise<number> {
+    const user = await db
       .select({ mfa_backup_codes: users.mfa_backup_codes })
       .from(users)
       .where(eq(users.id, userId))
@@ -652,7 +652,7 @@ export class AuthenticationService {
   /**
    * Check if user needs new backup codes
    */
-  static async needsNewBackupCodes(_userId: string): Promise<boolean> {
+  static async needsNewBackupCodes(userId: string): Promise<boolean> {
     const remainingCount = await this.getRemainingBackupCodesCount(userId);
     return remainingCount < 3;
   }

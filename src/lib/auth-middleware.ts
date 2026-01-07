@@ -1,344 +1,295 @@
 /**
- * Authorization Middleware
- * Provides authentication and authorization checks for API routes
- * Part of production authentication system (Task 5.1)
+ * Authentication Middleware
+ * 
+ * Provides middleware for:
+ * - JWT token verification
+ * - Session validation via Redis
+ * - Role-based access control
+ * - Tenant isolation
+ * 
+ * Requirements: 3.4, 3.5, 5.2, 5.3, 16.3
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-// import { db } from './database';
-import { users } from '../../database/schemas/main';
-import { eq } from 'drizzle-orm';
-import { extractTokenFromCookie, verifyToken } from './jwt';
-import {
-    UserRole,
-    Resource,
-    Action,
-    checkPermission,
-    PermissionCheckResult,
-} from './permissions';
-import { logAccessDenied } from './audit-logger';
+import { AuthService, JWTPayload } from './auth-service';
+import { SessionManager } from './session-manager';
+import { logger } from './logger';
 
 /**
- * Authenticated user context
+ * Extended request with auth data
  */
-export interface AuthContext {
-    user: {
-        id: string;
-        email: string;
-        role: UserRole;
-        tenantId: string;
-        firstName: string;
-        lastName: string;
-        isActive: boolean;
-    };
-    token: string;
+export interface AuthenticatedRequest extends NextRequest {
+  auth?: {
+    userId: string;
+    email: string;
+    role: string;
+    tenantId: string;
+    sessionId: string;
+  };
 }
 
 /**
- * Authorization options
+ * Authentication result
  */
-export interface AuthOptions {
-    requiredRole?: UserRole | UserRole[];
-    requiredPermission?: {
-        resource: Resource;
-        action: Action;
-    };
-    allowSameUser?: boolean; // Allow if accessing own resources
-    allowSameTenant?: boolean; // Allow if accessing same tenant resources
+interface AuthMiddlewareResult {
+  authenticated: boolean;
+  payload?: JWTPayload;
+  error?: string;
 }
 
 /**
- * Extract and verify authentication from request
+ * Extract JWT token from request
  */
-export async function authenticate(
-    req: NextRequest
-): Promise<{ success: true; context: AuthContext } | { success: false; error: string; status: number }> {
-    if (!db) {
-        return {
-            success: false,
-            error: 'Service temporarily unavailable',
-            status: 503,
-        };
-    }
+function extractToken(request: NextRequest): string | null {
+  // Check Authorization header
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
 
-    // Extract token from cookie
-    const cookieHeader = req.headers.get('cookie');
-    const token = extractTokenFromCookie(cookieHeader);
+  // Check cookie
+  const tokenCookie = request.cookies.get('access_token');
+  if (tokenCookie) {
+    return tokenCookie.value;
+  }
 
+  return null;
+}
+
+/**
+ * Verify JWT token and validate session
+ * Requirements: 3.4, 3.5
+ */
+export async function verifyAuth(request: NextRequest): Promise<AuthMiddlewareResult> {
+  try {
+    // Extract token
+    const token = extractToken(request);
+    
     if (!token) {
-        return {
-            success: false,
-            error: 'Authentication required',
-            status: 401,
-        };
+      return {
+        authenticated: false,
+        error: 'No authentication token provided',
+      };
     }
 
-    // Verify token
-    const verifyResult = verifyToken(token);
-    if (!verifyResult.valid || !verifyResult.payload) {
-        return {
-            success: false,
-            error: verifyResult.error || 'Invalid authentication token',
-            status: 401,
-        };
+    // Verify JWT token
+    const payload = AuthService.verifyAccessToken(token);
+    
+    if (!payload) {
+      return {
+        authenticated: false,
+        error: 'Invalid or expired token',
+      };
     }
 
-    // Get user from database
-    const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, verifyResult.payload.userId))
-        .limit(1);
-
-    if (!user) {
-        return {
-            success: false,
-            error: 'User not found',
-            status: 404,
-        };
+    // Validate session in Redis
+    const sessionValidation = await SessionManager.validateSession(payload.sessionId);
+    
+    if (!sessionValidation.valid) {
+      return {
+        authenticated: false,
+        error: sessionValidation.reason || 'Session invalid',
+      };
     }
 
-    if (!user.is_active) {
-        return {
-            success: false,
-            error: 'Account is inactive',
-            status: 403,
-        };
+    // Refresh session if needed
+    if (sessionValidation.needsRefresh) {
+      await SessionManager.refreshSession(payload.sessionId);
     }
 
     return {
-        success: true,
-        context: {
-            user: {
-                id: user.id,
-                email: user.email,
-                role: user.role as UserRole,
-                tenantId: user.tenant_id,
-                firstName: user.first_name,
-                lastName: user.last_name,
-                isActive: user.is_active,
-            },
-            token,
-        },
+      authenticated: true,
+      payload,
     };
-}
-
-/**
- * Check authorization based on options
- */
-export function authorize(
-    context: AuthContext,
-    options: AuthOptions,
-    targetContext?: {
-        tenantId?: string;
-        userId?: string;
-    }
-): PermissionCheckResult {
-    const { user } = context;
-
-    // Check required role
-    if (options.requiredRole) {
-        const requiredRoles = Array.isArray(options.requiredRole)
-            ? options.requiredRole
-            : [options.requiredRole];
-
-        if (!requiredRoles.includes(user.role)) {
-            return {
-                allowed: false,
-                reason: 'Insufficient role permissions',
-            };
-        }
-    }
-
-    // Check required permission
-    if (options.requiredPermission) {
-        const permissionCheck = checkPermission(
-            user.role,
-            options.requiredPermission.resource,
-            options.requiredPermission.action,
-            {
-                userTenantId: user.tenantId,
-                targetTenantId: targetContext?.tenantId,
-                userId: user.id,
-                targetUserId: targetContext?.userId,
-            }
-        );
-
-        if (!permissionCheck.allowed) {
-            return permissionCheck;
-        }
-    }
-
-    // Check same user access
-    if (options.allowSameUser && targetContext?.userId) {
-        if (user.id === targetContext.userId) {
-            return { allowed: true, scope: 'own' };
-        }
-    }
-
-    // Check same tenant access
-    if (options.allowSameTenant && targetContext?.tenantId) {
-        if (user.tenantId === targetContext.tenantId) {
-            return { allowed: true, scope: 'tenant' };
-        }
-    }
-
-    return { allowed: true };
-}
-
-/**
- * Middleware wrapper for API routes
- */
-export function withAuth(
-    handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>,
-    options?: AuthOptions
-) {
-    return async (req: NextRequest): Promise<NextResponse> => {
-        // Authenticate user
-        const authResult = await authenticate(req);
-
-        if (!authResult.success) {
-            return NextResponse.json(
-                { error: authResult.error },
-                { status: authResult.status }
-            );
-        }
-
-        const _context = authResult.context;
-
-        // Authorize if options provided
-        if (options) {
-            const authzResult = authorize(context, options);
-
-            if (!authzResult.allowed) {
-                // Log access denied
-                await logAccessDenied(
-                    context.user.id,
-                    context.user.email,
-                    req,
-                    req.url,
-                    authzResult.reason || 'Unauthorized'
-                );
-
-                return NextResponse.json(
-                    { error: authzResult.reason || 'Unauthorized' },
-                    { status: 403 }
-                );
-            }
-        }
-
-        // Call handler with context
-        return handler(req, context);
+  } catch (error) {
+    logger.error('Auth verification failed', error instanceof Error ? error : new Error(String(error)));
+    return {
+      authenticated: false,
+      error: 'Authentication verification failed',
     };
+  }
 }
 
 /**
- * Require specific role(s)
+ * Middleware to require authentication
  */
-export function requireRole(...roles: UserRole[]) {
-    return (
-        handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>
-    ) => {
-        return withAuth(handler, { requiredRole: roles });
+export async function requireAuth(
+  request: NextRequest,
+  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+): Promise<NextResponse> {
+  const authResult = await verifyAuth(request);
+
+  if (!authResult.authenticated || !authResult.payload) {
+    return NextResponse.json(
+      {
+        error: 'Unauthorized',
+        message: authResult.error || 'Authentication required',
+      },
+      { status: 401 }
+    );
+  }
+
+  // Attach auth data to request
+  const authenticatedRequest = request as AuthenticatedRequest;
+  authenticatedRequest.auth = {
+    userId: authResult.payload.userId,
+    email: authResult.payload.email,
+    role: authResult.payload.role,
+    tenantId: authResult.payload.tenantId,
+    sessionId: authResult.payload.sessionId,
+  };
+
+  return handler(authenticatedRequest);
+}
+
+/**
+ * Middleware to require specific role
+ * Requirements: 5.2
+ */
+export async function requireRole(
+  request: NextRequest,
+  allowedRoles: string[],
+  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+): Promise<NextResponse> {
+  const authResult = await verifyAuth(request);
+
+  if (!authResult.authenticated || !authResult.payload) {
+    return NextResponse.json(
+      {
+        error: 'Unauthorized',
+        message: authResult.error || 'Authentication required',
+      },
+      { status: 401 }
+    );
+  }
+
+  // Check role
+  if (!allowedRoles.includes(authResult.payload.role)) {
+    logger.warn('Authorization failed - insufficient role', {
+      userId: authResult.payload.userId,
+      userRole: authResult.payload.role,
+      requiredRoles: allowedRoles,
+    });
+
+    return NextResponse.json(
+      {
+        error: 'Forbidden',
+        message: 'Insufficient permissions',
+      },
+      { status: 403 }
+    );
+  }
+
+  // Attach auth data to request
+  const authenticatedRequest = request as AuthenticatedRequest;
+  authenticatedRequest.auth = {
+    userId: authResult.payload.userId,
+    email: authResult.payload.email,
+    role: authResult.payload.role,
+    tenantId: authResult.payload.tenantId,
+    sessionId: authResult.payload.sessionId,
+  };
+
+  return handler(authenticatedRequest);
+}
+
+/**
+ * Middleware to enforce tenant isolation
+ * Requirements: 5.3, 16.3
+ */
+export async function requireTenantAccess(
+  request: NextRequest,
+  tenantId: string,
+  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+): Promise<NextResponse> {
+  const authResult = await verifyAuth(request);
+
+  if (!authResult.authenticated || !authResult.payload) {
+    return NextResponse.json(
+      {
+        error: 'Unauthorized',
+        message: authResult.error || 'Authentication required',
+      },
+      { status: 401 }
+    );
+  }
+
+  // Super admins can access any tenant
+  if (authResult.payload.role === 'super_admin') {
+    const authenticatedRequest = request as AuthenticatedRequest;
+    authenticatedRequest.auth = {
+      userId: authResult.payload.userId,
+      email: authResult.payload.email,
+      role: authResult.payload.role,
+      tenantId: authResult.payload.tenantId,
+      sessionId: authResult.payload.sessionId,
     };
+    return handler(authenticatedRequest);
+  }
+
+  // Check tenant access
+  if (authResult.payload.tenantId !== tenantId) {
+    logger.warn('Authorization failed - tenant mismatch', {
+      userId: authResult.payload.userId,
+      userTenantId: authResult.payload.tenantId,
+      requestedTenantId: tenantId,
+    });
+
+    return NextResponse.json(
+      {
+        error: 'Forbidden',
+        message: 'Access denied to this tenant',
+      },
+      { status: 403 }
+    );
+  }
+
+  // Attach auth data to request
+  const authenticatedRequest = request as AuthenticatedRequest;
+  authenticatedRequest.auth = {
+    userId: authResult.payload.userId,
+    email: authResult.payload.email,
+    role: authResult.payload.role,
+    tenantId: authResult.payload.tenantId,
+    sessionId: authResult.payload.sessionId,
+  };
+
+  return handler(authenticatedRequest);
 }
 
 /**
- * Require specific permission
+ * Helper to get auth data from request
  */
-export function requirePermission(resource: Resource, action: Action) {
-    return (
-        handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>
-    ) => {
-        return withAuth(handler, {
-            requiredPermission: { resource, action },
-        });
-    };
+export function getAuthData(request: AuthenticatedRequest) {
+  return request.auth;
 }
 
 /**
- * Require admin role (super admin or tenant admin)
+ * Helper to check if user has role
  */
-export function requireAdmin() {
-    return requireRole(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN);
+export function hasRole(request: AuthenticatedRequest, role: string): boolean {
+  return request.auth?.role === role;
 }
 
 /**
- * Require super admin role
+ * Helper to check if user has any of the roles
  */
-export function requireSuperAdmin() {
-    return requireRole(UserRole.SUPER_ADMIN);
+export function hasAnyRole(request: AuthenticatedRequest, roles: string[]): boolean {
+  return request.auth ? roles.includes(request.auth.role) : false;
 }
 
 /**
- * Allow access to own resources or admin
+ * Helper to check if user can access tenant
  */
-export function requireOwnerOrAdmin(getUserId: (req: NextRequest) => string | Promise<string>) {
-    return (
-        handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>
-    ) => {
-        return async (req: NextRequest): Promise<NextResponse> => {
-            const authResult = await authenticate(req);
+export function canAccessTenant(request: AuthenticatedRequest, tenantId: string): boolean {
+  if (!request.auth) {
+    return false;
+  }
 
-            if (!authResult.success) {
-                return NextResponse.json(
-                    { error: authResult.error },
-                    { status: authResult.status }
-                );
-            }
+  // Super admins can access any tenant
+  if (request.auth.role === 'super_admin') {
+    return true;
+  }
 
-            const _context = authResult.context;
-            const targetUserId = await getUserId(req);
-
-            // Check if user is admin or accessing own resource
-            const isAdmin =
-                context.user.role === UserRole.SUPER_ADMIN ||
-                context.user.role === UserRole.TENANT_ADMIN;
-            const isOwner = context.user.id === targetUserId;
-
-            if (!isAdmin && !isOwner) {
-                await logAccessDenied(
-                    context.user.id,
-                    context.user.email,
-                    req,
-                    req.url,
-                    'Not owner or admin'
-                );
-
-                return NextResponse.json(
-                    { error: 'You can only access your own resources' },
-                    { status: 403 }
-                );
-            }
-
-            return handler(req, context);
-        };
-    };
-}
-
-/**
- * Extract user ID from URL parameter
- */
-export function extractUserIdFromUrl(req: NextRequest): string {
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    return pathParts[pathParts.length - 1];
-}
-
-/**
- * Extract tenant ID from URL parameter
- */
-export function extractTenantIdFromUrl(req: NextRequest): string {
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    const tenantIndex = pathParts.indexOf('tenants');
-    return pathParts[tenantIndex + 1];
-}
-
-/**
- * Extract tenant ID from query parameter
- */
-export function extractTenantIdFromQuery(req: NextRequest): string | null {
-    const url = new URL(req.url);
-    return url.searchParams.get('tenantId');
+  return request.auth.tenantId === tenantId;
 }

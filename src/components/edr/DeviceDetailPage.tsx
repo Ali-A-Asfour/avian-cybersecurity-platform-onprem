@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { Button } from '@/components/ui/Button';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { api } from '@/lib/api-client';
 
 interface DeviceDetail {
     id: string;
@@ -80,7 +81,7 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/edr/devices/${deviceId}`);
+            const response = await api.get(`/api/edr/devices/${deviceId}`);
 
             if (!response.ok) {
                 if (response.status === 401) {
@@ -128,15 +129,9 @@ export function DeviceDetailPage({ deviceId }: DeviceDetailPageProps) {
         try {
             setActionLoading(actionType);
 
-            const response = await fetch('/api/edr/actions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    deviceId,
-                    actionType,
-                }),
+            const response = await api.post('/api/edr/actions', {
+                deviceId,
+                actionType,
             });
 
             if (!response.ok) {

@@ -5,7 +5,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import { db } from './database';
+import { getDb } from './database';
 import { sessions, users } from '../../database/schemas/main';
 import { eq, and, gt, lt } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -113,7 +113,16 @@ export function generateToken(
 
     const expiry = rememberMe ? REFRESH_TOKEN_EXPIRY : ACCESS_TOKEN_EXPIRY;
 
-    return jwt.sign(payload, JWT_SECRET, {
+    // Map camelCase to snake_case for consistency with JWTPayload type
+    const jwtPayload = {
+        user_id: payload.userId,
+        tenant_id: payload.tenantId,
+        role: payload.role,
+        email: payload.email,
+        sessionId: payload.sessionId,
+    };
+
+    return jwt.sign(jwtPayload, JWT_SECRET, {
         expiresIn: expiry,
         issuer: JWT_ISSUER,
         audience: JWT_AUDIENCE,
@@ -186,10 +195,7 @@ export async function createSession(
     userAgent?: string,
     rememberMe: boolean = false
 ): Promise<TokenResult> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
-
+    const db = await getDb();
     validateJWTSecret();
 
     // Generate token payload
@@ -235,9 +241,7 @@ export async function createSession(
  * @returns True if session is valid
  */
 export async function validateSession(token: string): Promise<boolean> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+    const db = await getDb();
 
     // Verify token signature and expiration
     const verifyResult = verifyToken(token);
@@ -269,10 +273,7 @@ export async function validateSession(token: string): Promise<boolean> {
  * @returns True if session was revoked
  */
 export async function revokeSession(token: string): Promise<boolean> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
-
+    const db = await getDb();
     const tokenHash = hashToken(token);
 
     const _result = await db
@@ -288,9 +289,7 @@ export async function revokeSession(token: string): Promise<boolean> {
  * @returns Number of sessions revoked
  */
 export async function revokeAllUserSessions(_userId: string): Promise<number> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+    const db = await getDb();
 
     const _result = await db
         .delete(sessions)
@@ -309,9 +308,7 @@ export async function refreshToken(
     oldToken: string,
     rememberMe: boolean = false
 ): Promise<TokenResult | null> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+    const db = await getDb();
 
     // Verify old token
     const verifyResult = verifyToken(oldToken);
@@ -359,9 +356,7 @@ export async function getUserSessions(_userId: string): Promise<
         expiresAt: Date;
     }>
 > {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+    const db = await getDb();
 
     const userSessions = await db
         .select({
@@ -392,9 +387,7 @@ export async function revokeSessionById(
     sessionId: string,
     userId: string
 ): Promise<boolean> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+    const db = await getDb();
 
     const _result = await db
         .delete(sessions)
@@ -413,9 +406,7 @@ export async function revokeSessionById(
  * @returns Number of sessions cleaned up
  */
 export async function cleanupExpiredSessions(): Promise<number> {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+    const db = await getDb();
 
     const now = new Date();
     const _result = await db
@@ -460,14 +451,14 @@ export const COOKIE_CONFIG = {
     options: {
         httpOnly: true, // Prevents JavaScript access
         secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-        sameSite: 'lax' as const, // CSRF protection
+        sameSite: 'strict' as const, // CSRF protection - strict mode
         path: '/',
         maxAge: 24 * 60 * 60, // 24 hours in seconds
     },
     rememberMeOptions: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax' as const,
+        sameSite: 'strict' as const, // CSRF protection - strict mode
         path: '/',
         maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
     },
@@ -507,7 +498,7 @@ export function setAuthCookie(token: string, rememberMe: boolean = false): strin
  * @returns Cookie string for Set-Cookie header
  */
 export function clearAuthCookie(): string {
-    return `${COOKIE_CONFIG.name}=; Path=/; Max-Age=0; HttpOnly; SameSite=lax`;
+    return `${COOKIE_CONFIG.name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict`;
 }
 
 /**

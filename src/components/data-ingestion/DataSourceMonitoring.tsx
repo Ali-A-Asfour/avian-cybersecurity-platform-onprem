@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api-client';
 
 interface DataSource {
   id: string;
@@ -44,12 +45,9 @@ export function DataSourceMonitoring({ dataSources }: DataSourceMonitoringProps)
       
       // Fetch metrics for each data source
       const metricsPromises = dataSources.map(async (source) => {
-        const response = await fetch(`/api/data-sources/${source.id}/metrics`);
-        if (response.ok) {
-          const data = await response.json();
-          return { [source.id]: data.metrics };
-        }
-        return { [source.id]: null };
+        const response = await api.get(`/api/data-sources/${source.id}/metrics`);
+        const data = await response.json();
+        return { [source.id]: data.metrics || null };
       });
 
       const metricsResults = await Promise.all(metricsPromises);
@@ -57,11 +55,9 @@ export function DataSourceMonitoring({ dataSources }: DataSourceMonitoringProps)
       setMetrics(metricsData);
 
       // Fetch alerts
-      const alertsResponse = await fetch('/api/data-sources/alerts');
-      if (alertsResponse.ok) {
-        const alertsData = await alertsResponse.json();
-        setAlerts(alertsData.alerts || []);
-      }
+      const alertsResponse = await api.get('/api/data-sources/alerts');
+      const alertsData = await alertsResponse.json();
+      setAlerts(alertsData.alerts || []);
     } catch (error) {
       console.error('Failed to fetch monitoring data:', error);
     } finally {

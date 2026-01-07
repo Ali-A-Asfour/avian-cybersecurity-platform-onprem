@@ -24,11 +24,9 @@ import { FirewallEncryption } from '@/lib/firewall-encryption';
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Check database connection
         if (!db) {
             return NextResponse.json(
@@ -75,7 +73,7 @@ export async function GET(
             );
         }
 
-        const deviceId = id;
+        const deviceId = params.id;
 
         // Validate UUID format
         const uuidRegex =
@@ -248,11 +246,9 @@ export async function GET(
  */
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Check database connection
         if (!db) {
             return NextResponse.json(
@@ -313,7 +309,7 @@ export async function PUT(
             );
         }
 
-        const deviceId = id;
+        const deviceId = params.id;
 
         // Validate UUID format
         const uuidRegex =
@@ -334,8 +330,6 @@ export async function PUT(
         // Parse request body
         let body: UpdateDeviceRequest;
         try {
-    // Await params in Next.js 16
-    const { id } = await params;
             body = await request.json();
         } catch (error) {
             return NextResponse.json(
@@ -608,8 +602,6 @@ export async function PUT(
         // Encrypt API password if provided
         if (body.apiPassword) {
             try {
-    // Await params in Next.js 16
-    const { id } = await params;
                 updateData.apiPasswordEncrypted = await FirewallEncryption.encryptPassword(
                     body.apiPassword
                 );
@@ -700,11 +692,9 @@ export async function PUT(
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-    // Await params in Next.js 16
-    const { id } = await params;
         // Check database connection
         if (!db) {
             return NextResponse.json(
@@ -765,7 +755,7 @@ export async function DELETE(
             );
         }
 
-        const deviceId = id;
+        const deviceId = params.id;
 
         // Validate UUID format
         const uuidRegex =

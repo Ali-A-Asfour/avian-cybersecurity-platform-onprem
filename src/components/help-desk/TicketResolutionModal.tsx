@@ -95,7 +95,7 @@ export function TicketResolutionModal({ isOpen, onClose, ticket, onResolve }: Ti
                         {ticket.description}
                     </p>
                     <div className="flex items-center space-x-4 mt-2 text-xs text-gray-400">
-                        <span>Requester: {ticket.requester}</span>
+                        <span>Requester: {typeof ticket.requester === 'string' ? ticket.requester : ticket.requester?.email || 'Unknown'}</span>
                         <span>Priority: {ticket.priority}</span>
                         <span>Severity: {ticket.severity}</span>
                     </div>

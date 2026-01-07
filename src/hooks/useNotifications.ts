@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { Notification } from '@/types';
 import { useToast } from '@/components/notifications';
+import { api } from '@/lib/api-client';
 
 interface UseNotificationsOptions {
   enableRealTime?: boolean;
@@ -29,7 +30,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     setError(null);
 
     try {
-      const response = await fetch(`/api/notifications?limit=${limit}`);
+      const response = await api.get(`/api/notifications?limit=${limit}`);
       const data = await response.json();
 
       if (data.success) {
@@ -48,7 +49,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Fetch unread count
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch('/api/notifications/unread-count');
+      const response = await api.get('/api/notifications/unread-count');
       const data = await response.json();
 
       if (data.success) {
@@ -62,13 +63,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      const response = await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ notification_id: notificationId }),
-      });
+      const response = await api.post('/api/notifications/mark-read', { notification_id: notificationId });
 
       if (response.ok) {
         setNotifications(prev =>
@@ -95,13 +90,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (unreadIds.length === 0) return true;
 
     try {
-      const response = await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ notification_ids: unreadIds }),
-      });
+      const response = await api.post('/api/notifications/mark-read', { notification_ids: unreadIds });
 
       if (response.ok) {
         setNotifications(prev =>

@@ -7,6 +7,7 @@
 
 import { HelpDeskRetryManager, HelpDeskErrors, HelpDeskValidator } from './error-handling';
 import { Ticket, User } from '@/types';
+import { api } from '@/lib/api-client';
 
 export interface NotificationConfig {
     smtpHost: string;
@@ -207,18 +208,12 @@ export class NotificationService {
         // In a real implementation, this would use a proper email service
         // For now, we'll simulate the email sending process
         try {
-            const response = await fetch('/api/notifications/email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    to,
-                    from: `${this.config.fromName} <${this.config.fromEmail}>`,
-                    subject: template.subject,
-                    html: template.htmlBody,
-                    text: template.textBody,
-                }),
+            const response = await api.post('/api/notifications/email', {
+                to,
+                from: `${this.config.fromName} <${this.config.fromEmail}>`,
+                subject: template.subject,
+                html: template.htmlBody,
+                text: template.textBody,
             });
 
             if (!response.ok) {
@@ -265,10 +260,9 @@ export class NotificationService {
 
         try {
             // Perform a lightweight health check
-            const response = await fetch('/api/notifications/health', {
-                method: 'GET',
-                timeout: 5000, // 5 second timeout
-            } as any);
+            const response = await api.get('/api/notifications/health', {
+                signal: AbortSignal.timeout(5000), // 5 second timeout
+            });
 
             this.isServiceAvailable = response.ok;
             this.lastServiceCheck = now;

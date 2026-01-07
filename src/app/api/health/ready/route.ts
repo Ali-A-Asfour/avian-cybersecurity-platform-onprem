@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { db } from '@/lib/database';
-import { redisClient } from '@/lib/redis';
+import { getDb } from '@/lib/database';
+import { getRedisClient } from '@/lib/redis';
 
 interface ReadinessCheck {
   ready: boolean;
@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Check database connection
+    const db = await getDb();
     await db.execute('SELECT 1');
     readinessCheck.checks.database = true;
 
@@ -37,7 +38,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Check Redis connection
-    await redisClient.ping();
+    const redis = await getRedisClient();
+    await redis.ping();
     readinessCheck.checks.redis = true;
 
   } catch (error) {

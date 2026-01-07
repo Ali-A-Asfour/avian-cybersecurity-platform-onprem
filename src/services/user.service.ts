@@ -2,7 +2,7 @@ import { eq, and, desc, count } from 'drizzle-orm';
 // import { db } from '../lib/database';
 import { users, tenants, auditLogs } from '../../database/schemas/main';
 import { AuthService, RBACService } from '../lib/auth';
-import { SessionService } from '../lib/redis';
+import { SessionService } from '../lib/session-service-compat';
 import { User, UserRole, AuditLog, PaginationParams } from '../types';
 
 export interface CreateUserRequest {
@@ -66,7 +66,7 @@ export class UserService {
     }
 
     // Verify tenant exists
-    const _tenant = await db
+    const tenant = await db
       .select()
       .from(tenants)
       .where(eq(tenants.id, data.tenant_id))
@@ -133,7 +133,7 @@ export class UserService {
     requesterRole: UserRole,
     requesterTenantId: string
   ): Promise<Omit<User, 'password_hash' | 'mfa_secret'> | null> {
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -163,7 +163,7 @@ export class UserService {
    * Get user by email and tenant
    */
   static async getUserByEmail(email: string, tenantId: string): Promise<User | null> {
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(and(eq(users.email, email), eq(users.tenant_id, tenantId)))
@@ -269,7 +269,7 @@ export class UserService {
       throw new Error('User not found');
     }
 
-    const _user = existingUser[0];
+    const user = existingUser[0];
 
     // Check permissions
     if (!RBACService.canAccessTenant(updaterTenantId, user.tenant_id, updaterRole)) {
@@ -339,7 +339,7 @@ export class UserService {
       throw new Error('User not found');
     }
 
-    const _user = existingUser[0];
+    const user = existingUser[0];
 
     // Check permissions (users can change their own password, or admins can change others)
     const canChange = 
@@ -407,7 +407,7 @@ export class UserService {
       throw new Error('User not found');
     }
 
-    const _user = existingUser[0];
+    const user = existingUser[0];
 
     // Check permissions
     if (!RBACService.canManageUser(deleterRole, user.role as UserRole, deleterTenantId === user.tenant_id)) {
@@ -449,8 +449,8 @@ export class UserService {
   /**
    * Setup MFA for user
    */
-  static async setupMFA(_userId: string): Promise<{ secret: string; qr_code_url: string }> {
-    const _user = await db
+  static async setupMFA(userId: string): Promise<{ secret: string; qr_code_url: string }> {
+    const user = await db
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -484,7 +484,7 @@ export class UserService {
    * Enable MFA for user (after verification)
    */
   static async enableMFA(userId: string, verificationCode: string): Promise<void> {
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -527,8 +527,8 @@ export class UserService {
   /**
    * Disable MFA for user
    */
-  static async disableMFA(_userId: string): Promise<void> {
-    const _user = await db
+  static async disableMFA(userId: string): Promise<void> {
+    const user = await db
       .select()
       .from(users)
       .where(eq(users.id, userId))
@@ -585,7 +585,7 @@ export class UserService {
    * Get user by email (simplified version for workflow service)
    */
   static async getUserByEmailSimple(tenantId: string, email: string): Promise<User | null> {
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(and(eq(users.email, email), eq(users.tenant_id, tenantId)))
@@ -602,7 +602,7 @@ export class UserService {
    * Get user by ID (simplified version for workflow service)
    */
   static async getUserByIdSimple(tenantId: string, userId: string): Promise<User | null> {
-    const _user = await db
+    const user = await db
       .select()
       .from(users)
       .where(and(eq(users.id, userId), eq(users.tenant_id, tenantId)))

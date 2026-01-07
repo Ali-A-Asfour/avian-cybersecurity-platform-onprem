@@ -346,12 +346,10 @@ export const incidentAlertLinks = pgTable(
         alertIdx: index('incident_alert_links_alert_idx').on(table.alertId),
         primaryIdx: index('incident_alert_links_primary_idx').on(table.isPrimary),
 
-        // Note: Unique constraint for one primary alert per incident
-        // This constraint is handled at the application level due to Drizzle limitations
-        onePrimaryPerIncident: unique('incident_alert_links_one_primary_per_incident').on(
-            table.incidentId,
-            table.isPrimary
-        ),
+        // Note: Partial unique constraint for one primary alert per incident
+        // This will need to be created manually with a migration:
+        // CREATE UNIQUE INDEX incident_alert_links_one_primary_per_incident 
+        // ON incident_alert_links (incident_id) WHERE is_primary = true;
     })
 );
 
@@ -388,11 +386,10 @@ export const playbookClassificationLinks = pgTable(
             table.playbookStatus
         ),
 
-        // Note: Unique constraint for one active primary playbook per classification
-        // This constraint is handled at the application level due to Drizzle limitations
-        oneActivePrimaryPerClassification: unique(
-            'playbook_classification_links_one_active_primary_per_classification'
-        ).on(table.classification, table.isPrimary, table.playbookStatus),
+        // Note: Partial unique constraint for one active primary playbook per classification
+        // This will need to be created manually with a migration:
+        // CREATE UNIQUE INDEX playbook_classification_links_one_active_primary_per_classification
+        // ON playbook_classification_links (classification) WHERE is_primary = true AND playbook_status = 'active';
     })
 );
 

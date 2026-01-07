@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 function ResetPasswordForm() {
     const router = useRouter();
@@ -29,7 +30,7 @@ function ResetPasswordForm() {
             }
 
             try {
-                const response = await fetch(`/api/auth/reset-password?token=${token}`);
+                const response = await api.get(`/api/auth/reset-password?token=${token}`);
                 const data = await response.json();
 
                 if (data.valid) {
@@ -37,7 +38,7 @@ function ResetPasswordForm() {
                 } else {
                     setError(data.error || 'Invalid or expired reset token');
                 }
-            } catch (error) {
+            } catch {
                 setError('Failed to validate reset token');
             } finally {
                 setValidating(false);
@@ -67,16 +68,10 @@ function ResetPasswordForm() {
         }
 
         try {
-            const response = await fetch('/api/auth/reset-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token,
-                    newPassword: formData.newPassword,
-                    confirmPassword: formData.confirmPassword,
-                }),
+            const response = await api.post('/api/auth/reset-password', {
+                token,
+                newPassword: formData.newPassword,
+                confirmPassword: formData.confirmPassword,
             });
 
             const data = await response.json();
@@ -95,7 +90,7 @@ function ResetPasswordForm() {
             setTimeout(() => {
                 router.push('/login');
             }, 3000);
-        } catch (error) {
+        } catch {
             setError('An error occurred. Please try again.');
             setLoading(false);
         }

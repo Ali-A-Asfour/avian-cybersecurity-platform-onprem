@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth as useAuthContext } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -12,6 +14,7 @@ import { TenantAdminQueue } from '@/components/help-desk/TenantAdminQueue';
 import { KnowledgeBaseSearch } from '@/components/help-desk/KnowledgeBaseSearch';
 import { useAuth } from '@/hooks/useAuth';
 import { initializeDemoUser } from '@/lib/demo-auth';
+import { api } from '@/lib/api-client';
 import {
     Users,
     User,
@@ -45,11 +48,19 @@ interface QueueMetrics {
 }
 
 export default function HelpDeskPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authContextLoading } = useAuthContext();
     const { user: authUser, loading: authLoading } = useAuth();
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<QueueMetrics | null>(null);
     const [metricsLoading, setMetricsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('unassigned');
+
+    useEffect(() => {
+        if (!authContextLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authContextLoading, isAuthenticated, router]);
 
     // Initialize demo user if no user is authenticated
     useEffect(() => {
@@ -118,12 +129,7 @@ export default function HelpDeskPage() {
                 setMetricsLoading(true);
                 console.log('Fetching metrics from /api/help-desk/queue/metrics');
 
-                const response = await fetch('/api/help-desk/queue/metrics', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
+                const response = await api.get('/api/help-desk/queue/metrics');
 
                 console.log('Metrics response status:', response.status);
 
@@ -154,7 +160,7 @@ export default function HelpDeskPage() {
             if (user && tenant) {
                 const fetchMetrics = async () => {
                     try {
-                        const response = await fetch('/api/help-desk/queue/metrics');
+                        const response = await api.get('/api/help-desk/queue/metrics');
                         if (response.ok) {
                             const data = await response.json();
                             setMetrics(data.data);

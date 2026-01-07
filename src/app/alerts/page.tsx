@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AlertList } from '@/components/alerts/AlertList';
 import { AlertFilters } from '@/components/alerts/AlertFilters';
@@ -17,13 +18,24 @@ export const dynamic = 'force-dynamic';
 
 export default function AlertsPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentUser } = useDemoContext();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
     // Use demo context to preserve current user role
-    setLoading(false);
-  }, [router]);
+    if (isAuthenticated) {
+      setLoading(false);
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   if (loading) {
     return (

@@ -105,7 +105,7 @@ export class WebhookSecurity {
 
       // Simple constant-time comparison
       if (signature.length !== expectedSignature.length) return false;
-      const _result = 0;
+      let result = 0;
       for (let i = 0; i < signature.length; i++) {
         result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
       }
@@ -286,7 +286,7 @@ export class SiemAlertProcessor implements WebhookProcessor {
         },
       };
 
-      const _result = await AlertService.createAlert(validatedPayload.tenant_id, alertData);
+      const result = await AlertService.createAlert(validatedPayload.tenant_id, alertData);
 
       if (!result.success) {
         return { success: false, error: result.error?.message || 'Failed to create alert' };
@@ -337,7 +337,7 @@ export class ThreatLakeProcessor implements WebhookProcessor {
         },
       };
 
-      const _result = await AlertService.createAlert(validatedPayload.tenant_id, alertData);
+      const result = await AlertService.createAlert(validatedPayload.tenant_id, alertData);
 
       if (!result.success) {
         return { success: false, error: result.error?.message || 'Failed to create alert' };
@@ -493,7 +493,7 @@ export class WebhookDelivery {
         },
       };
 
-      const _result = await this.deliver(config, retryPayload);
+      const result = await this.deliver(config, retryPayload);
 
       if (result.success) {
         return { success: true, attempts };

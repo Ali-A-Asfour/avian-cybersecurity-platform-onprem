@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { DataTable } from '@/components/ui/DataTable';
 import { Input } from '@/components/ui/Input';
+import { api } from '@/lib/api-client';
 
 interface SecurityEvent {
   id: string;
@@ -64,12 +65,9 @@ export function SecurityEventSearch() {
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
 
-      const response = await fetch(`/api/threat-lake/events/search?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setEvents(data.events || []);
-      }
-    } catch (error) {
+      const data = await api.get(`/api/threat-lake/events/search?${params}`);
+      setEvents(data.events || []);
+    } catch {
       console.error('Failed to search events:', error);
     } finally {
       setLoading(false);
@@ -115,19 +113,16 @@ export function SecurityEventSearch() {
       if (filters.query) params.append('q', filters.query);
       params.append('format', 'csv');
 
-      const response = await fetch(`/api/threat-lake/events/export?${params}`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `security-events-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-    } catch (error) {
+      const blob = await api.getBlob(`/api/threat-lake/events/export?${params}`);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `security-events-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
       console.error('Failed to export events:', error);
     }
   };

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { AnalysisType } from '@/types';
+import { api } from '@/lib/api-client';
 
 interface DocumentUploadProps {
   controlId?: string;
@@ -27,17 +28,17 @@ export function DocumentUpload({
   const [analyzing, setAnalyzing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const handleDragOver = useCallback((_e: unknown) => {
+  const handleDragOver = useCallback((e: unknown) => {
     e.preventDefault();
     setDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((_e: unknown) => {
+  const handleDragLeave = useCallback((e: unknown) => {
     e.preventDefault();
     setDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((_e: unknown) => {
+  const handleDrop = useCallback((e: unknown) => {
     e.preventDefault();
     setDragOver(false);
     
@@ -47,7 +48,7 @@ export function DocumentUpload({
     }
   }, []);
 
-  const handleFileSelect = (_e: unknown) => {
+  const handleFileSelect = (e: unknown) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
@@ -67,12 +68,9 @@ export function DocumentUpload({
       if (controlId) formData.append('controlId', controlId);
       if (frameworkId) formData.append('frameworkId', frameworkId);
 
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await api.post('/api/documents/upload', formData, true);
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         const documentId = result.data.id;
@@ -89,7 +87,7 @@ export function DocumentUpload({
       } else {
         console.error('Upload failed:', result.error);
       }
-    } catch (error) {
+    } catch {
       console.error('Upload error:', error);
     } finally {
       setUploading(false);
@@ -99,33 +97,27 @@ export function DocumentUpload({
   const handleAnalysis = async (documentId: string) => {
     setAnalyzing(true);
     try {
-      const response = await fetch(`/api/documents/${documentId}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await api.post(`/api/documents/${documentId}/analyze`, {
+        analysis_type: analysisType,
+        framework_id: frameworkId,
+        control_id: controlId,
+        processing_options: {
+          enable_ocr: true,
+          enable_nlp: true,
+          confidence_threshold: 70,
+          extract_tables: true,
+          extract_images: false,
         },
-        body: JSON.stringify({
-          analysis_type: analysisType,
-          framework_id: frameworkId,
-          control_id: controlId,
-          processing_options: {
-            enable_ocr: true,
-            enable_nlp: true,
-            confidence_threshold: 70,
-            extract_tables: true,
-            extract_images: false,
-          },
-        }),
       });
 
-      const _result = await response.json();
+      const result = await response.json();
 
       if (result.success) {
         onAnalysisComplete?.(result.data.id);
       } else {
         console.error('Analysis failed:', result.error);
       }
-    } catch (error) {
+    } catch {
       console.error('Analysis error:', error);
     } finally {
       setAnalyzing(false);

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ComplianceFramework, ComplianceControl, ComplianceStatus } from '../../types';
 import { ComplianceGauge } from '../dashboard/ComplianceGauge';
 import { HybridComplianceScoring } from './HybridComplianceScoring';
+import { api } from '@/lib/api-client';
 
 interface ComplianceDashboardData {
   frameworks: ComplianceFramework[];
@@ -24,10 +25,10 @@ export function ComplianceDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('/api/compliance/dashboard');
+      const response = await api.get('/api/compliance/dashboard');
       
       if (response.ok) {
-        const result = await response.json();
+        const result = response;
         if (result.success) {
           setData(result.data);
         }
@@ -155,7 +156,7 @@ export function ComplianceDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
-                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{data.controls_by_status[ComplianceStatus.COMPLETED]}</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{data.controls_by_status?.[ComplianceStatus.COMPLETED] || 0}</p>
                 </div>
               </div>
             </div>
@@ -171,7 +172,7 @@ export function ComplianceDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</p>
-                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{data.controls_by_status[ComplianceStatus.IN_PROGRESS]}</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{data.controls_by_status?.[ComplianceStatus.IN_PROGRESS] || 0}</p>
                 </div>
               </div>
             </div>
@@ -187,7 +188,7 @@ export function ComplianceDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Non-Compliant</p>
-                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{data.controls_by_status[ComplianceStatus.NON_COMPLIANT]}</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{data.controls_by_status?.[ComplianceStatus.NON_COMPLIANT] || 0}</p>
                 </div>
               </div>
             </div>
@@ -203,10 +204,10 @@ export function ComplianceDashboard() {
                 <ComplianceGauge data={{
                   overall_score: data.compliance_score,
                   frameworks_count: data.frameworks.length,
-                  controls_completed: data.controls_by_status.completed || 0,
-                  controls_total: Object.values(data.controls_by_status).reduce((a, b) => a + b, 0),
-                  controls_in_progress: data.controls_by_status.in_progress || 0,
-                  controls_not_started: data.controls_by_status.not_started || 0,
+                  controls_completed: data.controls_by_status?.[ComplianceStatus.COMPLETED] || 0,
+                  controls_total: Object.values(data.controls_by_status || {}).reduce((a, b) => a + b, 0),
+                  controls_in_progress: data.controls_by_status?.[ComplianceStatus.IN_PROGRESS] || 0,
+                  controls_not_started: data.controls_by_status?.[ComplianceStatus.NOT_STARTED] || 0,
                   frameworks: data.frameworks.map(f => ({
                     id: f.id,
                     name: f.name,
@@ -248,7 +249,7 @@ export function ComplianceDashboard() {
                 Recent Control Updates
               </h3>
               <div className="space-y-4">
-                {data.recent_controls.length > 0 ? (
+                {data.recent_controls?.length > 0 ? (
                   data.recent_controls.map((control) => (
                     <div key={control.id} className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
@@ -281,7 +282,7 @@ export function ComplianceDashboard() {
                 Upcoming Reviews
               </h3>
               <div className="space-y-4">
-                {data.upcoming_reviews.length > 0 ? (
+                {data.upcoming_reviews?.length > 0 ? (
                   data.upcoming_reviews.map((control) => (
                     <div key={control.id} className="flex items-start space-x-3">
                       <div className="flex-shrink-0">

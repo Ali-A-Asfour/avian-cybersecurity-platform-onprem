@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AllAlertsTab } from '@/components/alerts-incidents/AllAlertsTab';
 import { MyAlertsTab } from '@/components/alerts-incidents/MyAlertsTab';
 import { MySecurityIncidentsTab } from '@/components/alerts-incidents/MySecurityIncidentsTab';
 import { AllSecurityIncidentsTab } from '@/components/alerts-incidents/AllSecurityIncidentsTab';
 import { PlaybooksTab } from '@/components/alerts-incidents/PlaybooksTab';
+import { useAuth } from '@/contexts/AuthContext';
 
 type TabType = 'all-alerts' | 'my-alerts' | 'my-incidents' | 'all-incidents' | 'playbooks';
 
@@ -21,7 +23,19 @@ type TabType = 'all-alerts' | 'my-alerts' | 'my-incidents' | 'all-incidents' | '
  * - Playbooks: Investigation playbooks
  */
 export default function AlertsIncidentsDemoPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<TabType>('all-alerts');
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     // Mock user for demo
     const mockUser = {

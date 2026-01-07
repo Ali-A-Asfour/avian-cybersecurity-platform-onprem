@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create tenant
-    const _tenant = await TenantService.createTenant(
+    const tenant = await TenantService.createTenant(
       {
         name,
         domain,

@@ -41,6 +41,12 @@ export default function LoginPage() {
       // Success - store user info and redirect based on role
       if (data.user) {
         localStorage.setItem('auth-user', JSON.stringify(data.user));
+        // Store the JWT token for API requests
+        if (data.token) {
+          localStorage.setItem('auth-token', data.token);
+        }
+        // Store session indicator (the actual session is in httpOnly cookie)
+        localStorage.setItem('session-id', 'active');
 
         // Redirect based on user role
         if (data.user.role === 'super_admin') {
@@ -55,7 +61,7 @@ export default function LoginPage() {
         // Fallback to dashboard
         window.location.href = '/dashboard';
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.');
       setLoading(false);
     }

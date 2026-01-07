@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -11,21 +11,39 @@ interface RouteParams {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id: _id } = await params;
+  const { id: agentId } = await params;
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
-    const _agentId = params.id;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Get agent status
     const agent = await agentService.getAgentStatus(agentId);
@@ -42,7 +60,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verify agent belongs to the tenant
-    if (agent.tenant_id !== tenant.id) {
+    if (agent.tenant_id !== tenant!.id) {
       const response: ApiResponse = {
         success: false,
         error: {
@@ -60,7 +78,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to get agent', { error, agentId: params.id });
+    logger.error('Failed to get agent', { error, agentId });
     
     const response: ApiResponse = {
       success: false,
@@ -75,21 +93,39 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const { id: _id } = await params;
+  const { id: agentId } = await params;
   try {
     // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    if (!authResult.success || !authResult.user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: authResult.error || 'Authentication required',
+          },
+        },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
-    if (tenantResult instanceof NextResponse) {
-      return tenantResult;
+    if (!tenantResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: tenantResult.error || {
+            code: 'TENANT_ERROR',
+            message: 'Failed to process tenant context',
+          },
+        },
+        { status: 500 }
+      );
     }
 
-    const { user, tenant } = tenantResult;
-    const _agentId = params.id;
+    const user = authResult.user;
+    const { tenant } = tenantResult;
 
     // Only Super Admins and Tenant Admins can update agent configuration
     if (!['super_admin', 'tenant_admin'].includes(user.role)) {
@@ -127,7 +163,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Failed to update agent configuration', { error, agentId: params.id });
+    logger.error('Failed to update agent configuration', { error, agentId });
     
     const response: ApiResponse = {
       success: false,

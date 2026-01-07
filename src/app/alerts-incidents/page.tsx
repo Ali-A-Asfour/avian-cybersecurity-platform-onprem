@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth as useAuthContext } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AllAlertsTab } from '@/components/alerts-incidents/AllAlertsTab';
 import { MyAlertsTab } from '@/components/alerts-incidents/MyAlertsTab';
@@ -9,6 +10,7 @@ import { MySecurityIncidentsTab } from '@/components/alerts-incidents/MySecurity
 import { AllSecurityIncidentsTab } from '@/components/alerts-incidents/AllSecurityIncidentsTab';
 import { PlaybooksTab } from '@/components/alerts-incidents/PlaybooksTab';
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api-client';
 
 type TabType = 'all-alerts' | 'my-alerts' | 'my-incidents' | 'all-incidents' | 'playbooks';
 
@@ -28,11 +30,19 @@ type TabType = 'all-alerts' | 'my-alerts' | 'my-incidents' | 'all-incidents' | '
  * Requirements: 1.1, 3.1, 7.1, 8.1
  */
 export default function AlertsIncidentsPage() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuthContext();
     const [activeTab, setActiveTab] = useState<TabType>('all-alerts');
     const [demoMode, setDemoMode] = useState(false);
     const [demoModeChecked, setDemoModeChecked] = useState(false);
     const { user, loading } = useAuth();
-    const router = useRouter();
+
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
 
     // Redirect tenant admins to dashboard
     useEffect(() => {
@@ -46,7 +56,7 @@ export default function AlertsIncidentsPage() {
     useEffect(() => {
         const checkDemoMode = async () => {
             try {
-                const response = await fetch('/api/alerts-incidents/alerts?queue=all&page=1&limit=1');
+                const response = await api.get('/api/alerts-incidents/alerts?queue=all&page=1&limit=1');
                 if (!response.ok) {
                     // If production API fails, enable demo mode
                     setDemoMode(true);
@@ -72,6 +82,11 @@ export default function AlertsIncidentsPage() {
             }
         }
     }, []);
+
+    // Early return checks after all hooks
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     if (loading || !demoModeChecked) {
         return (

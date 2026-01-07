@@ -8,7 +8,7 @@
  */
 
 import { logger } from '@/lib/logger';
-import { monitoring } from '@/lib/monitoring';
+import { monitoring, MetricCategory } from '@/lib/monitoring';
 import { db } from '@/lib/database';
 import { and, eq, gte, lte, desc, asc, sql, count, exists } from 'drizzle-orm';
 import { EnhancedDateRange } from '@/types/reports';
@@ -189,8 +189,8 @@ export class DatabaseQueryOptimizer {
 
             this.recordQueryMetrics(queryId, metrics);
 
-            monitoring.recordMetric('db_query_duration_ms', executionTime, { queryType: 'alert_history' });
-            monitoring.recordMetric('db_rows_returned', combinedResults.length, { queryType: 'alert_history' });
+            monitoring.timer('db.query_duration', MetricCategory.DATABASE, executionTime, { queryType: 'alert_history' });
+            monitoring.gauge('db.rows_returned', MetricCategory.DATABASE, combinedResults.length, { queryType: 'alert_history' });
 
             logger.debug('Optimized alert history query completed', {
                 tenantId,
@@ -326,8 +326,8 @@ export class DatabaseQueryOptimizer {
 
             this.recordQueryMetrics(queryId, metrics);
 
-            monitoring.recordMetric('db_query_duration_ms', executionTime, { queryType: 'metrics_history' });
-            monitoring.recordMetric('db_rows_returned', results.length, { queryType: 'metrics_history' });
+            monitoring.timer('db.query_duration', MetricCategory.DATABASE, executionTime, { queryType: 'metrics_history' });
+            monitoring.gauge('db.rows_returned', MetricCategory.DATABASE, results.length, { queryType: 'metrics_history' });
 
             logger.debug('Optimized metrics history query completed', {
                 tenantId,
@@ -477,8 +477,8 @@ export class DatabaseQueryOptimizer {
 
             this.recordQueryMetrics(queryId, metrics);
 
-            monitoring.recordMetric('db_query_duration_ms', executionTime, { queryType: 'vulnerability_history' });
-            monitoring.recordMetric('db_rows_returned', results.length, { queryType: 'vulnerability_history' });
+            monitoring.timer('db.query_duration', MetricCategory.DATABASE, executionTime, { queryType: 'vulnerability_history' });
+            monitoring.gauge('db.rows_returned', MetricCategory.DATABASE, results.length, { queryType: 'vulnerability_history' });
 
             logger.debug('Optimized vulnerability history query completed', {
                 tenantId,
@@ -588,9 +588,9 @@ export class DatabaseQueryOptimizer {
         this.queryMetrics.set(queryId, existingMetrics);
 
         // Record to monitoring system
-        monitoring.recordMetric('db_query_execution_time', metrics.executionTime, { queryId });
-        monitoring.recordMetric('db_query_rows_returned', metrics.rowsReturned, { queryId });
-        monitoring.recordMetric('db_query_rows_scanned', metrics.rowsScanned, { queryId });
+        monitoring.timer('db.query_execution_time', MetricCategory.DATABASE, metrics.executionTime, { queryId });
+        monitoring.gauge('db.query_rows_returned', MetricCategory.DATABASE, metrics.rowsReturned, { queryId });
+        monitoring.gauge('db.query_rows_scanned', MetricCategory.DATABASE, metrics.rowsScanned, { queryId });
     }
 
     /**
@@ -912,7 +912,7 @@ export class DatabaseQueryOptimizer {
             // For now, optimized cost is same as original (would need actual optimization logic)
             const optimizedCost = originalCost;
 
-            monitoring.recordMetric('db_query_plan_cost', originalCost, { queryType: 'optimization' });
+            monitoring.gauge('db.query_plan_cost', MetricCategory.DATABASE, originalCost, { queryType: 'optimization' });
 
             logger.debug('Query plan optimization completed', {
                 originalCost,
@@ -1012,7 +1012,7 @@ export class DatabaseQueryOptimizer {
 
             const totalExecutionTime = Date.now() - startTime;
 
-            monitoring.recordMetric('db_batch_optimization_time', totalExecutionTime, {
+            monitoring.timer('db.batch_optimization_time', MetricCategory.DATABASE, totalExecutionTime, {
                 queryCount: queries.length
             });
 
@@ -1146,7 +1146,7 @@ export class DatabaseQueryOptimizer {
                 slowQueries = [];
             }
 
-            monitoring.recordMetric('db_statistics_collected', 1, { tenantId: tenantId || 'all' });
+            monitoring.counter('db.statistics_collected', MetricCategory.DATABASE, 1, { tenantId: tenantId || 'all' });
 
             logger.debug('Database statistics collected', {
                 tenantId,

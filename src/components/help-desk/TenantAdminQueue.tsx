@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Loader2, Settings, Clock, AlertTriangle, ExternalLink, Search, Filter } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 interface TenantAdminQueueProps {
     userRole: UserRole;
@@ -59,7 +60,7 @@ export function TenantAdminQueue({ userRole, userId, tenantId }: TenantAdminQueu
             if (filters.assignee) params.append('assignee', filters.assignee);
             if (filters.requester) params.append('requester', filters.requester);
 
-            const response = await fetch(`/api/help-desk/queue/tenant-admin?${params}`);
+            const response = await api.get(`/api/help-desk/queue/tenant-admin?${params}`);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -297,9 +298,9 @@ export function TenantAdminQueue({ userRole, userId, tenantId }: TenantAdminQueu
                                                 </p>
 
                                                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                    <span>Requester: {ticket.requester}</span>
+                                                    <span>Requester: {typeof ticket.requester === 'string' ? ticket.requester : ticket.requester?.email || 'Unknown'}</span>
                                                     {ticket.assignee && (
-                                                        <span>Assigned to: {ticket.assignee}</span>
+                                                        <span>Assigned to: {typeof ticket.assignee === 'string' ? ticket.assignee : ticket.assignee?.email || 'Unknown'}</span>
                                                     )}
                                                     <span className="flex items-center gap-1">
                                                         <Clock className="h-4 w-4" />

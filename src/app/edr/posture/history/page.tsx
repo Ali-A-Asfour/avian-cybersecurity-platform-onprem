@@ -1,6 +1,24 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { PostureHistoryPage } from '@/components/edr/PostureHistoryPage';
 
 export default function PostureHistory() {
+    const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
+
     return (
         <div className="container mx-auto p-6">
             <div className="mb-6">

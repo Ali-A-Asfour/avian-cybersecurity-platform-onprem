@@ -73,7 +73,7 @@ export class CryptoUtils {
       const { hash: computedHash } = await this.hashSensitiveData(data, salt);
       // Simple constant-time comparison
       if (hash.length !== computedHash.length) return false;
-      const _result = 0;
+      let result = 0;
       for (let i = 0; i < hash.length; i++) {
         result |= hash.charCodeAt(i) ^ computedHash.charCodeAt(i);
       }
@@ -191,7 +191,7 @@ export class CryptoUtils {
       const expectedSignature = await this.generateHMAC(data, secret, algorithm);
       // Simple constant-time comparison
       if (signature.length !== expectedSignature.length) return false;
-      const _result = 0;
+      let result = 0;
       for (let i = 0; i < signature.length; i++) {
         result |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
       }

@@ -6,35 +6,55 @@
  */
 
 interface EnvironmentConfig {
-  aws: {
-    region: string;
-    cognitoRegion: string;
-    cognitoUserPoolId: string;
-    cognitoClientId: string;
-  };
   database: {
-    secretName: string;
+    url: string;
   };
-  dynamodb: {
-    sessionsTable: string;
+  redis: {
+    url: string;
   };
-  s3: {
-    firewallConfigBucket: string;
-    reportsBucket: string;
-    legacyBucket: string;
+  jwt: {
+    secret: string;
+    refreshSecret: string;
+    expiresIn: string;
+    refreshExpiresIn: string;
+  };
+  email: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    password: string;
+    from: string;
   };
   app: {
     nodeEnv: string;
-    disableAuth: boolean;
+    port: number;
+    baseUrl: string;
+  };
+  security: {
+    passwordMinLength: number;
+    passwordRequireUppercase: boolean;
+    passwordRequireLowercase: boolean;
+    passwordRequireNumbers: boolean;
+    passwordRequireSpecialChars: boolean;
+    passwordHistoryCount: number;
+    maxLoginAttempts: number;
+    lockoutDurationMinutes: number;
+    sessionTimeoutMinutes: number;
+    mfaRequired: boolean;
+  };
+  rateLimit: {
+    windowMs: number;
+    maxRequests: number;
   };
 }
 
 function validateEnvironment(): EnvironmentConfig {
   const requiredVars = [
-    'AWS_REGION',
-    'DYNAMODB_SESSIONS_TABLE',
-    'S3_FIREWALL_CONFIG_BUCKET',
-    'S3_REPORTS_BUCKET',
+    'DATABASE_URL',
+    'REDIS_URL',
+    'JWT_SECRET',
+    'JWT_REFRESH_SECRET',
   ];
 
   const missing = requiredVars.filter(varName => !process.env[varName]);
@@ -44,26 +64,46 @@ function validateEnvironment(): EnvironmentConfig {
   }
 
   return {
-    aws: {
-      region: process.env.AWS_REGION!,
-      cognitoRegion: process.env.NEXT_PUBLIC_COGNITO_REGION || process.env.AWS_REGION!,
-      cognitoUserPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
-      cognitoClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
-    },
     database: {
-      secretName: process.env.DATABASE_SECRET_NAME || `avian-database-credentials-${process.env.NODE_ENV || 'dev'}`,
+      url: process.env.DATABASE_URL!,
     },
-    dynamodb: {
-      sessionsTable: process.env.DYNAMODB_SESSIONS_TABLE!,
+    redis: {
+      url: process.env.REDIS_URL!,
     },
-    s3: {
-      firewallConfigBucket: process.env.S3_FIREWALL_CONFIG_BUCKET!,
-      reportsBucket: process.env.S3_REPORTS_BUCKET!,
-      legacyBucket: process.env.AWS_S3_BUCKET || process.env.S3_REPORTS_BUCKET!,
+    jwt: {
+      secret: process.env.JWT_SECRET!,
+      refreshSecret: process.env.JWT_REFRESH_SECRET!,
+      expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+      refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    },
+    email: {
+      host: process.env.EMAIL_HOST || 'localhost',
+      port: parseInt(process.env.EMAIL_PORT || '587', 10),
+      secure: process.env.EMAIL_SECURE === 'true',
+      user: process.env.EMAIL_USER || '',
+      password: process.env.EMAIL_PASSWORD || '',
+      from: process.env.EMAIL_FROM || 'noreply@avian-platform.local',
     },
     app: {
       nodeEnv: process.env.NODE_ENV || 'development',
-      disableAuth: process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true',
+      port: parseInt(process.env.PORT || '3000', 10),
+      baseUrl: process.env.BASE_URL || 'http://localhost:3000',
+    },
+    security: {
+      passwordMinLength: parseInt(process.env.PASSWORD_MIN_LENGTH || '12', 10),
+      passwordRequireUppercase: process.env.PASSWORD_REQUIRE_UPPERCASE !== 'false',
+      passwordRequireLowercase: process.env.PASSWORD_REQUIRE_LOWERCASE !== 'false',
+      passwordRequireNumbers: process.env.PASSWORD_REQUIRE_NUMBERS !== 'false',
+      passwordRequireSpecialChars: process.env.PASSWORD_REQUIRE_SPECIAL_CHARS !== 'false',
+      passwordHistoryCount: parseInt(process.env.PASSWORD_HISTORY_COUNT || '5', 10),
+      maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
+      lockoutDurationMinutes: parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10),
+      sessionTimeoutMinutes: parseInt(process.env.SESSION_TIMEOUT_MINUTES || '60', 10),
+      mfaRequired: process.env.MFA_REQUIRED === 'true',
+    },
+    rateLimit: {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
+      maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
     },
   };
 }
@@ -74,4 +114,3 @@ export const config = validateEnvironment();
 // Helper functions for common checks
 export const isProduction = () => config.app.nodeEnv === 'production';
 export const isDevelopment = () => config.app.nodeEnv === 'development';
-export const isAuthDisabled = () => config.app.disableAuth;

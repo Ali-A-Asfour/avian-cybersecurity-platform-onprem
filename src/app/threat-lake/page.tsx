@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import ThreatLakeDashboard from '@/components/threat-lake/ThreatLakeDashboard';
 import ThreatHuntingTools from '@/components/threat-lake/ThreatHuntingTools';
 import CorrelationManagement from '@/components/threat-lake/CorrelationManagement';
@@ -17,16 +18,27 @@ type TabType = 'dashboard' | 'hunting' | 'correlation' | 'intelligence' | 'setti
 
 export default function ThreatLakePage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const { selectedTenant } = useTenant();
 
   useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
     // Use demo context instead of API calls
     setUserRole(UserRole.SECURITY_ANALYST); // Default to security analyst for demo
     setLoading(false);
-  }, [router]);
+  }, []);
+
+  if (authLoading || !isAuthenticated) {
+    return null;
+  }
 
   if (loading) {
     return (

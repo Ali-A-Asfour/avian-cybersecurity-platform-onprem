@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Tenant, UserRole, ApiResponse } from '../../../types';
+import { api } from '@/lib/api-client';
 
 interface TenantUser {
   id: string;
@@ -64,12 +65,7 @@ export default function TenantUsers({ tenant, onUserSelect }: TenantUsersProps) 
         params.append('is_active', state.filters.is_active.toString());
       }
 
-      const response = await fetch(`/api/tenants/${tenant.id}/users?${params}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get(`/api/tenants/${tenant.id}/users?${params}`);
 
       const result: ApiResponse<TenantUser[]> = await response.json();
 
@@ -83,7 +79,7 @@ export default function TenantUsers({ tenant, onUserSelect }: TenantUsersProps) 
         total: result.meta?.total || 0,
         loading: false,
       }));
-    } catch (error) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to fetch users',

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Loader2, User, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 interface MyTicketsQueueProps {
     userRole: UserRole;
@@ -52,7 +53,7 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
                 filters.severity.forEach(severity => params.append('severity', severity));
             }
 
-            const response = await fetch(`/api/help-desk/queue/my-tickets?${params}`);
+            const response = await api.get(`/api/help-desk/queue/my-tickets?${params}`);
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -64,7 +65,7 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
             setPagination(data.data.pagination);
         } catch (err) {
             console.error('Error fetching my tickets:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch tickets');
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoading(false);
         }
@@ -207,7 +208,7 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
                                                 </p>
 
                                                 <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                    <span>Requester: {ticket.requester}</span>
+                                                    <span>Requester: {typeof ticket.requester === 'string' ? ticket.requester : ticket.requester?.email || 'Unknown'}</span>
                                                     <span className="flex items-center gap-1">
                                                         <Clock className="h-4 w-4" />
                                                         {formatTimeAgo(ticket.created_at)}

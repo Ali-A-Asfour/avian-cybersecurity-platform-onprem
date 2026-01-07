@@ -74,7 +74,17 @@ export const HelpDeskValidationSchemas = {
         phoneNumber: z.string()
             .min(1, 'Phone number is required')
             .regex(/^\+?[\d\s\-\(\)]+$/, 'Invalid phone number format')
-            .refine(phone => phone.replace(/\D/g, '').length >= 10, 'Phone number must be at least 10 digits'),
+            .refine(phone => phone.replace(/\D/g, '').length >= 10, 'Phone number must be at least 10 digits')
+            .optional(),
+    }).refine(data => {
+        // If contact method is phone, phone number is required
+        if (data.contactMethod === 'phone' && !data.phoneNumber) {
+            return false;
+        }
+        return true;
+    }, {
+        message: 'Phone number is required when contact method is phone',
+        path: ['phoneNumber']
     }),
 
     // Ticket update validation

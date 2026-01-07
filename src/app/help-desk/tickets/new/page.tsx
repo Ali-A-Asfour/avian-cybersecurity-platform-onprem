@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { TicketCreationForm } from '@/components/help-desk/TicketCreationForm';
 import { TicketConfirmation } from '@/components/help-desk/TicketConfirmation';
 import { HelpDeskErrorBoundaryComponent as ErrorBoundary } from '@/components/help-desk/ErrorBoundary';
 import { ArrowLeft } from 'lucide-react';
+import { api, authenticatedFetch } from '@/lib/api-client';
 
 interface TicketCreationFormData {
     title: string;
@@ -28,9 +30,20 @@ interface CreatedTicket {
 
 export default function NewHelpDeskTicketPage() {
     const router = useRouter();
+    const { isAuthenticated, loading: authLoading } = useAuth();
     const [loading, setLoading] = useState(false);
     const [createdTicket, setCreatedTicket] = useState<CreatedTicket | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
+
+    if (authLoading || !isAuthenticated) {
+        return null;
+    }
 
     const handleSubmit = async (formData: TicketCreationFormData) => {
         setLoading(true);
@@ -47,17 +60,14 @@ export default function NewHelpDeskTicketPage() {
                 phoneNumber: formData.contactMethod === 'phone' ? formData.phoneNumber?.trim() : undefined,
             };
 
+            console.log('Submitting ticket data:', ticketData);
+
             // Submit ticket to API
-            const response = await fetch('/api/tickets', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(ticketData),
-            });
+            const response = await api.post('/api/tickets', ticketData);
 
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error('Ticket creation failed:', errorData);
                 throw new Error(errorData.error?.message || 'Failed to create ticket');
             }
 
@@ -72,7 +82,7 @@ export default function NewHelpDeskTicketPage() {
                         uploadFormData.append(`file${index}`, file);
                     });
 
-                    const uploadResponse = await fetch(`/api/tickets/${ticket.id}/attachments`, {
+                    const uploadResponse = await authenticatedFetch(`/api/tickets/${ticket.id}/attachments`, {
                         method: 'POST',
                         body: uploadFormData,
                     });

@@ -5,6 +5,19 @@ import { TextEncoder, TextDecoder } from 'util'
 // Import fast-check for property-based testing
 import '@fast-check/jest'
 
+// Polyfill setImmediate for Redis client
+if (typeof global.setImmediate === 'undefined') {
+    global.setImmediate = (callback, ...args) => {
+        return setTimeout(callback, 0, ...args)
+    }
+}
+
+if (typeof global.clearImmediate === 'undefined') {
+    global.clearImmediate = (id) => {
+        return clearTimeout(id)
+    }
+}
+
 // Polyfill TextEncoder/TextDecoder for Node.js test environment
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
@@ -43,8 +56,9 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
 }))
 
 // Mock environment variables for tests
-process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test_db'
+process.env.DATABASE_URL = 'postgresql://avian:avian_dev_password@localhost:5432/avian'
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only'
-process.env.NODE_ENV = 'development' // Use 'development' to enable auth bypass for now
-process.env.REDIS_URL = 'redis://localhost:6379'
+process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-key-for-testing-only'
+process.env.NODE_ENV = 'test' // Use 'test' for faster bcrypt rounds
+process.env.REDIS_URL = 'redis://:avian_dev_redis_password@localhost:6379'
 process.env.BYPASS_AUTH = 'true' // Enable auth bypass in tests temporarily for MVP
