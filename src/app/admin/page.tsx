@@ -11,9 +11,6 @@ import { Modal } from '@/components/ui/Modal';
 
 import { TenantForm } from '@/components/admin/tenants/TenantForm';
 import { TenantMetrics } from '@/components/admin/tenants/TenantMetrics';
-import { SystemHealthDashboard } from '@/components/admin/system/SystemHealthDashboard';
-import { AuditLogViewer } from '@/components/admin/audit/AuditLogViewer';
-import { PlatformMetrics } from '@/components/admin/platform/PlatformMetrics';
 import { UserManagement } from '@/components/admin/users/UserManagement';
 import { Tenant, User } from '@/types';
 import { api } from '@/lib/api-client';
@@ -21,7 +18,7 @@ import { api } from '@/lib/api-client';
 export default function AdminPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'users' | 'audit' | 'system'>('overview');
+  const [activeTab, setActiveTab] = useState<'tenants' | 'users'>('tenants');
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,16 +59,16 @@ export default function AdminPage() {
       const tenantsResponse = await api.get('/api/tenants');
       if (tenantsResponse.ok) {
         const tenantsData = await tenantsResponse.json();
-        setTenants(tenantsData.data.tenants || []);
+        setTenants(tenantsData.data || []);
       }
 
       // Load users (cross-tenant for super admin)
       const usersResponse = await api.get('/api/users');
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();
-        setUsers(usersData.data.users || []);
+        setUsers(usersData.data || []);
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to load admin data:', error);
     } finally {
       setLoading(false);
@@ -105,18 +102,47 @@ export default function AdminPage() {
         const error = await response.json();
         alert(error.error?.message || 'Failed to save tenant');
       }
-    } catch {
+    } catch (error) {
       console.error('Failed to save tenant:', error);
       alert('Failed to save tenant');
     }
   };
 
+  const handleDeleteTenant = async (tenant: Tenant) => {
+    // Special handling for ACME Corporation (main demo tenant)
+    if (tenant.id === 'acme-corp') {
+      const confirmed = window.confirm(
+        `⚠️ WARNING: You are about to delete the main demo tenant "${tenant.name}".\n\nThis will remove the primary demo data and may affect the demo experience.\n\nAre you sure you want to proceed?`
+      );
+      if (!confirmed) return;
+    }
+
+    // Confirm deletion
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${tenant.name}"?\n\nThis action cannot be undone and will:\n- Remove the tenant permanently\n- Delete all tenant data\n- Remove access for all users in this tenant`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await api.delete(`/api/tenants/${tenant.id}`);
+
+      if (response.ok) {
+        alert(`Tenant "${tenant.name}" has been successfully deleted.`);
+        loadData(); // Refresh the tenant list
+      } else {
+        const error = await response.json();
+        alert(error.error?.message || 'Failed to delete tenant');
+      }
+    } catch (error) {
+      console.error('Failed to delete tenant:', error);
+      alert('Failed to delete tenant');
+    }
+  };
+
   const tabs = [
-    { id: 'overview', label: 'Platform Overview', icon: '📊' },
     { id: 'tenants', label: 'Tenant Management', icon: '🏢' },
     { id: 'users', label: 'User Management', icon: '👥' },
-    { id: 'audit', label: 'Audit Logs', icon: '📋' },
-    { id: 'system', label: 'System Health', icon: '⚡' },
   ];
 
   if (loading) {
@@ -129,7 +155,8 @@ export default function AdminPage() {
 
   return (
     <ClientLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -161,10 +188,6 @@ export default function AdminPage() {
 
         {/* Tab Content */}
         <div className="space-y-6">
-          {activeTab === 'overview' && (
-            <PlatformMetrics tenants={tenants} users={users} />
-          )}
-
           {activeTab === 'tenants' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -205,13 +228,27 @@ export default function AdminPage() {
                         key: 'actions',
                         label: 'Actions',
                         render: (tenant: Tenant) => (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditTenant(tenant)}
-                          >
-                            Edit
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditTenant(tenant)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteTenant(tenant)}
+                              className={
+                                tenant.id === 'acme-corp' 
+                                  ? "text-orange-600 hover:text-orange-700 hover:border-orange-300 border-orange-200"
+                                  : "text-red-600 hover:text-red-700 hover:border-red-300"
+                              }
+                            >
+                              {tenant.id === 'acme-corp' ? '⚠️ Delete' : 'Delete'}
+                            </Button>
+                          </div>
                         )
                       }
                     ]}
@@ -224,14 +261,7 @@ export default function AdminPage() {
           {activeTab === 'users' && (
             <UserManagement users={users} tenants={tenants} onUserUpdated={loadData} />
           )}
-
-          {activeTab === 'audit' && (
-            <AuditLogViewer />
-          )}
-
-          {activeTab === 'system' && (
-            <SystemHealthDashboard />
-          )}
+        </div>
         </div>
       </div>
 

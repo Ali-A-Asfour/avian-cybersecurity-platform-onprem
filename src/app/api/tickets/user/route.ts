@@ -37,8 +37,7 @@ export async function GET(request: NextRequest) {
             limit: parseInt(searchParams.get('limit') || '20'),
             sort_by: searchParams.get('sort_by') || 'created_at',
             sort_order: (searchParams.get('sort_order') as 'asc' | 'desc') || 'desc',
-            // Filter to only show tickets created by this user
-            requester: authResult.user!.user_id,
+            // Don't add requester filter here - let the service handle user filtering
         };
 
         // Parse array filters

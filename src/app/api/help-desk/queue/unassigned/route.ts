@@ -66,8 +66,48 @@ export async function GET(request: NextRequest) {
         };
 
         // Get unassigned queue
+        // For cross-tenant users (helpdesk/security analysts), check for selected tenant in headers
+        let effectiveTenantId = user.tenant_id;
+        
+        if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role)) {
+            // Check for selected tenant in request headers (sent by frontend)
+            const selectedTenantHeader = request.headers.get('x-selected-tenant');
+            if (selectedTenantHeader) {
+                effectiveTenantId = selectedTenantHeader;
+            } else {
+                // If no tenant selected, return empty results
+                return NextResponse.json({
+                    success: true,
+                    data: {
+                        tickets: [],
+                        pagination: {
+                            page: 1,
+                            limit: 20,
+                            total: 0,
+                            pages: 0,
+                        },
+                    },
+                });
+            }
+        }
+        
+        // For super admins, use a special tenant ID to indicate cross-tenant access
+        if (user.role === UserRole.SUPER_ADMIN) {
+            effectiveTenantId = null; // null means all tenants
+        }
+        
+        console.log('=== UNASSIGNED QUEUE DEBUG ===');
+        console.log('User role:', user.role);
+        console.log('User tenant:', user.tenant_id);
+        console.log('User email:', user.email);
+        console.log('Selected tenant header:', request.headers.get('x-selected-tenant'));
+        console.log('Effective tenant for query:', effectiveTenantId);
+        console.log('Is super admin:', user.role === UserRole.SUPER_ADMIN);
+        console.log('Is cross-tenant user:', [UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role));
+        console.log('=== END UNASSIGNED QUEUE DEBUG ===');
+        
         const result = await QueueManagementService.getUnassignedQueue(
-            user.tenant_id,
+            effectiveTenantId,
             user.role,
             user.user_id,
             filters

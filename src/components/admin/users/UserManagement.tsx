@@ -366,6 +366,16 @@ function UserForm({ user, tenants, onSave, onCancel, loading }: UserFormProps) {
     onSave(formData);
   };
 
+  // Check if the selected role requires tenant selection
+  const requiresTenant = formData.role === UserRole.TENANT_ADMIN || formData.role === UserRole.USER;
+
+  // Clear tenant_id if role doesn't require it
+  React.useEffect(() => {
+    if (!requiresTenant) {
+      setFormData(prev => ({ ...prev, tenant_id: '' }));
+    }
+  }, [requiresTenant]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -377,22 +387,24 @@ function UserForm({ user, tenants, onSave, onCancel, loading }: UserFormProps) {
           required
         />
         
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Tenant
-          </label>
-          <select
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={formData.tenant_id}
-            onChange={(e) => setFormData(prev => ({ ...prev, tenant_id: e.target.value }))}
-            required
-          >
-            <option value="">Select Tenant</option>
-            {tenants.map(tenant => (
-              <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
-            ))}
-          </select>
-        </div>
+        {requiresTenant && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Tenant
+            </label>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={formData.tenant_id}
+              onChange={(e) => setFormData(prev => ({ ...prev, tenant_id: e.target.value }))}
+              required
+            >
+              <option value="">Select Tenant</option>
+              {tenants.map(tenant => (
+                <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

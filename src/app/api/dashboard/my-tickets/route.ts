@@ -29,28 +29,51 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Verify user has analyst role or higher
+    // Verify user has access to dashboard metrics
     const userRole = authResult.user!.role;
     if (userRole !== UserRole.SECURITY_ANALYST &&
       userRole !== UserRole.IT_HELPDESK_ANALYST &&
       userRole !== UserRole.TENANT_ADMIN &&
-      userRole !== UserRole.SUPER_ADMIN) {
+      userRole !== UserRole.SUPER_ADMIN &&
+      userRole !== UserRole.USER) {
       return NextResponse.json({
         success: false,
         error: {
           code: 'FORBIDDEN',
-          message: 'Only analysts and admins can access dashboard metrics',
+          message: 'Access denied to dashboard metrics',
         },
       }, { status: 403 });
     }
 
-    // Get tickets assigned to the current user for dashboard metrics
-    const result = await TicketService.getMyTickets(
-      tenantResult.tenant!.id,
-      authResult.user!.user_id,
-      userRole,
-      { limit: 100 } // Get more tickets for accurate metrics
-    );
+    let result;
+    
+    console.log('=== DASHBOARD MY-TICKETS DEBUG ===');
+    console.log('User ID:', authResult.user!.user_id);
+    console.log('User Role:', userRole);
+    console.log('Tenant ID:', tenantResult.tenant!.id);
+    
+    // For regular users, get tickets they created (not assigned to them)
+    if (userRole === UserRole.USER) {
+      console.log('Getting tickets for regular user (created by them)');
+      result = await TicketService.getTickets(
+        tenantResult.tenant!.id,
+        { limit: 100 }, // Get more tickets for accurate metrics
+        userRole,
+        authResult.user!.user_id
+      );
+    } else {
+      console.log('Getting tickets for analyst/admin (assigned to them)');
+      // For analysts and admins, get tickets assigned to them
+      result = await TicketService.getMyTickets(
+        tenantResult.tenant!.id,
+        authResult.user!.user_id,
+        userRole,
+        { limit: 100 } // Get more tickets for accurate metrics
+      );
+    }
+    
+    console.log('Dashboard result - Total tickets:', result.total);
+    console.log('=== END DASHBOARD MY-TICKETS DEBUG ===');
 
     // Calculate dashboard metrics
     const tickets = result.tickets;

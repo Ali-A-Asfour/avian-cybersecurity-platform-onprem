@@ -103,7 +103,7 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
                 params.append('endDate', filters.endDate.toISOString());
             }
 
-            const apiEndpoint = demoMode
+            const apiEndpoint = (demoMode === true)
                 ? '/api/alerts-incidents/demo/alerts'
                 : '/api/alerts-incidents/alerts';
 
@@ -148,11 +148,31 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
      */
     const handleInvestigateAlert = async (alertId: string) => {
         try {
-            const apiEndpoint = demoMode
+            const apiEndpoint = (demoMode === true)
                 ? `/api/alerts-incidents/demo/alerts/${alertId}/investigate`
                 : `/api/alerts-incidents/alerts/${alertId}/assign`;
 
-            const response = await api.post(apiEndpoint, {});
+            // Generate unique user ID for this session/tenant
+            let sessionId;
+            if (demoMode) {
+                sessionId = sessionStorage.getItem('demoUserId');
+                if (!sessionId) {
+                    sessionId = `user-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+                    sessionStorage.setItem('demoUserId', sessionId);
+                    console.log(`🆕 AllAlertsTab: Created new session ID: ${sessionId}`);
+                } else {
+                    console.log(`🔄 AllAlertsTab: Using existing session ID: ${sessionId}`);
+                }
+            } else {
+                sessionId = 'current-user';
+            }
+            
+            console.log(`🔍 AllAlertsTab: Investigating alert ${alertId} for user: ${sessionId}`);
+
+            const response = await api.post(apiEndpoint, {
+                userId: sessionId,
+                assignedTo: sessionId
+            });
 
             const result = await response.json();
 
@@ -173,6 +193,7 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
             logger.info('Alert moved to investigation successfully', {
                 alertId,
                 tenantId,
+                userId,
             });
 
         } catch (err) {

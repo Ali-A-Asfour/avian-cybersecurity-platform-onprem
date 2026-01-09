@@ -4,20 +4,40 @@
  */
 
 import { NextRequest } from 'next/server';
-import { authenticate, AuthContext } from './auth-middleware';
+import { verifyAuth, getAuthData, AuthenticatedRequest } from './auth-middleware';
+
+/**
+ * Authentication context interface
+ */
+export interface AuthContext {
+    user: {
+        id: string;
+        tenantId: string;
+        role: string;
+        email?: string;
+    };
+}
 
 /**
  * Validate authentication for API routes
  * Returns authentication context or null if invalid
  */
 export async function validateAuth(req: NextRequest): Promise<AuthContext | null> {
-    const authResult = await authenticate(req);
+    const authResult = await verifyAuth(req);
 
-    if (!authResult.success) {
+    if (!authResult.authenticated || !authResult.payload) {
         return null;
     }
 
-    return authResult.context;
+    // Convert payload to AuthContext format
+    return {
+        user: {
+            id: authResult.payload.userId,
+            tenantId: authResult.payload.tenantId,
+            role: authResult.payload.role,
+            email: authResult.payload.email,
+        }
+    };
 }
 
 /**

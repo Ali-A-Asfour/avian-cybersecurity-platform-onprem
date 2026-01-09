@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Loader2, User, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface MyTicketsQueueProps {
     userRole: UserRole;
@@ -23,6 +24,7 @@ interface QueueFilters {
 }
 
 export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueueProps) {
+    const { selectedTenant } = useTenant();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,17 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
                 filters.severity.forEach(severity => params.append('severity', severity));
             }
 
-            const response = await api.get(`/api/help-desk/queue/my-tickets?${params}`);
+            // Prepare headers for cross-tenant users
+            const headers: Record<string, string> = {};
+            
+            // For cross-tenant users, send selected tenant in headers
+            if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(userRole) && selectedTenant) {
+                headers['x-selected-tenant'] = selectedTenant.id;
+            }
+
+            const response = await api.get(`/api/help-desk/queue/my-tickets?${params}`, {
+                headers
+            });
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -130,7 +142,7 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
 
     useEffect(() => {
         fetchMyTickets();
-    }, [filters]);
+    }, [filters, selectedTenant]); // Add selectedTenant as dependency
 
     if (loading && tickets.length === 0) {
         return (

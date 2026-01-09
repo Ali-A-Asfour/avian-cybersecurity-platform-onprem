@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo, memo, Suspense } from 'react';
 import { DashboardLayout } from './DashboardLayout';
 import { EnhancedErrorBoundary } from './EnhancedErrorBoundary';
-import { NetworkStatusMonitor } from './NetworkStatusMonitor';
+
 import { PartialDataIndicator } from './PartialDataIndicator';
 import { ErrorRecoveryPanel } from './ErrorRecoveryPanel';
 import { KPICardsRow } from './KPICardsRow';
@@ -147,9 +147,8 @@ const TenantAdminDashboardComponent: React.FC = () => {
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                        {/* Network Status and Auto-refresh Status */}
+                        {/* Auto-refresh Status */}
                         <div className="flex items-center space-x-4">
-                            <NetworkStatusMonitor />
                             <div
                                 className="flex items-center space-x-2 text-sm"
                                 role="status"

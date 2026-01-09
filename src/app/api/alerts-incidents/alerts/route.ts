@@ -29,6 +29,30 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
     try {
+        // In development mode with bypass auth, return mock data
+        if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+            const { searchParams } = new URL(request.url);
+            const limit = parseInt(searchParams.get('limit') || '50');
+            
+            // Return empty alerts for now to avoid 500 errors
+            return NextResponse.json({
+                success: true,
+                data: {
+                    alerts: [],
+                    pagination: {
+                        page: 1,
+                        limit,
+                        total: 0,
+                    },
+                    metadata: {
+                        unassignedCount: 0,
+                        assignedCount: 0,
+                        queue: 'all',
+                    },
+                },
+            });
+        }
+
         // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success) {

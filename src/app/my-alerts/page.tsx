@@ -347,6 +347,7 @@ export default function MyAlertsPage() {
                         onEscalateToIncident={handleEscalate}
                         onResolveAsBenign={handleResolveAsBenign}
                         onResolveAsFalsePositive={handleResolveAsFalsePositive}
+                        demoMode={true}
                     />
                 )}
             </div>

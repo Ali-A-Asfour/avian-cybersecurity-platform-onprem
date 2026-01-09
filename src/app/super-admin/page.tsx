@@ -211,7 +211,7 @@ export default function SuperAdminPage() {
             <h3 className="text-lg font-semibold">Data Sources</h3>
             <span className="text-2xl">📡</span>
           </div>
-          <p className="text-gray-600 mb-4">Manage EDR, firewall, and SIEM connections</p>
+          <p className="text-gray-600 mb-4">Manage security data connections and integrations</p>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-500">{selectedTenant?.data_sources_count} sources</span>
             <Button variant="outline" size="sm">Manage →</Button>
@@ -291,7 +291,7 @@ export default function SuperAdminPage() {
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
             <div>
               <div className="font-medium">New data source connected</div>
-              <div className="text-sm text-gray-600">CrowdStrike EDR endpoint added</div>
+              <div className="text-sm text-gray-600">Security monitoring endpoint added</div>
             </div>
             <div className="text-sm text-gray-500">2 hours ago</div>
           </div>

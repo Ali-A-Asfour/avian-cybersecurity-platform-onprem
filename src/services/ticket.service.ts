@@ -149,23 +149,35 @@ export class TicketService {
     if (shouldUseMock) {
       console.log('Using mock database for getTickets');
       const { mockDb } = await import('@/lib/mock-database');
-      const result = await mockDb.getTickets(tenantId, filters);
+      
+      // For super admins, get tickets from all tenants; for others, filter by tenant
+      const searchTenantId = userRole === UserRole.SUPER_ADMIN ? null : tenantId;
+      const result = await mockDb.getTickets(searchTenantId, filters);
 
       // Apply role-based filtering to mock data
       if (userRole) {
-        const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);
-        if (allowedCategories) {
+        // Special handling for regular users - they can only see tickets they created
+        if (userRole === UserRole.USER && userId) {
+          // For regular users, override category filtering - they can see tickets they created regardless of category
           result.tickets = result.tickets.filter((ticket: any) =>
-            allowedCategories.includes(ticket.category) ||
-            (userId && TicketAccessControl.canAccessAssignedTicket(userRole, ticket.category, ticket.assignee, userId))
+            ticket.created_by === userId
           );
-        }
-
-        // Special handling for tenant admins - they can only see their own tickets
-        if (userRole === UserRole.TENANT_ADMIN && userId) {
+        } else if (userRole === UserRole.TENANT_ADMIN && userId) {
+          // Special handling for tenant admins - they can only see their own tickets (created or assigned)
           result.tickets = result.tickets.filter((ticket: any) =>
             ticket.created_by === userId || ticket.assignee === userId
           );
+        } else {
+          // For other roles, apply category filtering normally
+          const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);
+          
+          if (allowedCategories) {
+            result.tickets = result.tickets.filter((ticket: any) => {
+              const categoryAllowed = allowedCategories.includes(ticket.category);
+              const assignedTicketAllowed = userId && TicketAccessControl.canAccessAssignedTicket(userRole, ticket.category, ticket.assignee, userId);
+              return categoryAllowed || assignedTicketAllowed;
+            });
+          }
         }
 
         result.total = result.tickets.length;
@@ -193,7 +205,12 @@ export class TicketService {
     } = filters;
 
     // Build where conditions
-    const conditions = [eq(tickets.tenant_id, tenantId)];
+    const conditions = [];
+
+    // Super admins can see tickets from all tenants
+    if (userRole !== UserRole.SUPER_ADMIN) {
+      conditions.push(eq(tickets.tenant_id, tenantId));
+    }
 
     // Apply role-based category filtering
     if (userRole) {
@@ -219,6 +236,11 @@ export class TicketService {
             eq(tickets.assignee, userId)
           )!
         );
+      }
+
+      // Special handling for regular users - they can only see tickets they created
+      if (userRole === UserRole.USER && userId) {
+        conditions.push(eq(tickets.created_by, userId));
       }
     }
 
@@ -527,6 +549,15 @@ export class TicketService {
    * Get comments for a ticket
    */
   static async getComments(tenantId: string, ticketId: string): Promise<TicketComment[]> {
+    // Use mock database in development - force mock mode for now
+    const shouldUseMock = !process.env.DATABASE_URL || process.env.BYPASS_AUTH === 'true';
+
+    if (shouldUseMock) {
+      console.log('Using mock database for getComments');
+      const { mockDb } = await import('@/lib/mock-database');
+      return await mockDb.getTicketComments(tenantId, ticketId);
+    }
+
     const db = await getTenantDatabase(tenantId);
 
     const comments = await db
@@ -569,6 +600,15 @@ export class TicketService {
    * Get attachments for a ticket
    */
   static async getAttachments(tenantId: string, ticketId: string): Promise<TicketAttachment[]> {
+    // Use mock database in development - force mock mode for now
+    const shouldUseMock = !process.env.DATABASE_URL || process.env.BYPASS_AUTH === 'true';
+
+    if (shouldUseMock) {
+      console.log('Using mock database for getAttachments');
+      // Return empty array for mock - no attachments in development
+      return [];
+    }
+
     const db = await getTenantDatabase(tenantId);
 
     const attachments = await db
@@ -797,7 +837,12 @@ export class TicketService {
     today.setHours(0, 0, 0, 0);
 
     // Build base conditions with role-based filtering
-    const baseConditions = [eq(tickets.tenant_id, tenantId)];
+    const baseConditions = [];
+
+    // Super admins can see tickets from all tenants
+    if (userRole !== UserRole.SUPER_ADMIN) {
+      baseConditions.push(eq(tickets.tenant_id, tenantId));
+    }
 
     if (userRole) {
       const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);

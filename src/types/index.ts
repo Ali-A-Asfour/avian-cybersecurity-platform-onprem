@@ -173,6 +173,8 @@ export interface TicketComment {
   id: string;
   ticket_id: string;
   user_id: string;
+  user_name?: string;
+  user_email?: string;
   content: string;
   is_internal: boolean;
   created_at: Date;

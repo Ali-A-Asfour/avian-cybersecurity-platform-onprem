@@ -23,6 +23,60 @@ export async function authMiddleware(request: NextRequest): Promise<{ success: b
 
     // Development mode bypass
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+      // Check if there's a valid JWT token first
+      const authHeader = request.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          // Try to decode the token (simple base64 decode for demo tokens)
+          const decoded = JSON.parse(atob(token));
+          
+          console.log('=== AUTH MIDDLEWARE DEBUG ===');
+          console.log('Token decoded:', decoded);
+          console.log('Has required fields:', {
+            userId: !!decoded.userId,
+            email: !!decoded.email,
+            role: !!decoded.role,
+            tenantId: !!decoded.tenantId
+          });
+          console.log('=== END AUTH MIDDLEWARE DEBUG ===');
+          
+          if (decoded.userId && decoded.email && decoded.role && decoded.tenantId) {
+            // Use the actual user data from the token
+            monitoring.tagSpan(span.spanId, {
+              success: true,
+              bypass: false,
+              mode: 'development',
+              tokenDecoded: true
+            });
+
+            logger.debug('Using decoded token in development mode', {
+              userId: decoded.userId,
+              email: decoded.email,
+              role: decoded.role,
+              tenantId: decoded.tenantId,
+              path: request.nextUrl.pathname,
+            });
+
+            monitoring.finishSpan(span, 'auth.middleware', MetricCategory.AUTH);
+
+            return {
+              success: true,
+              user: {
+                user_id: decoded.userId,
+                tenant_id: decoded.tenantId,
+                role: decoded.role as UserRole,
+                iat: Math.floor(Date.now() / 1000),
+                exp: decoded.exp || Math.floor(Date.now() / 1000) + 3600,
+              }
+            };
+          }
+        } catch (error) {
+          // If token decode fails, fall back to bypass mode
+        }
+      }
+
+      // Fallback to bypass mode if no valid token
       monitoring.tagSpan(span.spanId, {
         success: true,
         bypass: true,
@@ -56,7 +110,7 @@ export async function authMiddleware(request: NextRequest): Promise<{ success: b
         success: true,
         user: {
           user_id: userId, // Consistent user ID from predefined pool
-          tenant_id: 'dev-tenant-123',
+          tenant_id: 'acme-corp', // Use consistent tenant ID
           role: UserRole.SUPER_ADMIN, // Super admin can access all ticket categories
           iat: Math.floor(Date.now() / 1000),
           exp: Math.floor(Date.now() / 1000) + 3600,

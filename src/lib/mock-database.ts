@@ -4,11 +4,13 @@ import { Alert, AlertSeverity, AlertCategory, AlertStatus, Ticket, TicketSeverit
 class MockDatabase {
   private alerts: Alert[] = [];
   private tickets: Ticket[] = [];
+  private ticketComments: any[] = []; // Store ticket comments
   private complianceFrameworks: ComplianceFramework[] = [];
   private complianceControls: ComplianceControl[] = [];
   private complianceEvidence: ComplianceEvidence[] = [];
   private nextAlertId = 1;
   private nextTicketId = 1;
+  private nextCommentId = 1;
 
   // Generate some initial mock data
   constructor() {
@@ -19,8 +21,16 @@ class MockDatabase {
     console.log('MockDatabase initialized with:', {
       alerts: this.alerts.length,
       tickets: this.tickets.length,
-      ticketIds: this.tickets.map(t => t.id)
+      ticketIds: this.tickets.map(t => `${t.id} (${t.tenant_id})`)
     });
+  }
+
+  // Clear all tickets method
+  clearAllTickets() {
+    console.log('Clearing all tickets from mock database');
+    this.tickets = [];
+    this.nextTicketId = 1;
+    console.log('All tickets cleared');
   }
 
   private seedAlertData() {
@@ -46,7 +56,7 @@ class MockDatabase {
 
       this.alerts.push({
         id: `alert-${this.nextAlertId++}`,
-        tenant_id: 'dev-tenant-123',
+        tenant_id: 'acme-corp', // Use consistent tenant ID
         source,
         title,
         description: `${title} from ${source}. This is a mock alert generated for demonstration purposes.`,
@@ -66,9 +76,31 @@ class MockDatabase {
   }
 
   private seedTicketData() {
-    // No pre-seeded tickets - only show tickets created by users
-    // This ensures a clean slate where only user-submitted tickets appear
-    console.log('MockDatabase: No pre-seeded tickets - starting with empty ticket database');
+    // Create a test ticket from acme-corp tenant
+    const acmeTestTicket = {
+      id: `TKT-001`,
+      tenant_id: 'acme-corp',
+      requester: 'user@demo.com',
+      assignee: null, // Unassigned
+      title: 'Test ticket from ACME Corporation',
+      description: 'This is a sample IT support ticket for demonstration purposes',
+      category: 'it_support',
+      severity: 'high',
+      priority: 'high',
+      status: 'new',
+      tags: ['test', 'acme-corp'],
+      created_by: '5', // user@demo.com user ID
+      sla_deadline: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
+      queue_position_updated_at: new Date(),
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    this.tickets.push(acmeTestTicket as any);
+    this.nextTicketId = 2; // Start from 2 for new tickets
+
+    console.log('MockDatabase: Added test ticket for ACME Corporation');
+    console.log('  - TKT-001: acme-corp tenant');
   }
 
   // Alert operations
@@ -214,8 +246,16 @@ class MockDatabase {
     return ticket;
   }
 
-  async getTickets(tenantId: string, filters: any = {}): Promise<{ tickets: Ticket[]; total: number }> {
-    let filteredTickets = this.tickets.filter(ticket => ticket.tenant_id === tenantId);
+  async getTickets(tenantId: string | null, filters: any = {}): Promise<{ tickets: Ticket[]; total: number }> {
+    console.log('=== MOCK DB GET TICKETS ===');
+    console.log('Requested tenant ID:', tenantId);
+    console.log('Available tickets:', this.tickets.map(t => `${t.id} (${t.tenant_id})`));
+    
+    let filteredTickets = tenantId ? 
+      this.tickets.filter(ticket => ticket.tenant_id === tenantId) :
+      this.tickets; // Super admins see all tickets across all tenants
+
+    console.log('After tenant filtering:', filteredTickets.map(t => `${t.id} (${t.tenant_id})`));
 
     // Apply filters
     if (filters.status?.length) {
@@ -372,7 +412,7 @@ class MockDatabase {
     this.complianceFrameworks = [
       {
         id: 'framework-hipaa',
-        tenant_id: 'dev-tenant-123',
+        tenant_id: 'acme-corp', // Use consistent tenant ID
         name: 'HIPAA',
         version: '2013',
         description: 'Health Insurance Portability and Accountability Act compliance framework',
@@ -382,7 +422,7 @@ class MockDatabase {
       },
       {
         id: 'framework-iso27001',
-        tenant_id: 'dev-tenant-123',
+        tenant_id: 'acme-corp', // Use consistent tenant ID
         name: 'ISO 27001',
         version: '2022',
         description: 'Information Security Management System standard',
@@ -392,7 +432,7 @@ class MockDatabase {
       },
       {
         id: 'framework-pci',
-        tenant_id: 'dev-tenant-123',
+        tenant_id: 'acme-corp', // Use consistent tenant ID
         name: 'PCI DSS',
         version: '4.0',
         description: 'Payment Card Industry Data Security Standard',
@@ -696,16 +736,107 @@ class MockDatabase {
     userId: string,
     data: { content: string; is_internal?: boolean }
   ): Promise<any> {
-    // Mock comment - in a real implementation, this would be stored
-    return {
-      id: `comment-${Date.now()}`,
+    console.log('MockDatabase.addComment called:', { tenantId, ticketId, userId, data });
+    
+    // Get user information based on userId
+    let userName = 'Unknown User';
+    let userEmail = 'unknown@demo.com';
+    
+    // Map common user IDs to names and emails
+    switch (userId) {
+      case 'dev-user-def':
+      case '1':
+        userName = 'Abdullah Asfour';
+        userEmail = 'abdullah.asfour@acmecorp.com';
+        break;
+      case '2':
+        userName = 'Anita V';
+        userEmail = 'anita.v@acmecorp.com';
+        break;
+      case '3':
+        userName = 'Ali Asfour';
+        userEmail = 'ali.asfour@acmecorp.com';
+        break;
+      case '4':
+        userName = 'Sarah Mitchell';
+        userEmail = 'sarah.mitchell@acmecorp.com';
+        break;
+      case '5':
+        userName = 'Mr Linux';
+        userEmail = 'mr.linux@acmecorp.com';
+        break;
+      case 'analyst-1':
+        userName = 'Security Analyst';
+        userEmail = 'analyst@demo.com';
+        break;
+      case 'helpdesk-1':
+        userName = 'IT Helpdesk';
+        userEmail = 'helpdesk@demo.com';
+        break;
+      case 'system':
+        userName = 'System';
+        userEmail = 'system@demo.com';
+        break;
+      default:
+        userName = `User ${userId}`;
+        userEmail = `${userId}@demo.com`;
+    }
+
+    console.log('Mapped user info:', { userId, userName, userEmail });
+
+    const comment = {
+      id: `comment-${this.nextCommentId++}`,
       ticket_id: ticketId,
       user_id: userId,
+      user_name: userName,
+      user_email: userEmail,
       content: data.content,
       is_internal: data.is_internal || false,
       created_at: new Date(),
       updated_at: new Date(),
     };
+
+    // Store the comment
+    this.ticketComments.push(comment);
+    console.log('Comment stored:', comment);
+    console.log('Total comments in database:', this.ticketComments.length);
+    
+    return comment;
+  }
+
+  // Get comments for a ticket (mock implementation)
+  async getTicketComments(tenantId: string, ticketId: string): Promise<any[]> {
+    console.log('MockDatabase.getTicketComments called:', { tenantId, ticketId });
+    
+    // Get stored comments for this ticket
+    const storedComments = this.ticketComments.filter(comment => comment.ticket_id === ticketId);
+    console.log('Stored comments found:', storedComments.length, storedComments);
+    
+    // If no stored comments, return some initial mock comments
+    if (storedComments.length === 0) {
+      const initialComments = [
+        {
+          id: `comment-initial-1`,
+          ticket_id: ticketId,
+          user_id: 'user-1',
+          user_name: 'John Doe',
+          user_email: 'john.doe@demo.com',
+          content: 'Initial ticket submission. Please investigate this issue.',
+          is_internal: false,
+          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+          updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        },
+      ];
+      console.log('Returning initial comments:', initialComments);
+      return initialComments;
+    }
+    
+    // Return stored comments sorted by creation date
+    const sortedComments = storedComments.sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    console.log('Returning sorted stored comments:', sortedComments);
+    return sortedComments;
   }
 }
 

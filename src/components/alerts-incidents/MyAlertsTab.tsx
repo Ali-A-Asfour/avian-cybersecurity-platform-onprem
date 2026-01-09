@@ -82,6 +82,47 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
                 limit: pagination.limit.toString(),
             });
 
+            // Add current user ID for proper alert assignment filtering
+            // In demo mode, create a unique user session ID per browser tab/window
+            if (demoMode) {
+                // Use consistent session ID that persists across browser sessions
+                let sessionId;
+                try {
+                    // Try sessionStorage first (per-tab isolation)
+                    sessionId = sessionStorage.getItem('demoUserId');
+                    if (sessionId) {
+                        console.log(`🔄 MyAlertsTab: Using existing session ID from sessionStorage: ${sessionId}`);
+                    } else {
+                        // Try localStorage as fallback (per-browser persistence)
+                        sessionId = localStorage.getItem('demoUserId');
+                        if (sessionId) {
+                            console.log(`🔄 MyAlertsTab: Using existing session ID from localStorage: ${sessionId}`);
+                            // Store in sessionStorage for this tab
+                            sessionStorage.setItem('demoUserId', sessionId);
+                        } else {
+                            // Create new session ID
+                            sessionId = `user-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+                            
+                            // Store in both storages
+                            sessionStorage.setItem('demoUserId', sessionId);
+                            localStorage.setItem('demoUserId', sessionId);
+                            
+                            console.log(`🆕 MyAlertsTab: Created new session ID: ${sessionId}`);
+                        }
+                    }
+                    
+                    params.append('assignedTo', sessionId);
+                    console.log(`🔍 MyAlertsTab: Fetching alerts for user: ${sessionId}`);
+                    console.log(`🔍 Full API URL will be constructed after apiEndpoint is set`);
+                } catch (error) {
+                    console.error('Storage error:', error);
+                    // Fallback to a simple unique ID
+                    sessionId = `user-fallback-${Date.now()}`;
+                    params.append('assignedTo', sessionId);
+                    console.log(`🔄 MyAlertsTab: Using fallback session ID: ${sessionId}`);
+                }
+            }
+
             // Add filter parameters
             if (filters.severity) {
                 if (Array.isArray(filters.severity)) {
@@ -107,9 +148,11 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
                 params.append('endDate', filters.endDate.toISOString());
             }
 
-            const apiEndpoint = demoMode
+            const apiEndpoint = (demoMode === true)
                 ? '/api/alerts-incidents/demo/alerts'
                 : '/api/alerts-incidents/alerts';
+
+            console.log(`🔍 Full API URL: ${apiEndpoint}?${params.toString()}`);
 
             const response = await api.get(`${apiEndpoint}?${params.toString()}`);
 
@@ -126,6 +169,12 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
                     unassignedCount: result.data.metadata?.unassignedCount || 0,
                     assignedCount: result.data.metadata?.assignedCount || 0,
                 });
+                
+                console.log(`📊 MyAlertsTab: Received ${result.data.alerts.length} alerts`);
+                if (result.data.alerts.length > 0) {
+                    console.log(`📋 Alert titles:`, result.data.alerts.map(a => `${a.id}: ${a.title}`));
+                    console.log(`👤 Alert assignments:`, result.data.alerts.map(a => `${a.id} -> ${a.assignedTo}`));
+                }
             }
 
             logger.debug('My alerts fetched successfully', {
@@ -166,15 +215,58 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
         try {
             console.log('🚀 Starting escalation for alert:', alertId, 'demoMode:', demoMode);
 
-            const apiEndpoint = demoMode
+            // Find the alert to get its title and description
+            const alert = alerts.find(a => a.id === alertId);
+            if (!alert) {
+                throw new Error('Alert not found');
+            }
+
+            const apiEndpoint = (demoMode === true)
                 ? `/api/alerts-incidents/demo/alerts/${alertId}/escalate`
                 : `/api/alerts-incidents/alerts/${alertId}/escalate`;
 
             console.log('📡 Calling API endpoint:', apiEndpoint);
 
+            // Generate unique user ID for this session/tenant
+            let sessionId;
+            if (demoMode) {
+                // Use consistent session ID that persists across browser sessions
+                try {
+                    // Try sessionStorage first (per-tab isolation)
+                    sessionId = sessionStorage.getItem('demoUserId');
+                    if (sessionId) {
+                        console.log(`🔄 MyAlertsTab escalation: Using existing session ID from sessionStorage: ${sessionId}`);
+                    } else {
+                        // Try localStorage as fallback (per-browser persistence)
+                        sessionId = localStorage.getItem('demoUserId');
+                        if (sessionId) {
+                            console.log(`🔄 MyAlertsTab escalation: Using existing session ID from localStorage: ${sessionId}`);
+                            // Store in sessionStorage for this tab
+                            sessionStorage.setItem('demoUserId', sessionId);
+                        } else {
+                            // Create new session ID
+                            sessionId = `user-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+                            
+                            // Store in both storages
+                            sessionStorage.setItem('demoUserId', sessionId);
+                            localStorage.setItem('demoUserId', sessionId);
+                            
+                            console.log(`🆕 MyAlertsTab escalation: Created new session ID: ${sessionId}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Storage error:', error);
+                    sessionId = `user-fallback-${Date.now()}`;
+                }
+            } else {
+                sessionId = 'current-user';
+            }
+
             const response = await api.post(apiEndpoint, {
-                incidentTitle: `Security Incident from Alert ${alertId}`,
-                incidentDescription: `Escalated from alert ${alertId} for further investigation`
+                incidentTitle: alert.title,
+                incidentDescription: alert.description || `Security incident escalated from alert: ${alert.title}`,
+                userId: sessionId,
+                assignedTo: sessionId
             });
 
             console.log('📥 API response status:', response.status);
@@ -463,6 +555,7 @@ export function MyAlertsTab({ tenantId, className, demoMode = false }: MyAlertsT
                     onEscalateToIncident={handleEscalateToIncident}
                     onResolveAsBenign={handleResolveAsBenign}
                     onResolveAsFalsePositive={handleResolveAsFalsePositive}
+                    demoMode={demoMode}
                 />
             )}
         </div>

@@ -89,6 +89,47 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
                 limit: pagination.limit.toString(),
             });
 
+            // Add current user ID for proper incident ownership filtering
+            // In demo mode, create a unique user session ID per browser tab/window
+            if (demoMode) {
+                // Use consistent session ID that persists across browser sessions
+                let sessionId;
+                try {
+                    // Try sessionStorage first (per-tab isolation)
+                    sessionId = sessionStorage.getItem('demoUserId');
+                    if (sessionId) {
+                        console.log(`🔄 MySecurityIncidentsTab: Using existing session ID from sessionStorage: ${sessionId}`);
+                    } else {
+                        // Try localStorage as fallback (per-browser persistence)
+                        sessionId = localStorage.getItem('demoUserId');
+                        if (sessionId) {
+                            console.log(`🔄 MySecurityIncidentsTab: Using existing session ID from localStorage: ${sessionId}`);
+                            // Store in sessionStorage for this tab
+                            sessionStorage.setItem('demoUserId', sessionId);
+                        } else {
+                            // Create new session ID
+                            sessionId = `user-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+                            
+                            // Store in both storages
+                            sessionStorage.setItem('demoUserId', sessionId);
+                            localStorage.setItem('demoUserId', sessionId);
+                            
+                            console.log(`🆕 MySecurityIncidentsTab: Created new session ID: ${sessionId}`);
+                        }
+                    }
+                    
+                    params.append('ownerId', sessionId);
+                    console.log(`🔍 MySecurityIncidentsTab: Fetching incidents for owner: ${sessionId}`);
+                    console.log(`🔍 MySecurityIncidentsTab: Full API URL: ${demoMode ? '/api/alerts-incidents/demo/incidents' : '/api/alerts-incidents/incidents'}?${params.toString()}`);
+                } catch (error) {
+                    console.error('Storage error:', error);
+                    // Fallback to a simple unique ID
+                    sessionId = `user-fallback-${Date.now()}`;
+                    params.append('ownerId', sessionId);
+                    console.log(`🔄 MySecurityIncidentsTab: Using fallback session ID: ${sessionId}`);
+                }
+            }
+
             // Add filter parameters
             if (filters.severity) {
                 if (Array.isArray(filters.severity)) {
@@ -121,6 +162,7 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
             const response = await api.get(`${apiEndpoint}?${params.toString()}`);
 
             const result: IncidentsResponse = await response.json();
+            console.log(`📥 MySecurityIncidentsTab: API response:`, result);
 
             if (!result.success) {
                 throw new Error(result.error?.message || 'Failed to fetch incidents');
@@ -134,6 +176,11 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
                     openCount: result.data.metadata.openCount,
                     inProgressCount: result.data.metadata.inProgressCount,
                 });
+                
+                console.log(`📊 MySecurityIncidentsTab: Received ${result.data.incidents.length} incidents`);
+                if (result.data.incidents.length > 0) {
+                    console.log(`📋 Incident titles:`, result.data.incidents.map(i => `${i.id}: ${i.title} (owner: ${i.ownerId})`));
+                }
             }
 
             logger.debug('My incidents fetched successfully', {
@@ -161,7 +208,11 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
      */
     const handleStartWork = async (incidentId: string) => {
         try {
-            const response = await api.post(`/api/alerts-incidents/incidents/${incidentId}/start-work`, {});
+            const apiEndpoint = demoMode
+                ? `/api/alerts-incidents/demo/incidents/${incidentId}/start-work`
+                : `/api/alerts-incidents/incidents/${incidentId}/start-work`;
+
+            const response = await api.post(apiEndpoint, {});
 
             const result = await response.json();
 
@@ -303,6 +354,19 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
             fetchIncidents();
         }
     }, [pagination?.page, pagination?.limit, filters]);
+
+    // Auto-refresh when component becomes visible (for tab switching)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (!document.hidden && tenantId) {
+                console.log('🔄 MySecurityIncidentsTab: Tab became visible, refreshing incidents...');
+                fetchIncidents();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [tenantId]);
 
     if (loading && incidents.length === 0) {
         return (

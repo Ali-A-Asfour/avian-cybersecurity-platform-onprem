@@ -52,7 +52,7 @@ export function TenantForm({ tenant, onSave, onCancel, loading = false }: Tenant
     },
   });
 
-  const handleSubmit = (_e: unknown) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
   };

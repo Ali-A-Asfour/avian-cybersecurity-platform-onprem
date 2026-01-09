@@ -13,10 +13,14 @@ export async function POST(
 ) {
     try {
         const { id: alertId } = await params;
+        const body = await request.json();
+        
+        // Get user ID from request body, or generate one based on session/tenant
+        const userId = body.userId || body.assignedTo || `user-${Date.now()}`;
 
         // In demo mode, we simulate successful assignment
         // Update the demo state to track this assignment
-        DemoStateManager.assignAlert(alertId, 'demo-user-123');
+        DemoStateManager.assignAlert(alertId, userId);
 
         // Simulate processing delay
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -26,7 +30,7 @@ export async function POST(
             data: {
                 alertId,
                 status: 'assigned',
-                assignedTo: 'demo-user-123',
+                assignedTo: userId,
                 assignedAt: new Date().toISOString(),
                 message: 'Alert assigned for investigation'
             }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '../../../../middleware/auth.middleware';
 import { UserRole, ApiResponse } from '../../../../types';
+import { TenantService } from '../../../../services/tenant.service';
 
 /**
  * GET /api/tenants/[id] - Get tenant by ID
@@ -78,7 +79,7 @@ export async function PUT(
 
     const { user } = authResult;
     const resolvedParams = await params;
-    const _tenantId = resolvedParams.id;
+    const tenantId = resolvedParams.id;
 
     // Parse request body
     const body = await request.json();
@@ -86,7 +87,7 @@ export async function PUT(
 
     // Validate domain format if provided
     if (domain) {
-      const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$/;
+      const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9.-]{1,61}[a-zA-Z0-9]$/;
       if (!domainRegex.test(domain)) {
         return NextResponse.json(
           { 
@@ -159,7 +160,7 @@ export async function DELETE(
 
     const { user } = authResult;
     const resolvedParams = await params;
-    const _tenantId = resolvedParams.id;
+    const tenantId = resolvedParams.id;
 
     // Delete tenant
     await TenantService.deleteTenant(

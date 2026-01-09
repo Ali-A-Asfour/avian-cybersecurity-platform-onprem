@@ -16,6 +16,7 @@ const mockClassifications = [
             version: '2.1',
             status: 'active' as const,
             purpose: 'Standard response procedure for malware detection alerts from EDR systems',
+            quickResponseGuide: [],
             initialValidationSteps: [],
             sourceInvestigationSteps: [],
             containmentChecks: [],
@@ -28,7 +29,7 @@ const mockClassifications = [
             createdAt: new Date('2024-01-01T00:00:00Z'),
             updatedAt: new Date('2024-01-10T00:00:00Z')
         },
-        secondaryCount: 0
+        secondaryCount: 2 // playbook-008, playbook-011
     },
     {
         classification: 'network_intrusion',
@@ -38,6 +39,7 @@ const mockClassifications = [
             version: '1.8',
             status: 'active' as const,
             purpose: 'Investigation procedures for network-based security alerts and intrusion attempts',
+            quickResponseGuide: [],
             initialValidationSteps: [],
             sourceInvestigationSteps: [],
             containmentChecks: [],
@@ -50,7 +52,7 @@ const mockClassifications = [
             createdAt: new Date('2024-01-01T00:00:00Z'),
             updatedAt: new Date('2024-01-08T00:00:00Z')
         },
-        secondaryCount: 0
+        secondaryCount: 2 // playbook-006, playbook-009
     },
     {
         classification: 'phishing',
@@ -60,6 +62,7 @@ const mockClassifications = [
             version: '3.0',
             status: 'active' as const,
             purpose: 'Response procedures for phishing and malicious email detection alerts',
+            quickResponseGuide: [],
             initialValidationSteps: [],
             sourceInvestigationSteps: [],
             containmentChecks: [],
@@ -94,7 +97,7 @@ const mockClassifications = [
             createdAt: new Date('2024-01-01T00:00:00Z'),
             updatedAt: new Date('2024-01-05T00:00:00Z')
         },
-        secondaryCount: 0
+        secondaryCount: 1 // playbook-012
     },
     {
         classification: 'behavioral',
@@ -116,11 +119,160 @@ const mockClassifications = [
             createdAt: new Date('2024-01-01T00:00:00Z'),
             updatedAt: new Date('2024-01-15T00:00:00Z')
         },
+        secondaryCount: 1 // playbook-012
+    },
+    {
+        classification: 'brute_force',
+        primaryPlaybook: {
+            id: 'playbook-006',
+            name: 'Brute Force Attack Response',
+            version: '1.4',
+            status: 'active' as const,
+            purpose: 'Response procedures for brute force and credential stuffing attacks',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'authentication-security-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-18T00:00:00Z')
+        },
         secondaryCount: 0
     },
     {
         classification: 'privilege_escalation',
-        primaryPlaybook: null,
+        primaryPlaybook: {
+            id: 'playbook-007',
+            name: 'Privilege Escalation Investigation',
+            version: '2.0',
+            status: 'active' as const,
+            purpose: 'Investigation procedures for unauthorized privilege escalation attempts',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'privilege-management-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-20T00:00:00Z')
+        },
+        secondaryCount: 0
+    },
+    {
+        classification: 'suspicious_file',
+        primaryPlaybook: {
+            id: 'playbook-008',
+            name: 'Suspicious File Activity Response',
+            version: '1.7',
+            status: 'active' as const,
+            purpose: 'Investigation procedures for suspicious file creation, modification, or execution',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'file-analysis-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-22T00:00:00Z')
+        },
+        secondaryCount: 0
+    },
+    {
+        classification: 'dns_anomaly',
+        primaryPlaybook: {
+            id: 'playbook-009',
+            name: 'DNS Anomaly Investigation',
+            version: '1.6',
+            status: 'active' as const,
+            purpose: 'Investigation procedures for suspicious DNS queries and domain communications',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'network-security-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-25T00:00:00Z')
+        },
+        secondaryCount: 0
+    },
+    {
+        classification: 'account_compromise',
+        primaryPlaybook: {
+            id: 'playbook-010',
+            name: 'Account Compromise Investigation',
+            version: '2.2',
+            status: 'active' as const,
+            purpose: 'Investigation procedures for suspected user account compromise and unauthorized access',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'identity-security-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-28T00:00:00Z')
+        },
+        secondaryCount: 0
+    },
+    {
+        classification: 'ransomware',
+        primaryPlaybook: {
+            id: 'playbook-011',
+            name: 'Ransomware Response Protocol',
+            version: '3.1',
+            status: 'active' as const,
+            purpose: 'Emergency response procedures for ransomware detection and containment',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'incident-response-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-30T00:00:00Z')
+        },
+        secondaryCount: 0
+    },
+    {
+        classification: 'insider_threat',
+        primaryPlaybook: {
+            id: 'playbook-012',
+            name: 'Insider Threat Assessment',
+            version: '1.9',
+            status: 'active' as const,
+            purpose: 'Investigation procedures for potential insider threat activities and policy violations',
+            initialValidationSteps: [],
+            sourceInvestigationSteps: [],
+            containmentChecks: [],
+            decisionGuidance: {
+                escalateToIncident: '',
+                resolveBenign: '',
+                resolveFalsePositive: ''
+            },
+            createdBy: 'insider-threat-team',
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-02-01T00:00:00Z')
+        },
         secondaryCount: 0
     },
     {

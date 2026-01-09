@@ -222,7 +222,7 @@ export async function tenantMiddleware(
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
       return {
         success: true,
-        tenant: { id: 'dev-tenant-123' },
+        tenant: { id: 'acme-corp' }, // Use the same tenant ID as in mock users
       };
     }
 

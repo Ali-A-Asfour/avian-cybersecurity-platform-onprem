@@ -19,7 +19,7 @@ export const DEMO_AUTH_USERS: DemoAuthUser[] = [
         name: 'Abdullah Asfour',
         email: 'abdullah.asfour@acmecorp.com',
         role: UserRole.SUPER_ADMIN,
-        tenantId: 'platform-admin'
+        tenantId: 'acme-corp'
     },
     {
         id: '2',

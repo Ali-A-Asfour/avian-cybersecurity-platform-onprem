@@ -1,0 +1,67 @@
+[
+  {
+    "id": "1",
+    "email": "admin@demo.com",
+    "firstName": "Super",
+    "lastName": "Admin",
+    "role": "super_admin",
+    "tenantId": "acme-corp",
+    "isActive": true,
+    "emailVerified": true,
+    "createdAt": "2026-01-08T00:22:46.590Z",
+    "lastLogin": "2026-01-08T00:22:46.590Z",
+    "password": "admin123"
+  },
+  {
+    "id": "2",
+    "email": "tenant.admin@demo.com",
+    "firstName": "Tenant",
+    "lastName": "Admin",
+    "role": "tenant_admin",
+    "tenantId": "acme-corp",
+    "isActive": true,
+    "emailVerified": true,
+    "createdAt": "2026-01-08T00:22:46.590Z",
+    "lastLogin": "2026-01-08T00:22:46.590Z",
+    "password": "admin123"
+  },
+  {
+    "id": "3",
+    "email": "analyst@demo.com",
+    "firstName": "Security",
+    "lastName": "Analyst",
+    "role": "security_analyst",
+    "tenantId": "acme-corp",
+    "isActive": true,
+    "emailVerified": true,
+    "createdAt": "2026-01-08T00:22:46.590Z",
+    "lastLogin": "2026-01-08T00:22:46.590Z",
+    "password": "analyst123"
+  },
+  {
+    "id": "4",
+    "email": "helpdesk@demo.com",
+    "firstName": "IT",
+    "lastName": "Helpdesk",
+    "role": "it_helpdesk_analyst",
+    "tenantId": "acme-corp",
+    "isActive": true,
+    "emailVerified": true,
+    "createdAt": "2026-01-08T00:22:46.590Z",
+    "lastLogin": "2026-01-08T00:22:46.590Z",
+    "password": "helpdesk123"
+  },
+  {
+    "id": "5",
+    "email": "user@demo.com",
+    "firstName": "Demo",
+    "lastName": "User",
+    "role": "user",
+    "tenantId": "acme-corp",
+    "isActive": true,
+    "emailVerified": true,
+    "createdAt": "2026-01-08T00:22:46.590Z",
+    "lastLogin": null,
+    "password": "user123"
+  }
+]

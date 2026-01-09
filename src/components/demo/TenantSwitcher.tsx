@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { UserRole } from '@/types';
 import { api } from '@/lib/api-client';
@@ -15,16 +15,63 @@ interface TenantSwitcherProps {
   userRole?: UserRole;
 }
 
-const tenants: TenantOption[] = [
-  { id: 'dev-tenant-123', name: 'Demo Corporation', key: 'demo' },
-  { id: 'acme-corp-456', name: 'ACME Corporation', key: 'acme' },
-  { id: 'techstart-789', name: 'TechStart Inc', key: 'techstart' },
-  { id: 'global-finance-101', name: 'Global Finance Ltd', key: 'finance' },
-];
-
 export function TenantSwitcher({ userRole }: TenantSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentTenant, setCurrentTenant] = useState(tenants[0]);
+  const [tenants, setTenants] = useState<TenantOption[]>([
+    // Start with ACME Corporation as fallback
+    { id: 'acme-corp', name: 'ACME Corporation', key: 'acme' }
+  ]);
+  const [currentTenant, setCurrentTenant] = useState<TenantOption>({
+    id: 'acme-corp', 
+    name: 'ACME Corporation', 
+    key: 'acme'
+  });
+  const [loading, setLoading] = useState(false); // Start as false since we have fallback data
+
+  // Load tenants from API
+  useEffect(() => {
+    // Load additional tenants from API, but don't block the UI
+    loadTenants();
+  }, []);
+
+  const loadTenants = async () => {
+    try {
+      setLoading(true);
+      console.log('TenantSwitcher: Loading tenants...');
+      
+      // Use demo tenants endpoint which doesn't require auth
+      const response = await fetch('/api/tenants/demo');
+      console.log('TenantSwitcher: Response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('TenantSwitcher: Received data:', data);
+        
+        const tenantOptions: TenantOption[] = data.tenants.map((tenant: any) => ({
+          id: tenant.id,
+          name: tenant.name,
+          key: tenant.id // Use ID as key for simplicity
+        }));
+        
+        console.log('TenantSwitcher: Mapped tenant options:', tenantOptions);
+        setTenants(tenantOptions);
+        
+        // Update current tenant if it's not in the new list
+        const currentExists = tenantOptions.find(t => t.id === currentTenant.id);
+        if (!currentExists && tenantOptions.length > 0) {
+          console.log('TenantSwitcher: Updating current tenant to:', tenantOptions[0]);
+          setCurrentTenant(tenantOptions[0]);
+        }
+      } else {
+        console.error('TenantSwitcher: Failed to load tenants, status:', response.status);
+      }
+    } catch (error) {
+      console.error('TenantSwitcher: Failed to load tenants:', error);
+    } finally {
+      console.log('TenantSwitcher: Loading complete');
+      setLoading(false);
+    }
+  };
 
   const switchTenant = async (tenant: TenantOption) => {
     try {
@@ -36,7 +83,7 @@ export function TenantSwitcher({ userRole }: TenantSwitcherProps) {
       
       // Reload the page to reflect changes
       window.location.reload();
-    } catch {
+    } catch (error) {
       console.error('Failed to switch tenant:', error);
     }
   };
@@ -44,6 +91,15 @@ export function TenantSwitcher({ userRole }: TenantSwitcherProps) {
   // Only show in development mode
   if (process.env.NODE_ENV !== 'development') {
     return null;
+  }
+
+  // Show loading state only if we're actively loading and have no tenants
+  if (loading && tenants.length === 0) {
+    return (
+      <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+        🏢 Loading...
+      </div>
+    );
   }
 
   // Roles that should NOT have a dropdown (User and Tenant Admin)
@@ -93,6 +149,20 @@ export function TenantSwitcher({ userRole }: TenantSwitcherProps) {
                 )}
               </button>
             ))}
+            
+            {/* Refresh button */}
+            <div className="border-t border-gray-200 dark:border-gray-700 mt-1">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  loadTenants();
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                disabled={loading}
+              >
+                {loading ? '🔄 Loading...' : '🔄 Refresh Tenants'}
+              </button>
+            </div>
           </div>
         </div>
       )}

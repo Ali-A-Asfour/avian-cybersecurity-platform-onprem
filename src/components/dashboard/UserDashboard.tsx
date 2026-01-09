@@ -4,12 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
+import { Modal } from '@/components/ui/Modal';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api-client';
 
 interface UserTicket {
   id: string;
   title: string;
+  description?: string;
   status: 'new' | 'in_progress' | 'awaiting_response' | 'resolved' | 'closed';
   severity: 'low' | 'medium' | 'high' | 'critical';
   created_at: Date;
@@ -28,6 +30,7 @@ export function UserDashboard() {
   const [tickets, setTickets] = useState<UserTicket[]>([]);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<UserTicket | null>(null);
 
   useEffect(() => {
     fetchUserTickets();
@@ -52,6 +55,7 @@ export function UserDashboard() {
         const userTickets: UserTicket[] = result.data.map((ticket: any) => ({
           id: ticket.id,
           title: ticket.title,
+          description: ticket.description || 'No description provided',
           status: ticket.status,
           severity: ticket.severity || ticket.priority || 'low',
           created_at: new Date(ticket.created_at),
@@ -90,6 +94,21 @@ export function UserDashboard() {
     } catch (error) {
       console.error('Error fetching security status:', error);
     }
+  };
+
+  const handleTicketClick = (ticket: UserTicket) => {
+    setSelectedTicket(ticket);
+  };
+
+  const formatDateTime = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -226,7 +245,7 @@ export function UserDashboard() {
                   <div
                     key={ticket.id}
                     className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-4 hover:bg-neutral-50 dark:hover:bg-neutral-700/50 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/help-desk/tickets/${ticket.id}`)}
+                    onClick={() => handleTicketClick(ticket)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
@@ -330,6 +349,79 @@ export function UserDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Simple Ticket View Modal for Regular Users */}
+      {selectedTicket && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedTicket(null)}
+          title={`Ticket #${selectedTicket.id}`}
+          size="md"
+        >
+          <div className="space-y-4">
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Title
+              </label>
+              <p className="text-sm text-gray-900 dark:text-white">
+                {selectedTicket.title}
+              </p>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <p className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                {selectedTicket.description || 'No description provided'}
+              </p>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Status
+              </label>
+              <div className="flex items-center space-x-2">
+                {getStatusBadge(selectedTicket.status)}
+                {getSeverityBadge(selectedTicket.severity)}
+              </div>
+            </div>
+
+            {/* Time Posted */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Created
+              </label>
+              <p className="text-sm text-gray-900 dark:text-white">
+                {formatDateTime(selectedTicket.created_at)}
+              </p>
+            </div>
+
+            {/* Last Updated */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Last Updated
+              </label>
+              <p className="text-sm text-gray-900 dark:text-white">
+                {formatDateTime(selectedTicket.updated_at)}
+              </p>
+            </div>
+
+            {/* Close Button */}
+            <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                onClick={() => setSelectedTicket(null)}
+                variant="outline"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -2,126 +2,149 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Mock flow data for multi-company demonstration
+    // Mock flow data for ACME Corporation demonstration
     const flow_nodes = [
-      // Data Sources - Multiple Companies
+      // Data Sources - ACME Corporation
       {
-        id: 'techcorp-edr-crowdstrike-01',
-        name: 'TechCorp CrowdStrike EDR',
+        id: 'acme-edr-crowdstrike-01',
+        name: 'ACME CrowdStrike EDR',
         type: 'source',
         status: 'active',
         throughput: 452,
         connections: ['normalizer'],
-        company: 'TechCorp Inc.',
-        location: 'New York HQ'
+        company: 'ACME Corporation',
+        location: 'San Francisco HQ'
       },
       {
-        id: 'techcorp-firewall-fortinet-01',
-        name: 'TechCorp Fortinet Firewall',
+        id: 'acme-firewall-fortinet-01',
+        name: 'ACME Fortinet Firewall',
         type: 'source',
         status: 'active',
         throughput: 1284,
         connections: ['normalizer'],
-        company: 'TechCorp Inc.',
-        location: 'New York HQ'
+        company: 'ACME Corporation',
+        location: 'San Francisco HQ'
       },
       {
-        id: 'medhealth-edr-sentinelone-01',
-        name: 'MedHealth SentinelOne EDR',
+        id: 'acme-edr-sentinelone-01',
+        name: 'ACME SentinelOne EDR',
         type: 'source',
         status: 'active',
         throughput: 231,
         connections: ['normalizer'],
-        company: 'MedHealth Systems',
-        location: 'Chicago Medical Center'
+        company: 'ACME Corporation',
+        location: 'San Francisco Branch'
       },
       {
-        id: 'globalbank-edr-crowdstrike-01',
-        name: 'GlobalBank CrowdStrike Falcon',
+        id: 'acme-siem-qradar-01',
+        name: 'ACME IBM QRadar SIEM',
         type: 'source',
         status: 'active',
         throughput: 1567,
         connections: ['normalizer'],
-        company: 'GlobalBank Corp.',
-        location: 'London Trading Floor'
+        company: 'ACME Corporation',
+        location: 'San Francisco HQ'
       },
       {
-        id: 'globalbank-siem-splunk-01',
-        name: 'GlobalBank Splunk Enterprise',
+        id: 'acme-firewall-cisco-01',
+        name: 'ACME Cisco ASA Firewall',
         type: 'source',
         status: 'active',
         throughput: 2345,
         connections: ['normalizer'],
-        company: 'GlobalBank Corp.',
-        location: 'London SOC'
+        company: 'ACME Corporation',
+        location: 'San Francisco Branch'
       },
       {
-        id: 'startupco-edr-avast-01',
-        name: 'StartupCo Avast EDR',
+        id: 'acme-email-o365-01',
+        name: 'ACME Office 365 Email Security',
         type: 'source',
         status: 'active',
         throughput: 54,
         connections: ['normalizer'],
-        company: 'StartupCo Ltd.',
-        location: 'Austin Office'
+        company: 'ACME Corporation',
+        location: 'Cloud'
       },
-      {
-        id: 'retailchain-edr-generic-01',
-        name: 'RetailChain Custom EDR',
-        type: 'source',
-        status: 'error',
-        throughput: 0,
-        connections: ['normalizer'],
-        company: 'RetailChain Stores',
-        location: 'Phoenix Distribution Center'
-      },
-      // Processing Nodes
+
+      // Processing Pipeline
       {
         id: 'normalizer',
-        name: 'Multi-Tenant Data Normalizer',
+        name: 'Data Normalizer',
         type: 'processor',
         status: 'active',
-        throughput: 5933,
-        connections: ['enricher']
+        throughput: 6433,
+        connections: ['enricher', 'threat-intel']
       },
       {
         id: 'enricher',
-        name: 'AI Threat Intelligence Enricher',
+        name: 'Context Enricher',
         type: 'processor',
         status: 'active',
-        throughput: 5845,
-        connections: ['correlator', 'threat-lake']
+        throughput: 5821,
+        connections: ['correlation-engine']
       },
       {
-        id: 'correlator',
-        name: 'Cross-Tenant Event Correlator',
+        id: 'threat-intel',
+        name: 'Threat Intelligence',
         type: 'processor',
         status: 'active',
-        throughput: 1234,
-        connections: ['alert-engine']
+        throughput: 4567,
+        connections: ['correlation-engine']
       },
-      // Destinations
       {
-        id: 'threat-lake',
-        name: 'AVIAN Global Threat Lake',
-        type: 'destination',
+        id: 'correlation-engine',
+        name: 'Correlation Engine',
+        type: 'processor',
         status: 'active',
-        throughput: 5845,
+        throughput: 3456,
+        connections: ['alert-manager', 'incident-manager']
+      },
+
+      // Output Systems
+      {
+        id: 'alert-manager',
+        name: 'Alert Manager',
+        type: 'output',
+        status: 'active',
+        throughput: 234,
         connections: []
       },
       {
-        id: 'alert-engine',
-        name: 'Multi-Tenant Alert Engine',
-        type: 'destination',
+        id: 'incident-manager',
+        name: 'Incident Manager',
+        type: 'output',
         status: 'active',
-        throughput: 1234,
+        throughput: 45,
         connections: []
       }
     ];
 
+    const flow_edges = [
+      // Data Sources to Normalizer
+      { from: 'acme-edr-crowdstrike-01', to: 'normalizer', throughput: 452 },
+      { from: 'acme-firewall-fortinet-01', to: 'normalizer', throughput: 1284 },
+      { from: 'acme-edr-sentinelone-01', to: 'normalizer', throughput: 231 },
+      { from: 'acme-siem-qradar-01', to: 'normalizer', throughput: 1567 },
+      { from: 'acme-firewall-cisco-01', to: 'normalizer', throughput: 2345 },
+      { from: 'acme-email-o365-01', to: 'normalizer', throughput: 54 },
+      
+      // Processing Pipeline
+      { from: 'normalizer', to: 'enricher', throughput: 5821 },
+      { from: 'normalizer', to: 'threat-intel', throughput: 4567 },
+      { from: 'enricher', to: 'correlation-engine', throughput: 5821 },
+      { from: 'threat-intel', to: 'correlation-engine', throughput: 4567 },
+      
+      // Output
+      { from: 'correlation-engine', to: 'alert-manager', throughput: 234 },
+      { from: 'correlation-engine', to: 'incident-manager', throughput: 45 }
+    ];
+
     return NextResponse.json({
       success: true,
-      flow_nodes
+      data: {
+        nodes: flow_nodes,
+        edges: flow_edges
+      }
     });
   } catch (error) {
     console.error('Failed to fetch flow data:', error);

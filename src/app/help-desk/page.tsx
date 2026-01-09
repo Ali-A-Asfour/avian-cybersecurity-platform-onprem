@@ -11,10 +11,13 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import { UnassignedTicketQueue } from '@/components/help-desk/UnassignedTicketQueue';
 import { MyTicketsQueue } from '@/components/help-desk/MyTicketsQueue';
 import { TenantAdminQueue } from '@/components/help-desk/TenantAdminQueue';
+import { GeneralTicketQueue } from '@/components/help-desk/GeneralTicketQueue';
 import { KnowledgeBaseSearch } from '@/components/help-desk/KnowledgeBaseSearch';
+import { TenantSelector } from '@/components/admin/TenantSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { initializeDemoUser } from '@/lib/demo-auth';
 import { api } from '@/lib/api-client';
+import { useTenant } from '@/contexts/TenantContext';
 import {
     Users,
     User,
@@ -23,7 +26,8 @@ import {
     Clock,
     AlertTriangle,
     Loader2,
-    BookOpen
+    BookOpen,
+    List
 } from 'lucide-react';
 
 interface QueueMetrics {
@@ -51,10 +55,12 @@ export default function HelpDeskPage() {
     const router = useRouter();
     const { isAuthenticated, loading: authContextLoading } = useAuthContext();
     const { user: authUser, loading: authLoading } = useAuth();
+    const { selectedTenant, setSelectedTenant } = useTenant();
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<QueueMetrics | null>(null);
     const [metricsLoading, setMetricsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('unassigned');
+    const [showTenantSelector, setShowTenantSelector] = useState(false);
 
     useEffect(() => {
         if (!authContextLoading && !isAuthenticated) {
@@ -85,16 +91,42 @@ export default function HelpDeskPage() {
         };
     }, [authUser]);
 
+    // Check if user is cross-tenant (helpdesk or security analyst)
+    const isCrossTenantUser = useMemo(() => {
+        return user && [UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role);
+    }, [user?.role]);
+
     // Memoize tenant object to prevent infinite loops
     const tenant = useMemo(() => {
         if (!authUser) return null;
 
+        // For cross-tenant users, use selected tenant from context
+        if (isCrossTenantUser && selectedTenant) {
+            return {
+                id: selectedTenant.id,
+                name: selectedTenant.name,
+                domain: selectedTenant.name.toLowerCase().replace(/\s+/g, '-') + '.example.com',
+            };
+        }
+
+        // For regular users, use their assigned tenant
         return {
             id: authUser.tenantId || 'tenant-123',
             name: 'Demo Tenant',
             domain: 'demo.example.com',
         };
-    }, [authUser?.tenantId]);
+    }, [authUser?.tenantId, isCrossTenantUser, selectedTenant]);
+
+    // Handle tenant selection for cross-tenant users
+    const handleTenantSelect = (tenant: any) => {
+        setSelectedTenant(tenant);
+        setShowTenantSelector(false);
+    };
+
+    const handleSwitchTenant = () => {
+        setSelectedTenant(null);
+        setShowTenantSelector(true);
+    };
 
     // Fetch tenant context and set default tab
     useEffect(() => {
@@ -102,6 +134,13 @@ export default function HelpDeskPage() {
             if (!authUser || authLoading) return;
 
             try {
+                // For cross-tenant users, check if they need to select a tenant
+                if (isCrossTenantUser && !selectedTenant) {
+                    setShowTenantSelector(true);
+                    setLoading(false);
+                    return;
+                }
+
                 // Set default tab based on user role
                 if (authUser.role === UserRole.TENANT_ADMIN) {
                     setActiveTab('tenant-admin');
@@ -118,7 +157,7 @@ export default function HelpDeskPage() {
         };
 
         initializePage();
-    }, [authUser?.role, authLoading]);
+    }, [authUser?.role, authLoading, isCrossTenantUser, selectedTenant]);
 
     // Fetch queue metrics
     useEffect(() => {
@@ -150,8 +189,11 @@ export default function HelpDeskPage() {
             }
         };
 
-        fetchMetrics();
-    }, [user?.id, tenant?.id]); // Use stable IDs instead of full objects
+        // Only fetch metrics if we have a tenant (either assigned or selected)
+        if (!isCrossTenantUser || selectedTenant) {
+            fetchMetrics();
+        }
+    }, [user?.id, tenant?.id, isCrossTenantUser, selectedTenant]); // Use stable IDs instead of full objects
 
     // Handle ticket assignment (refresh metrics)
     const handleTicketAssigned = useMemo(() => {
@@ -183,7 +225,7 @@ export default function HelpDeskPage() {
         );
     }
 
-    if (!user || !tenant) {
+    if (!user || (!tenant && !isCrossTenantUser)) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
@@ -192,6 +234,20 @@ export default function HelpDeskPage() {
                     <p className="text-gray-600">You don't have permission to access the help desk.</p>
                 </div>
             </div>
+        );
+    }
+
+    // Show tenant selector for cross-tenant users who haven't selected a tenant
+    if (isCrossTenantUser && showTenantSelector) {
+        return (
+            <ClientLayout>
+                <div className="container mx-auto p-6">
+                    <TenantSelector
+                        onTenantSelect={handleTenantSelect}
+                        selectedTenant={selectedTenant}
+                    />
+                </div>
+            </ClientLayout>
         );
     }
 
@@ -226,9 +282,22 @@ export default function HelpDeskPage() {
                         <h1 className="text-3xl font-bold">Help Desk</h1>
                         <p className="text-gray-600 mt-1">
                             Manage support tickets and help end users resolve their issues
+                            {isCrossTenantUser && tenant && (
+                                <span className="block text-sm text-blue-600 mt-1">
+                                    Currently managing: {tenant.name}
+                                </span>
+                            )}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
+                        {isCrossTenantUser && tenant && (
+                            <button
+                                onClick={handleSwitchTenant}
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                            >
+                                Switch Tenant
+                            </button>
+                        )}
                         <a
                             href="/help-desk/tickets/new"
                             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -301,7 +370,7 @@ export default function HelpDeskPage() {
 
                 {/* Queue Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-5">
                         {/* Unassigned Queue - only for help desk staff */}
                         {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role) && (
                             <TabsTrigger value="unassigned" className="flex items-center gap-2">
@@ -323,6 +392,19 @@ export default function HelpDeskPage() {
                                 {metrics && (
                                     <Badge variant="secondary" className="ml-1">
                                         {user.role === UserRole.USER ? metrics.total_tickets : metrics.assigned_tickets}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+                        )}
+
+                        {/* General Queue - for help desk staff and tenant admins */}
+                        {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.TENANT_ADMIN].includes(user.role) && (
+                            <TabsTrigger value="general-queue" className="flex items-center gap-2">
+                                <List className="h-4 w-4" />
+                                General Queue
+                                {metrics && (
+                                    <Badge variant="secondary" className="ml-1">
+                                        {metrics.total_tickets}
                                     </Badge>
                                 )}
                             </TabsTrigger>
@@ -364,6 +446,17 @@ export default function HelpDeskPage() {
                     {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.USER].includes(user.role) && (
                         <TabsContent value="my-tickets">
                             <MyTicketsQueue
+                                userRole={user.role}
+                                userId={user.id}
+                                tenantId={tenant.id}
+                            />
+                        </TabsContent>
+                    )}
+
+                    {/* General Queue Tab Content */}
+                    {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.TENANT_ADMIN].includes(user.role) && (
+                        <TabsContent value="general-queue">
+                            <GeneralTicketQueue
                                 userRole={user.role}
                                 userId={user.id}
                                 tenantId={tenant.id}

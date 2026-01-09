@@ -6,6 +6,41 @@
  * - Tracking which alerts are assigned to which users
  */
 
+// Utility function to get or create consistent session ID
+function getOrCreateSessionId(): string {
+    try {
+        // Try sessionStorage first (per-tab isolation)
+        let sessionId = sessionStorage.getItem('demoUserId');
+        if (sessionId) {
+            console.log(`🔄 Using existing session ID from sessionStorage: ${sessionId}`);
+            return sessionId;
+        }
+
+        // Try localStorage as fallback (per-browser persistence)
+        sessionId = localStorage.getItem('demoUserId');
+        if (sessionId) {
+            console.log(`🔄 Using existing session ID from localStorage: ${sessionId}`);
+            // Store in sessionStorage for this tab
+            sessionStorage.setItem('demoUserId', sessionId);
+            return sessionId;
+        }
+
+        // Create new session ID
+        sessionId = `user-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`;
+        
+        // Store in both storages
+        sessionStorage.setItem('demoUserId', sessionId);
+        localStorage.setItem('demoUserId', sessionId);
+        
+        console.log(`🆕 Created new session ID: ${sessionId}`);
+        return sessionId;
+    } catch (error) {
+        console.error('Storage error:', error);
+        // Fallback to a simple unique ID
+        return `user-fallback-${Date.now()}`;
+    }
+}
+
 interface DemoAlertState {
     id: string;
     status: 'open' | 'assigned' | 'investigating' | 'resolved' | 'escalated';
@@ -31,6 +66,7 @@ declare global {
     var __demoAlertStates: Map<string, DemoAlertState> | undefined;
     var __demoIncidentStates: Map<string, DemoIncidentState> | undefined;
     var __demoIncidentCounter: number | undefined;
+    var __demoStateInitialized: boolean | undefined;
 }
 
 // In-memory stores for demo state - persistent across hot reloads
@@ -50,7 +86,47 @@ if (!globalThis.__demoIncidentCounter) {
     globalThis.__demoIncidentCounter = demoIncidentCounter;
 }
 
+// Initialize clean state on first load
+if (!globalThis.__demoStateInitialized) {
+    console.log('🔄 Initializing clean demo state...');
+    demoAlertStates.clear();
+    demoIncidentStates.clear();
+    globalThis.__demoStateInitialized = true;
+}
+
 export class DemoStateManager {
+    /**
+     * Get consistent session ID for demo mode
+     */
+    static getSessionId(): string {
+        return getOrCreateSessionId();
+    }
+
+    /**
+     * Get existing user ID that has incidents (for demo recovery)
+     */
+    static getExistingUserWithIncidents(): string | null {
+        const allIncidents = Array.from(demoIncidentStates.values());
+        if (allIncidents.length > 0) {
+            // Return the user ID of the first incident found
+            return allIncidents[0].ownerId;
+        }
+        return null;
+    }
+
+    /**
+     * Set session ID to an existing user (for demo recovery)
+     */
+    static setSessionId(userId: string): void {
+        try {
+            sessionStorage.setItem('demoUserId', userId);
+            localStorage.setItem('demoUserId', userId);
+            console.log(`🔄 Set session ID to: ${userId}`);
+        } catch (error) {
+            console.error('Storage error:', error);
+        }
+    }
+
     /**
      * Assign an alert to a user (investigate action)
      */
@@ -131,6 +207,7 @@ export class DemoStateManager {
             }
         }
         console.log(`Demo: Found ${assignedAlerts.length} alerts assigned to ${userId}:`, assignedAlerts);
+        console.log(`Demo: All alert states:`, Array.from(demoAlertStates.entries()));
         return assignedAlerts;
     }
 
@@ -168,6 +245,14 @@ export class DemoStateManager {
      */
     static getIncident(incidentId: string): DemoIncidentState | null {
         return demoIncidentStates.get(incidentId) || null;
+    }
+
+    /**
+     * Update incident in demo state
+     */
+    static updateIncident(incidentId: string, updatedIncident: DemoIncidentState): void {
+        demoIncidentStates.set(incidentId, updatedIncident);
+        console.log(`Demo: Updated incident ${incidentId} with status ${updatedIncident.status}`);
     }
 
     /**

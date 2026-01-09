@@ -60,6 +60,14 @@ export default function AlertsIncidentsPage() {
                 if (!response.ok) {
                     // If production API fails, enable demo mode
                     setDemoMode(true);
+                } else {
+                    // Check if the response indicates we should use demo mode
+                    const data = await response.json();
+                    // If the production API returns empty data or indicates demo mode should be used,
+                    // enable demo mode for a better user experience
+                    if (!data.success || (data.data && data.data.alerts && data.data.alerts.length === 0)) {
+                        setDemoMode(true);
+                    }
                 }
             } catch (error) {
                 // If API is unreachable, enable demo mode

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Loader2, User, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface UnassignedTicketQueueProps {
     userRole: UserRole;
@@ -29,6 +30,7 @@ export function UnassignedTicketQueue({
     tenantId,
     onTicketAssigned
 }: UnassignedTicketQueueProps) {
+    const { selectedTenant } = useTenant();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [assigningTickets, setAssigningTickets] = useState<Set<string>>(new Set());
@@ -60,7 +62,23 @@ export function UnassignedTicketQueue({
                 filters.severity.forEach(severity => params.append('severity', severity));
             }
 
-            const response = await api.get(`/api/help-desk/queue/unassigned?${params}`);
+            // Prepare headers for cross-tenant users
+            const headers: Record<string, string> = {};
+            
+            // For cross-tenant users, send selected tenant in headers
+            if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(userRole) && selectedTenant) {
+                headers['x-selected-tenant'] = selectedTenant.id;
+            }
+
+            console.log('=== UNASSIGNED QUEUE FETCH ===');
+            console.log('User role:', userRole);
+            console.log('Selected tenant:', selectedTenant);
+            console.log('Headers:', headers);
+            console.log('=== END FETCH DEBUG ===');
+
+            const response = await api.get(`/api/help-desk/queue/unassigned?${params}`, {
+                headers
+            });
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -164,7 +182,7 @@ export function UnassignedTicketQueue({
 
     useEffect(() => {
         fetchUnassignedTickets();
-    }, [filters]);
+    }, [filters, selectedTenant]); // Add selectedTenant as dependency
 
     if (loading && tickets.length === 0) {
         return (

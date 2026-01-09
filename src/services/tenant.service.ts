@@ -1,8 +1,9 @@
 import { eq, and, desc, count, sql } from 'drizzle-orm';
-// import { db } from '../lib/database';
+import { db } from '../lib/database';
 import { tenants, users, auditLogs } from '../../database/schemas/main';
 import { TenantSchemaManager } from '../lib/tenant-schema';
 import { Tenant, TenantSettings, UserRole, AuditLog, PaginationParams } from '../types';
+import { demoTenantStore } from '../lib/demo-tenant-store';
 
 export interface CreateTenantRequest {
   name: string;
@@ -49,6 +50,59 @@ export class TenantService {
     // Only super admins can create tenants
     if (creatorRole !== UserRole.SUPER_ADMIN) {
       throw new Error('Insufficient permissions to create tenant');
+    }
+
+    // Use demo mode in development with bypass mode
+    if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+      // Check if domain already exists in demo store
+      if (demoTenantStore.tenantExists(data.domain)) {
+        throw new Error('Tenant with this domain already exists');
+      }
+
+      // Generate a new tenant ID
+      const newTenantId = `tenant-${Date.now()}`;
+      
+      // Default tenant settings
+      const defaultSettings: TenantSettings = {
+        max_users: data.settings?.max_users || 100,
+        features_enabled: data.settings?.features_enabled || ['tickets', 'alerts', 'compliance', 'reports'],
+        notification_settings: {
+          email_enabled: data.settings?.notification_settings?.email_enabled ?? true,
+          sms_enabled: data.settings?.notification_settings?.sms_enabled ?? false,
+          push_enabled: data.settings?.notification_settings?.push_enabled ?? true,
+          digest_frequency: data.settings?.notification_settings?.digest_frequency || 'daily',
+        },
+        sla_settings: {
+          response_time_hours: data.settings?.sla_settings?.response_time_hours || 4,
+          resolution_time_hours: data.settings?.sla_settings?.resolution_time_hours || 24,
+          escalation_enabled: data.settings?.sla_settings?.escalation_enabled ?? true,
+          escalation_time_hours: data.settings?.sla_settings?.escalation_time_hours || 8,
+        },
+        branding: {
+          primary_color: data.settings?.branding?.primary_color || '#00D4FF',
+          secondary_color: data.settings?.branding?.secondary_color || '#0A1628',
+          logo_url: data.logo_url,
+          favicon_url: data.settings?.branding?.favicon_url,
+        },
+      };
+
+      // Create new tenant object
+      const newTenant: Tenant = {
+        id: newTenantId,
+        name: data.name,
+        domain: data.domain,
+        logo_url: data.logo_url || null,
+        theme_color: data.theme_color || '#00D4FF',
+        settings: defaultSettings,
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      // Add to demo store
+      demoTenantStore.addTenant(newTenant);
+      
+      return newTenant;
     }
 
     // Check if domain already exists
@@ -194,6 +248,40 @@ export class TenantService {
       throw new Error('Insufficient permissions to list tenants');
     }
 
+    // Use demo data in development with bypass mode
+    if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+      // Get all tenants from demo store
+      const allTenants = demoTenantStore.getAllTenants();
+
+      // Apply filters
+      let filteredTenants = allTenants;
+
+      if (filters.is_active !== undefined) {
+        filteredTenants = filteredTenants.filter(tenant => tenant.is_active === filters.is_active);
+      }
+
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredTenants = filteredTenants.filter(tenant => 
+          tenant.name.toLowerCase().includes(searchLower) ||
+          tenant.domain.toLowerCase().includes(searchLower)
+        );
+      }
+
+      // Apply pagination
+      const page = filters.page || 1;
+      const limit = Math.min(filters.limit || 20, 100);
+      const offset = (page - 1) * limit;
+      const paginatedTenants = filteredTenants.slice(offset, offset + limit);
+
+      return {
+        tenants: paginatedTenants,
+        total: filteredTenants.length,
+        page,
+        limit,
+      };
+    }
+
     const page = filters.page || 1;
     const limit = Math.min(filters.limit || 20, 100);
     const offset = (page - 1) * limit;
@@ -333,6 +421,23 @@ export class TenantService {
       throw new Error('Insufficient permissions to delete tenant');
     }
 
+    // Use demo mode in development with bypass mode
+    if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+      // Check if tenant exists in demo store
+      const tenant = demoTenantStore.getTenant(tenantId);
+      if (!tenant) {
+        throw new Error('Tenant not found');
+      }
+
+      // Remove tenant from demo store (hard delete for demo)
+      const deleted = demoTenantStore.deleteTenant(tenantId);
+      if (!deleted) {
+        throw new Error('Failed to delete tenant');
+      }
+
+      return;
+    }
+
     // Get existing tenant
     const existingTenant = await db
       .select()
@@ -432,239 +537,63 @@ export class TenantService {
    * Generate tenant-specific mock users for development
    */
   private static generateTenantSpecificUsers(tenantId: string) {
-    const userSets = {
-      'dev-tenant-123': [
-        {
-          id: 'user-1',
-          tenant_id: tenantId,
-          email: 'tenant.admin@demo.avian-platform.com',
-          first_name: 'Tenant',
-          last_name: 'Admin',
-          role: UserRole.TENANT_ADMIN,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-15T10:30:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-15T10:30:00Z'),
-        },
-        {
-          id: 'user-2',
-          tenant_id: tenantId,
-          email: 'analyst@demo.avian-platform.com',
-          first_name: 'Security',
-          last_name: 'Analyst',
-          role: UserRole.SECURITY_ANALYST,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-14T14:20:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-14T14:20:00Z'),
-        },
-        {
-          id: 'user-3',
-          tenant_id: tenantId,
-          email: 'mr.linux@demo.avian-platform.com',
-          first_name: 'Mr',
-          last_name: 'Linux',
-          role: UserRole.IT_HELPDESK_ANALYST,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T09:15:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T09:15:00Z'),
-        },
-        {
-          id: 'user-4',
-          tenant_id: tenantId,
-          email: 'user@demo.avian-platform.com',
-          first_name: 'Regular',
-          last_name: 'User',
-          role: UserRole.USER,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-13T16:45:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-13T16:45:00Z'),
-        },
-        {
-          id: 'user-5',
-          tenant_id: tenantId,
-          email: 'jane.doe@demo.avian-platform.com',
-          first_name: 'Jane',
-          last_name: 'Doe',
-          role: UserRole.USER,
-          mfa_enabled: true,
-          last_login: null,
-          is_active: false,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-10T12:00:00Z'),
-        },
-      ],
-      'acme-corp-456': [
-        {
-          id: 'acme-1',
-          tenant_id: tenantId,
-          email: 'admin@acme-corp.com',
-          first_name: 'John',
-          last_name: 'Smith',
-          role: UserRole.TENANT_ADMIN,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T08:00:00Z'),
-          is_active: true,
-          created_at: new Date('2023-12-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T08:00:00Z'),
-        },
-        {
-          id: 'acme-2',
-          tenant_id: tenantId,
-          email: 'sarah.connor@acme-corp.com',
-          first_name: 'Sarah',
-          last_name: 'Connor',
-          role: UserRole.SECURITY_ANALYST,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-15T16:30:00Z'),
-          is_active: true,
-          created_at: new Date('2023-12-01T00:00:00Z'),
-          updated_at: new Date('2024-01-15T16:30:00Z'),
-        },
-        {
-          id: 'acme-3',
-          tenant_id: tenantId,
-          email: 'mike.tech@acme-corp.com',
-          first_name: 'Mike',
-          last_name: 'Tech',
-          role: UserRole.IT_HELPDESK_ANALYST,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-16T11:20:00Z'),
-          is_active: true,
-          created_at: new Date('2023-12-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T11:20:00Z'),
-        },
-        {
-          id: 'acme-4',
-          tenant_id: tenantId,
-          email: 'alice.wonder@acme-corp.com',
-          first_name: 'Alice',
-          last_name: 'Wonder',
-          role: UserRole.USER,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-14T09:45:00Z'),
-          is_active: true,
-          created_at: new Date('2023-12-01T00:00:00Z'),
-          updated_at: new Date('2024-01-14T09:45:00Z'),
-        },
-      ],
-      'techstart-789': [
-        {
-          id: 'tech-1',
-          tenant_id: tenantId,
-          email: 'ceo@techstart.io',
-          first_name: 'Emma',
-          last_name: 'Startup',
-          role: UserRole.TENANT_ADMIN,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T07:30:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T07:30:00Z'),
-        },
-        {
-          id: 'tech-2',
-          tenant_id: tenantId,
-          email: 'dev@techstart.io',
-          first_name: 'Alex',
-          last_name: 'Developer',
-          role: UserRole.IT_HELPDESK_ANALYST,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T09:00:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T09:00:00Z'),
-        },
-        {
-          id: 'tech-3',
-          tenant_id: tenantId,
-          email: 'intern@techstart.io',
-          first_name: 'Sam',
-          last_name: 'Intern',
-          role: UserRole.USER,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-15T14:00:00Z'),
-          is_active: true,
-          created_at: new Date('2024-01-01T00:00:00Z'),
-          updated_at: new Date('2024-01-15T14:00:00Z'),
-        },
-      ],
-      'global-finance-101': [
-        {
-          id: 'gf-1',
-          tenant_id: tenantId,
-          email: 'it.director@globalfinance.com',
-          first_name: 'Robert',
-          last_name: 'Director',
-          role: UserRole.TENANT_ADMIN,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T06:45:00Z'),
-          is_active: true,
-          created_at: new Date('2023-06-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T06:45:00Z'),
-        },
-        {
-          id: 'gf-2',
-          tenant_id: tenantId,
-          email: 'security@globalfinance.com',
-          first_name: 'Maria',
-          last_name: 'Security',
-          role: UserRole.SECURITY_ANALYST,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-15T18:30:00Z'),
-          is_active: true,
-          created_at: new Date('2023-06-01T00:00:00Z'),
-          updated_at: new Date('2024-01-15T18:30:00Z'),
-        },
-        {
-          id: 'gf-3',
-          tenant_id: tenantId,
-          email: 'helpdesk@globalfinance.com',
-          first_name: 'David',
-          last_name: 'Support',
-          role: UserRole.IT_HELPDESK_ANALYST,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T10:15:00Z'),
-          is_active: true,
-          created_at: new Date('2023-06-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T10:15:00Z'),
-        },
-        {
-          id: 'gf-4',
-          tenant_id: tenantId,
-          email: 'trader1@globalfinance.com',
-          first_name: 'Lisa',
-          last_name: 'Trader',
-          role: UserRole.USER,
-          mfa_enabled: true,
-          last_login: new Date('2024-01-16T08:30:00Z'),
-          is_active: true,
-          created_at: new Date('2023-06-01T00:00:00Z'),
-          updated_at: new Date('2024-01-16T08:30:00Z'),
-        },
-        {
-          id: 'gf-5',
-          tenant_id: tenantId,
-          email: 'analyst@globalfinance.com',
-          first_name: 'James',
-          last_name: 'Analyst',
-          role: UserRole.USER,
-          mfa_enabled: false,
-          last_login: new Date('2024-01-12T15:20:00Z'),
-          is_active: false,
-          created_at: new Date('2023-06-01T00:00:00Z'),
-          updated_at: new Date('2024-01-12T15:20:00Z'),
-        },
-      ],
-    };
+    // Only return ACME Corporation users
+    const acmeUsers = [
+      {
+        id: 'acme-1',
+        tenant_id: tenantId,
+        email: 'admin@acme-corp.com',
+        first_name: 'John',
+        last_name: 'Smith',
+        role: UserRole.TENANT_ADMIN,
+        mfa_enabled: true,
+        last_login: new Date('2024-01-16T08:00:00Z'),
+        is_active: true,
+        created_at: new Date('2023-12-01T00:00:00Z'),
+        updated_at: new Date('2024-01-16T08:00:00Z'),
+      },
+      {
+        id: 'acme-2',
+        tenant_id: tenantId,
+        email: 'sarah.connor@acme-corp.com',
+        first_name: 'Sarah',
+        last_name: 'Connor',
+        role: UserRole.SECURITY_ANALYST,
+        mfa_enabled: true,
+        last_login: new Date('2024-01-15T16:30:00Z'),
+        is_active: true,
+        created_at: new Date('2023-12-01T00:00:00Z'),
+        updated_at: new Date('2024-01-15T16:30:00Z'),
+      },
+      {
+        id: 'acme-3',
+        tenant_id: tenantId,
+        email: 'mike.tech@acme-corp.com',
+        first_name: 'Mike',
+        last_name: 'Tech',
+        role: UserRole.IT_HELPDESK_ANALYST,
+        mfa_enabled: false,
+        last_login: new Date('2024-01-16T11:20:00Z'),
+        is_active: true,
+        created_at: new Date('2023-12-01T00:00:00Z'),
+        updated_at: new Date('2024-01-16T11:20:00Z'),
+      },
+      {
+        id: 'acme-4',
+        tenant_id: tenantId,
+        email: 'alice.wonder@acme-corp.com',
+        first_name: 'Alice',
+        last_name: 'Wonder',
+        role: UserRole.USER,
+        mfa_enabled: false,
+        last_login: new Date('2024-01-14T09:45:00Z'),
+        is_active: true,
+        created_at: new Date('2023-12-01T00:00:00Z'),
+        updated_at: new Date('2024-01-14T09:45:00Z'),
+      },
+    ];
 
-    return userSets[tenantId as keyof typeof userSets] || userSets['dev-tenant-123'];
+    return acmeUsers;
   }
 
   /**

@@ -149,6 +149,7 @@ export interface InvestigationPlaybook {
 
     // Content
     purpose: string;
+    quickResponseGuide: string[]; // 3-step quick reference for SOC analysts
     initialValidationSteps: string[];
     sourceInvestigationSteps: string[];
     containmentChecks: string[];
@@ -169,6 +170,7 @@ export interface CreateInvestigationPlaybookInput {
     version: string;
     status?: PlaybookStatus;
     purpose: string;
+    quickResponseGuide?: string[];
     initialValidationSteps?: string[];
     sourceInvestigationSteps?: string[];
     containmentChecks?: string[];
@@ -185,6 +187,7 @@ export interface UpdateInvestigationPlaybookInput {
     version?: string;
     status?: PlaybookStatus;
     purpose?: string;
+    quickResponseGuide?: string[];
     initialValidationSteps?: string[];
     sourceInvestigationSteps?: string[];
     containmentChecks?: string[];

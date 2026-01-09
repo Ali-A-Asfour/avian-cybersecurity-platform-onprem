@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, or, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, or, sql, isNull } from 'drizzle-orm';
 import { tickets } from '../../../database/schemas/tenant';
 import { getTenantDatabase } from '../../lib/tenant-schema';
 import {
@@ -91,23 +91,46 @@ export class QueueManagementService {
         // Use mock database in development
         if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
             const { mockDb } = await import('../../lib/mock-database');
-            const result = await mockDb.getTickets(tenantId, {
+            
+            console.log('=== QUEUE MANAGEMENT DEBUG ===');
+            console.log('Tenant ID:', tenantId);
+            console.log('User Role:', userRole);
+            console.log('Is super admin or all-tenants:', (userRole === UserRole.SUPER_ADMIN || tenantId === 'all-tenants'));
+            
+            // For super admins, get tickets from all tenants; for others, filter by tenant
+            const searchTenantId = (userRole === UserRole.SUPER_ADMIN || tenantId === 'all-tenants') ? null : tenantId;
+            console.log('Search tenant ID (null = all tenants):', searchTenantId);
+            
+            const result = await mockDb.getTickets(searchTenantId, {
                 ...filters,
-                // Don't filter by assignee - show all tickets (assigned and unassigned)
+                assignee: null, // Filter for unassigned tickets only
+            });
+
+            console.log('Raw tickets found:', result.tickets.length);
+            result.tickets.forEach(ticket => {
+                console.log(`  - ${ticket.id}: ${ticket.title} (tenant: ${ticket.tenant_id}, assignee: ${ticket.assignee})`);
             });
 
             // Apply role-based filtering
             const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);
+            console.log('Allowed categories for role:', allowedCategories);
             if (allowedCategories) {
                 result.tickets = result.tickets.filter((ticket: any) =>
                     allowedCategories.includes(ticket.category)
                 );
             }
 
+            console.log('Tickets after category filtering:', result.tickets.length);
+            result.tickets.forEach(ticket => {
+                console.log(`  - ${ticket.id}: ${ticket.title} (category: ${ticket.category})`);
+            });
+
             // Sort by queue rules: assignment status ASC (unassigned first), severity DESC, queue_position_updated_at ASC, id ASC
             this.sortTicketsByQueueRules(result.tickets);
 
             result.total = result.tickets.length;
+            console.log('Final result count:', result.total);
+            console.log('=== END QUEUE MANAGEMENT DEBUG ===');
             return result;
         }
 
@@ -124,11 +147,15 @@ export class QueueManagementService {
             created_before,
         } = filters;
 
-        // Build where conditions for all tickets (assigned and unassigned)
+        // Build where conditions for unassigned tickets only
         const conditions = [
-            eq(tickets.tenant_id, tenantId),
-            // Show all tickets - both assigned and unassigned
+            isNull(tickets.assignee), // Only show unassigned tickets
         ];
+
+        // Super admins can see tickets from all tenants
+        if (userRole !== UserRole.SUPER_ADMIN && tenantId !== 'all-tenants') {
+            conditions.push(eq(tickets.tenant_id, tenantId));
+        }
 
         // Apply role-based category filtering
         const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);
@@ -213,19 +240,27 @@ export class QueueManagementService {
             const { mockDb } = await import('../../lib/mock-database');
 
             let result;
+            // For super admins, get tickets from all tenants; for others, filter by tenant
+            const searchTenantId = (userRole === UserRole.SUPER_ADMIN || tenantId === 'all-tenants') ? null : tenantId;
+            
             if (userRole === UserRole.USER) {
-                // For regular users, get tickets they created
-                result = await mockDb.getTickets(tenantId, {
+                // For regular users, get tickets they created (excluding closed tickets)
+                result = await mockDb.getTickets(searchTenantId, {
                     ...filters,
                     requester: analystId, // Tickets created by this user
                 });
             } else {
-                // For help desk staff, get tickets assigned to them
-                result = await mockDb.getTickets(tenantId, {
+                // For help desk staff, get tickets assigned to them (excluding closed tickets)
+                result = await mockDb.getTickets(searchTenantId, {
                     ...filters,
                     assignee: analystId, // Only tickets assigned to this analyst
                 });
             }
+
+            // Filter out closed tickets from "My Tickets" queue
+            result.tickets = result.tickets.filter((ticket: any) => 
+                ticket.status !== 'closed'
+            );
 
             // Apply role-based filtering
             const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);
@@ -257,8 +292,14 @@ export class QueueManagementService {
 
         // Build where conditions based on user role
         const conditions = [
-            eq(tickets.tenant_id, tenantId),
+            // Exclude closed tickets from "My Tickets" queue
+            sql`${tickets.status} != 'closed'`,
         ];
+
+        // Super admins can see tickets from all tenants
+        if (userRole !== UserRole.SUPER_ADMIN && tenantId !== 'all-tenants') {
+            conditions.push(eq(tickets.tenant_id, tenantId));
+        }
 
         // For regular users, show tickets they created
         // For help desk staff, show tickets assigned to them
@@ -360,12 +401,17 @@ export class QueueManagementService {
         // Use mock database in development
         if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
             const { mockDb } = await import('../../lib/mock-database');
-            const result = await mockDb.getTickets(tenantId, filters);
+            
+            // For super admins, get tickets from all tenants; for others, filter by tenant
+            const searchTenantId = userRole === UserRole.SUPER_ADMIN ? null : tenantId;
+            const result = await mockDb.getTickets(searchTenantId, filters);
 
             // For tenant admins, show only tickets they created or are assigned to
-            result.tickets = result.tickets.filter((ticket: any) =>
-                ticket.created_by === userId || ticket.assignee === userId
-            );
+            if (userRole === UserRole.TENANT_ADMIN) {
+                result.tickets = result.tickets.filter((ticket: any) =>
+                    ticket.created_by === userId || ticket.assignee === userId
+                );
+            }
 
             // Sort by queue rules: severity DESC, queue_position_updated_at ASC, id ASC
             this.sortTicketsByQueueRules(result.tickets);
@@ -390,14 +436,22 @@ export class QueueManagementService {
         } = filters;
 
         // Build where conditions for tenant admin view
-        const conditions = [
-            eq(tickets.tenant_id, tenantId),
-            // Tenant admins can only see tickets they created or are assigned to
-            or(
-                eq(tickets.created_by, userId),
-                eq(tickets.assignee, userId)
-            )!,
-        ];
+        const conditions = [];
+
+        // Super admins can see tickets from all tenants
+        if (userRole !== UserRole.SUPER_ADMIN) {
+            conditions.push(eq(tickets.tenant_id, tenantId));
+        }
+
+        // Tenant admins can only see tickets they created or are assigned to
+        if (userRole === UserRole.TENANT_ADMIN) {
+            conditions.push(
+                or(
+                    eq(tickets.created_by, userId),
+                    eq(tickets.assignee, userId)
+                )!
+            );
+        }
 
         // Apply additional filters
         if (status?.length) {
@@ -514,7 +568,10 @@ export class QueueManagementService {
         // Use mock database in development
         if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
             const { mockDb } = await import('../../lib/mock-database');
-            const result = await mockDb.getTickets(tenantId, {});
+            
+            // For super admins, get tickets from all tenants; for others, filter by tenant
+            const searchTenantId = userRole === UserRole.SUPER_ADMIN ? null : tenantId;
+            const result = await mockDb.getTickets(searchTenantId, {});
 
             // Apply role-based filtering
             let filteredTickets = result.tickets;
@@ -587,7 +644,12 @@ export class QueueManagementService {
         const db = await getTenantDatabase(tenantId);
 
         // Build base conditions with role-based filtering
-        const baseConditions = [eq(tickets.tenant_id, tenantId)];
+        const baseConditions = [];
+
+        // Super admins can see tickets from all tenants
+        if (userRole !== UserRole.SUPER_ADMIN) {
+            baseConditions.push(eq(tickets.tenant_id, tenantId));
+        }
 
         const allowedCategories = TicketAccessControl.getCategoryFilter(userRole);
         if (allowedCategories) {

@@ -58,18 +58,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const authToken = localStorage.getItem('auth-token');
             const storedUser = localStorage.getItem('auth-user');
             
+            console.log('[AuthContext] checkAuth - sessionId:', !!sessionId, 'authToken:', !!authToken, 'storedUser:', !!storedUser);
+            
             // Check if either session-id or auth-token exists
             if (!sessionId && !authToken) {
+                console.log('[AuthContext] No session or token found');
                 setUser(null);
                 return false;
             }
 
             // Stub: Will be replaced with Redis session validation
             if (storedUser) {
-                setUser(JSON.parse(storedUser));
-                return true;
+                try {
+                    const parsedUser = JSON.parse(storedUser);
+                    console.log('[AuthContext] Setting user from localStorage:', parsedUser);
+                    setUser(parsedUser);
+                    return true;
+                } catch (parseError) {
+                    console.error('[AuthContext] Failed to parse stored user:', parseError);
+                    // Clear invalid data
+                    localStorage.removeItem('auth-user');
+                    localStorage.removeItem('session-id');
+                    localStorage.removeItem('auth-token');
+                    setUser(null);
+                    return false;
+                }
             }
 
+            console.log('[AuthContext] No valid stored user found');
             return false;
         } catch (error) {
             console.error('[AuthContext] Auth check failed:', error);
@@ -156,24 +172,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let mounted = true;
 
         const initAuth = async () => {
+            console.log('[AuthContext] Initializing auth...');
+            
             // First check localStorage for quick load
             const storedUser = localStorage.getItem('auth-user');
             if (storedUser) {
                 try {
                     const parsedUser = JSON.parse(storedUser);
+                    console.log('[AuthContext] Found stored user on init:', parsedUser);
                     if (mounted) {
                         setUser(parsedUser);
                     }
                 } catch (err) {
                     console.error('[AuthContext] Failed to parse stored user:', err);
                 }
+            } else {
+                console.log('[AuthContext] No stored user found on init');
             }
 
             // Then verify with server
-            await checkAuth();
+            const isAuthenticated = await checkAuth();
+            console.log('[AuthContext] Auth check result:', isAuthenticated);
 
             if (mounted) {
                 setLoading(false);
+                console.log('[AuthContext] Auth initialization complete');
             }
         };
 
@@ -181,6 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Set up periodic auth check (every 5 minutes)
         const interval = setInterval(() => {
+            console.log('[AuthContext] Periodic auth check');
             checkAuth();
         }, 5 * 60 * 1000);
 

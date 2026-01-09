@@ -5,25 +5,18 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { DEMO_AUTH_USERS } from '@/lib/demo-auth';
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
 
-    // Demo credentials - for testing only
-    const demoCredentials = [
-      { email: 'admin@demo.com', password: 'admin123', user: DEMO_AUTH_USERS[0] },
-      { email: 'analyst@demo.com', password: 'analyst123', user: DEMO_AUTH_USERS[2] },
-      { email: 'helpdesk@demo.com', password: 'helpdesk123', user: DEMO_AUTH_USERS[3] },
-      { email: 'user@demo.com', password: 'user123', user: DEMO_AUTH_USERS[4] }
-    ];
-
-    const validCredential = demoCredentials.find(
-      cred => cred.email === email && cred.password === password
-    );
-
-    if (!validCredential) {
+    // Import shared mock users store
+    const { findMockUserByEmail } = await import('@/lib/mock-users-store');
+    
+    // Find user by email and verify password
+    const user = findMockUserByEmail(email);
+    
+    if (!user || user.password !== password || !user.isActive) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
@@ -32,16 +25,25 @@ export async function POST(request: NextRequest) {
 
     // Create a simple session token
     const sessionToken = btoa(JSON.stringify({
-      userId: validCredential.user.id,
-      email: validCredential.user.email,
-      role: validCredential.user.role,
-      tenantId: validCredential.user.tenantId,
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
       exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
     }));
 
+    // Convert to demo auth user format for compatibility
+    const demoUser = {
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      role: user.role,
+      tenantId: user.tenantId,
+    };
+
     const response = NextResponse.json({
       success: true,
-      user: validCredential.user,
+      user: demoUser,
       token: sessionToken
     });
 

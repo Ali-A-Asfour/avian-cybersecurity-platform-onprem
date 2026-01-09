@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '../../../middleware/auth.middleware';
 import { UserRole, ApiResponse } from '../../../types';
+import { TenantService } from '../../../services/tenant.service';
 
 /**
  * GET /api/tenants - List all tenants (Super Admin only)
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Get tenants
-    const _result = await TenantService.listTenants(
+    const result = await TenantService.listTenants(
       filters,
       user.user_id,
       user.role as UserRole,
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate domain format (basic validation)
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$/;
+    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9.-]{1,61}[a-zA-Z0-9]$/;
     if (!domainRegex.test(domain)) {
       return NextResponse.json(
         { 

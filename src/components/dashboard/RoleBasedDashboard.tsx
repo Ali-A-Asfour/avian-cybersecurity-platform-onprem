@@ -204,39 +204,16 @@ function TenantAdminMetrics({ onNavigate }: AnalystMetricsProps) {
   };
 
   const generateTenantSpecificData = (_tenantId: string) => {
-    // Create different data sets based on tenant ID
-    const dataVariations = {
-      'dev-tenant-123': {
-        teamMembers: 12,
-        activeTickets: 8,
-        complianceScore: 94,
-        slaPerformance: 98,
-        tenantName: 'Demo Corporation'
-      },
-      'acme-corp-456': {
-        teamMembers: 25,
-        activeTickets: 15,
-        complianceScore: 87,
-        slaPerformance: 92,
-        tenantName: 'ACME Corporation'
-      },
-      'techstart-789': {
-        teamMembers: 8,
-        activeTickets: 3,
-        complianceScore: 99,
-        slaPerformance: 100,
-        tenantName: 'TechStart Inc'
-      },
-      'global-finance-101': {
-        teamMembers: 45,
-        activeTickets: 22,
-        complianceScore: 91,
-        slaPerformance: 95,
-        tenantName: 'Global Finance Ltd'
-      }
+    // Return data for ACME Corporation
+    const acmeData = {
+      teamMembers: 25,
+      activeTickets: 15,
+      complianceScore: 96,
+      slaPerformance: 99,
+      tenantName: 'ACME Corporation'
     };
 
-    return dataVariations[tenantId as keyof typeof dataVariations] || dataVariations['dev-tenant-123'];
+    return acmeData;
   };
 
   if (loading) {

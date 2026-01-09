@@ -12,7 +12,7 @@ import { DemoStateManager } from '@/lib/demo-state';
 const mockAlerts: SecurityAlert[] = [
     {
         id: 'alert-001',
-        tenantId: 'demo-tenant-123',
+        tenantId: 'acme-corp',
         sourceSystem: 'edr',
         sourceId: 'defender-alert-001',
         alertType: 'malware_detection',
@@ -43,7 +43,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-002',
-        tenantId: 'demo-tenant-123',
+        tenantId: 'acme-corp',
         sourceSystem: 'firewall',
         sourceId: 'fw-alert-002',
         alertType: 'intrusion_attempt',
@@ -75,7 +75,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-003',
-        tenantId: 'demo-tenant-123',
+        tenantId: 'acme-corp',
         sourceSystem: 'email',
         sourceId: 'email-alert-003',
         alertType: 'phishing_attempt',
@@ -107,7 +107,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-004',
-        tenantId: 'demo-tenant-123',
+        tenantId: 'acme-corp',
         sourceSystem: 'edr',
         sourceId: 'defender-alert-004',
         alertType: 'suspicious_activity',
@@ -139,7 +139,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-005',
-        tenantId: 'demo-tenant-123',
+        tenantId: 'acme-corp',
         sourceSystem: 'edr',
         sourceId: 'defender-alert-005',
         alertType: 'malware_detection',
@@ -162,16 +162,16 @@ const mockAlerts: SecurityAlert[] = [
         threatName: 'Ransom:Win32/StopCrypt',
         affectedDevice: 'SERVER-DB01',
         affectedUser: 'SYSTEM',
-        status: 'assigned',
-        assignedTo: 'demo-user-123',
-        assignedAt: new Date('2024-01-15T09:00:00Z'),
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
         detectedAt: new Date('2024-01-15T05:45:00Z'),
         createdAt: new Date('2024-01-15T05:45:00Z'),
         updatedAt: new Date('2024-01-15T09:00:00Z')
     },
     {
         id: 'alert-006',
-        tenantId: 'demo-tenant-123',
+        tenantId: 'acme-corp',
         sourceSystem: 'firewall',
         sourceId: 'fw-alert-006',
         alertType: 'data_exfiltration',
@@ -194,9 +194,9 @@ const mockAlerts: SecurityAlert[] = [
         threatName: null,
         affectedDevice: null,
         affectedUser: null,
-        status: 'investigating',
-        assignedTo: 'demo-user-123',
-        assignedAt: new Date('2024-01-15T08:45:00Z'),
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
         detectedAt: new Date('2024-01-15T04:30:00Z'),
         createdAt: new Date('2024-01-15T04:30:00Z'),
         updatedAt: new Date('2024-01-15T08:45:00Z')
@@ -207,7 +207,8 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const queue = searchParams.get('queue') || 'all';
-        const assignedTo = searchParams.get('assignedTo') || 'demo-user-123'; // Default for demo
+        const assignedTo = searchParams.get('assignedTo');
+        console.log(`🔍 Demo Alerts API: queue=${queue}, assignedTo=${assignedTo}`);
 
         let filteredAlerts = mockAlerts;
 
@@ -217,21 +218,30 @@ export async function GET(request: NextRequest) {
             filteredAlerts = mockAlerts.filter(alert =>
                 alert.status === 'open' && !DemoStateManager.isAlertAssigned(alert.id)
             );
-        } else if (queue === 'my' && assignedTo) {
+            console.log(`🔍 All Alerts: Found ${filteredAlerts.length} unassigned alerts`);
+        } else if (queue === 'my') {
             // My Alerts tab - alerts assigned to current user in demo state (but not escalated)
-            const assignedAlertIds = DemoStateManager.getAlertsAssignedTo(assignedTo);
-            filteredAlerts = mockAlerts.filter(alert =>
-                assignedAlertIds.includes(alert.id)
-            ).map(alert => {
-                // Update alert properties to reflect assignment
-                const state = DemoStateManager.getAlertState(alert.id);
-                return {
-                    ...alert,
-                    status: 'assigned' as const,
-                    assignedTo: state?.assignedTo || null,
-                    assignedAt: state?.assignedAt ? new Date(state.assignedAt) : null
-                };
-            });
+            if (!assignedTo) {
+                // If no assignedTo provided, return empty array to prevent showing all alerts
+                filteredAlerts = [];
+                console.log(`🔍 My Alerts: No assignedTo provided, returning empty array`);
+            } else {
+                const assignedAlertIds = DemoStateManager.getAlertsAssignedTo(assignedTo);
+                console.log(`🔍 My Alerts: Found ${assignedAlertIds.length} alerts assigned to ${assignedTo}:`, assignedAlertIds);
+                filteredAlerts = mockAlerts.filter(alert =>
+                    assignedAlertIds.includes(alert.id)
+                ).map(alert => {
+                    // Update alert properties to reflect assignment
+                    const state = DemoStateManager.getAlertState(alert.id);
+                    return {
+                        ...alert,
+                        status: 'assigned' as const,
+                        assignedTo: state?.assignedTo || null,
+                        assignedAt: state?.assignedAt ? new Date(state.assignedAt) : null
+                    };
+                });
+                console.log(`🔍 My Alerts: Returning ${filteredAlerts.length} alerts for ${assignedTo}`);
+            }
         }
 
         // Sort alerts properly
@@ -262,7 +272,7 @@ export async function GET(request: NextRequest) {
                     unassignedCount: mockAlerts.filter(a =>
                         a.status === 'open' && !DemoStateManager.isAlertAssigned(a.id)
                     ).length,
-                    assignedCount: DemoStateManager.getAlertsAssignedTo(assignedTo).length,
+                    assignedCount: assignedTo ? DemoStateManager.getAlertsAssignedTo(assignedTo).length : 0,
                     queue: queue
                 }
             }

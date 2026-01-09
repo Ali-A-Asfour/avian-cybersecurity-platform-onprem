@@ -16,12 +16,19 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    // Force a unique timestamp to prevent caching
+    const timestamp = Date.now();
+    console.log(`[Login-${timestamp}] Starting login attempt for:`, email);
+
     try {
+      console.log(`[Login-${timestamp}] Attempting login for:`, email);
+      
       // Try regular login
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
         },
         body: JSON.stringify({
           email,
@@ -30,9 +37,47 @@ export default function LoginPage() {
         }),
       });
 
-      const data = await response.json();
+      console.log(`[Login-${timestamp}] Raw response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      let data;
+      try {
+        data = await response.json();
+        console.log(`[Login-${timestamp}] JSON parsed successfully:`, data);
+      } catch (jsonError) {
+        console.error(`[Login-${timestamp}] Failed to parse JSON response:`, jsonError);
+        const textResponse = await response.text();
+        console.error(`[Login-${timestamp}] Raw response text:`, textResponse);
+        setError('Invalid response from server');
+        setLoading(false);
+        return;
+      }
+
+      console.log(`[Login-${timestamp}] API response:`, { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok,
+        success: data.success, 
+        user: data.user,
+        error: data.error,
+        fullResponse: data
+      });
 
       if (!response.ok) {
+        console.error(`[Login-${timestamp}] Login failed - response not ok:`, data);
+        setError(data.error || 'Login failed');
+        setLoading(false);
+        return;
+      }
+
+      // Check if the API returned success
+      if (!data.success) {
+        console.error(`[Login-${timestamp}] API returned success=false:`, data);
         setError(data.error || 'Login failed');
         setLoading(false);
         return;
@@ -40,28 +85,43 @@ export default function LoginPage() {
 
       // Success - store user info and redirect based on role
       if (data.user) {
+        console.log(`[Login-${timestamp}] Storing user data:`, data.user);
+        
+        // Store user data
         localStorage.setItem('auth-user', JSON.stringify(data.user));
+        
         // Store the JWT token for API requests
         if (data.token) {
           localStorage.setItem('auth-token', data.token);
+          console.log(`[Login-${timestamp}] Stored auth token`);
         }
+        
         // Store session indicator (the actual session is in httpOnly cookie)
         localStorage.setItem('session-id', 'active');
+        
+        console.log(`[Login-${timestamp}] All auth data stored, redirecting...`);
+
+        // Small delay to ensure localStorage is written
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         // Redirect based on user role
         if (data.user.role === 'super_admin') {
           // Clear any previously selected tenant
           localStorage.removeItem('selected-tenant');
           sessionStorage.removeItem('selectedTenant');
+          console.log(`[Login-${timestamp}] Redirecting to super-admin dashboard`);
           window.location.href = '/super-admin';
         } else {
+          console.log(`[Login-${timestamp}] Redirecting to dashboard`);
           window.location.href = '/dashboard';
         }
       } else {
+        console.log(`[Login-${timestamp}] No user data in response, redirecting to dashboard`);
         // Fallback to dashboard
         window.location.href = '/dashboard';
       }
-    } catch {
+    } catch (error) {
+      console.error(`[Login-${timestamp}] Login error:`, error);
       setError('An error occurred. Please try again.');
       setLoading(false);
     }

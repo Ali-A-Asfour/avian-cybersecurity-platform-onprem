@@ -34,20 +34,27 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
   const [isInternal, setIsInternal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [reassignEmail, setReassignEmail] = useState('');
   const [reassignReason, setReassignReason] = useState('');
 
   useEffect(() => {
-    if (ticket && isOpen) {
+    if (ticket?.id && isOpen) {
       fetchComments();
       fetchAttachments();
+    } else if (!isOpen) {
+      // Reset data when modal closes to prevent stale data
+      setComments([]);
+      setAttachments([]);
+      setNewComment('');
+      setError(null);
     }
-  }, [ticket, isOpen]);
+  }, [ticket?.id, isOpen]); // Only depend on ticket ID, not the entire ticket object
 
   const fetchComments = async () => {
-    if (!ticket) return;
+    if (!ticket || commentsLoading) return; // Prevent duplicate calls
 
     try {
       setCommentsLoading(true);
@@ -55,6 +62,7 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       const result = await response.json();
 
       if (result.success) {
+        console.log('Comments fetched successfully:', result.data);
         setComments(result.data);
       } else {
         console.error('Failed to fetch comments:', result.error);
@@ -67,9 +75,10 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
   };
 
   const fetchAttachments = async () => {
-    if (!ticket) return;
+    if (!ticket || attachmentsLoading) return; // Prevent duplicate calls
 
     try {
+      setAttachmentsLoading(true);
       const response = await api.get(`/api/tickets/${ticket.id}/attachments`);
       const result = await response.json();
 
@@ -80,6 +89,8 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
       }
     } catch (error) {
       console.error('Error fetching attachments:', error);
+    } finally {
+      setAttachmentsLoading(false);
     }
   };
 
@@ -281,7 +292,10 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
   };
 
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    if (!date) return 'Unknown Date';
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return 'Invalid Date';
+    return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -576,7 +590,9 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
             </div>
           ) : comments.length > 0 ? (
             <div className="space-y-3">
-              {comments.filter(comment => !isUserView || !comment.is_internal).map(comment => (
+              {comments.filter(comment => !isUserView || !comment.is_internal).map(comment => {
+                console.log('Rendering comment:', comment);
+                return (
                 <div
                   key={comment.id}
                   className={`p-4 rounded-md ${comment.is_internal
@@ -587,7 +603,7 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                        User {comment.user_id.slice(0, 8)}
+                        {comment.user_name || `User ${comment.user_id?.slice(0, 8) || 'Unknown'}`}
                       </span>
                       {comment.is_internal && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -603,7 +619,7 @@ export function TicketDetail({ isOpen, onClose, onEdit, ticket, isUserView = fal
                     {comment.content}
                   </p>
                 </div>
-              ))}
+              )})}
             </div>
           ) : (
             <div className="text-center py-4 text-neutral-500 dark:text-neutral-400">

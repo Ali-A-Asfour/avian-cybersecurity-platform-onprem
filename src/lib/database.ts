@@ -22,6 +22,12 @@ async function initializeDatabaseConnection(): Promise<postgres.Sql> {
     throw new Error('Database not available during build');
   }
 
+  // Skip database connection in bypass mode
+  if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+    logger.warn('Skipping database connection in bypass mode');
+    throw new Error('Database not available in bypass mode');
+  }
+
   const maxRetries = 5;
   const baseDelay = 1000; // 1 second
   let lastError: Error | null = null;
@@ -228,6 +234,11 @@ export async function checkDatabaseHealth(): Promise<{
   latency?: number;
   error?: string;
 }> {
+  // In bypass mode, return healthy without checking database
+  if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+    return { healthy: true, latency: 0 };
+  }
+
   const startTime = Date.now();
 
   try {

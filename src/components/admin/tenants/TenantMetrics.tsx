@@ -74,7 +74,7 @@ export function TenantMetrics({ tenants }: TenantMetricsProps) {
         inactiveTenants,
         ...additionalMetrics,
       });
-    } catch {
+    } catch (error) {
       console.error('Failed to calculate tenant metrics:', error);
     } finally {
       setLoading(false);

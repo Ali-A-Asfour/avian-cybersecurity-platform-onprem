@@ -5,6 +5,8 @@ import { InvestigationPlaybook, PlaybookStatus } from '@/types/alerts-incidents'
 import { PlaybookClassificationLinkInput } from '@/services/alerts-incidents/PlaybookManager';
 import { useAuth } from '@/hooks/useAuth';
 import { api } from '@/lib/api-client';
+import { PlaybookCreateModal } from './PlaybookCreateModal';
+import { PlaybookEditModal } from './PlaybookEditModal';
 
 interface PlaybookWithClassifications {
     playbook: InvestigationPlaybook;
@@ -38,6 +40,7 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
     const [playbooks, setPlaybooks] = useState<InvestigationPlaybook[]>([]);
     const [classifications, setClassifications] = useState<ClassificationSummary[]>([]);
     const [selectedPlaybook, setSelectedPlaybook] = useState<PlaybookWithClassifications | null>(null);
+    const [editingPlaybook, setEditingPlaybook] = useState<PlaybookWithClassifications | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -45,6 +48,13 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
     const [statusFilter, setStatusFilter] = useState<PlaybookStatus | 'all'>('all');
 
     const isSuperAdmin = user?.role === 'super_admin';
+
+    // Available alert classifications for linking
+    const availableClassifications = [
+        'malware', 'network_intrusion', 'phishing', 'data_loss', 'behavioral',
+        'brute_force', 'privilege_escalation', 'suspicious_file', 'dns_anomaly',
+        'account_compromise', 'ransomware', 'insider_threat', 'lateral_movement'
+    ];
 
     // Load playbooks and classifications
     useEffect(() => {
@@ -79,8 +89,8 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
                 throw new Error('Failed to load data');
             }
 
-            const playbooksData = playbooksResponse;
-            const classificationsData = classificationsResponse;
+            const playbooksData = await playbooksResponse.json();
+            const classificationsData = await classificationsResponse.json();
 
             setPlaybooks(playbooksData?.data?.playbooks || []);
             setClassifications(Array.isArray(classificationsData?.data) ? classificationsData.data : []);
@@ -93,13 +103,17 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
 
     const handleViewPlaybook = async (playbookId: string) => {
         try {
-            const response = await api.get(`/api/alerts-incidents/playbooks/${playbookId}`);
+            const endpoint = demoMode
+                ? `/api/alerts-incidents/demo/playbooks/${playbookId}`
+                : `/api/alerts-incidents/playbooks/${playbookId}`;
+            
+            const response = await api.get(endpoint);
 
             if (!response.ok) {
                 throw new Error('Failed to load playbook details');
             }
 
-            const data = response;
+            const data = await response.json();
             setSelectedPlaybook({
                 playbook: data.data.playbook,
                 classifications: data.data.classifications.map((c: any) => ({
@@ -116,10 +130,14 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
         if (!isSuperAdmin) return;
 
         try {
-            const response = await api.post(`/api/alerts-incidents/playbooks/${playbookId}/activate`, {});
+            const endpoint = demoMode
+                ? `/api/alerts-incidents/demo/playbooks/${playbookId}/activate`
+                : `/api/alerts-incidents/playbooks/${playbookId}/activate`;
+            
+            const response = await api.post(endpoint, {});
 
             if (!response.ok) {
-                const errorData = response;
+                const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to activate playbook');
             }
 
@@ -133,10 +151,14 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
         if (!isSuperAdmin) return;
 
         try {
-            const response = await api.post(`/api/alerts-incidents/playbooks/${playbookId}/deprecate`, {});
+            const endpoint = demoMode
+                ? `/api/alerts-incidents/demo/playbooks/${playbookId}/deprecate`
+                : `/api/alerts-incidents/playbooks/${playbookId}/deprecate`;
+            
+            const response = await api.post(endpoint, {});
 
             if (!response.ok) {
-                const errorData = response;
+                const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to deprecate playbook');
             }
 
@@ -154,16 +176,102 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
         }
 
         try {
-            const response = await api.delete(`/api/alerts-incidents/playbooks/${playbookId}`);
+            const endpoint = demoMode
+                ? `/api/alerts-incidents/demo/playbooks/${playbookId}`
+                : `/api/alerts-incidents/playbooks/${playbookId}`;
+            
+            const response = await api.delete(endpoint);
 
             if (!response.ok) {
-                const errorData = response;
+                const errorData = await response.json();
                 throw new Error(errorData.error || 'Failed to delete playbook');
             }
 
             await loadData();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete playbook');
+        }
+    };
+
+    const handleCreatePlaybook = async (playbookData: Partial<InvestigationPlaybook>, classifications: string[]) => {
+        if (!isSuperAdmin) return;
+
+        try {
+            const endpoint = demoMode
+                ? '/api/alerts-incidents/demo/playbooks'
+                : '/api/alerts-incidents/playbooks';
+
+            const response = await api.post(endpoint, {
+                playbook: {
+                    ...playbookData,
+                    createdBy: user?.id || 'current-user'
+                },
+                classifications: classifications.map(c => ({ classification: c, isPrimary: false }))
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to create playbook');
+            }
+
+            await loadData();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create playbook');
+            throw err; // Re-throw to let modal handle it
+        }
+    };
+
+    const handleEditPlaybook = async (playbookId: string, playbookData: Partial<InvestigationPlaybook>, classifications: string[]) => {
+        if (!isSuperAdmin) return;
+
+        try {
+            const endpoint = demoMode
+                ? `/api/alerts-incidents/demo/playbooks/${playbookId}`
+                : `/api/alerts-incidents/playbooks/${playbookId}`;
+
+            const response = await api.put(endpoint, {
+                playbook: playbookData,
+                classifications: classifications.map(c => ({ classification: c, isPrimary: false }))
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update playbook');
+            }
+
+            await loadData();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update playbook');
+            throw err; // Re-throw to let modal handle it
+        }
+    };
+
+    const handleEditClick = async (playbook: InvestigationPlaybook) => {
+        if (!isSuperAdmin) return;
+
+        try {
+            // Load full playbook details with classifications
+            const endpoint = demoMode
+                ? `/api/alerts-incidents/demo/playbooks/${playbook.id}`
+                : `/api/alerts-incidents/playbooks/${playbook.id}`;
+            
+            const response = await api.get(endpoint);
+
+            if (!response.ok) {
+                throw new Error('Failed to load playbook details');
+            }
+
+            const data = await response.json();
+            setEditingPlaybook({
+                playbook: data.data.playbook,
+                classifications: data.data.classifications.map((c: any) => ({
+                    classification: c.classification,
+                    isPrimary: c.isPrimary,
+                })),
+            });
+            setIsEditModalOpen(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load playbook for editing');
         }
     };
 
@@ -305,13 +413,7 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
                                         {isSuperAdmin && (
                                             <>
                                                 <button
-                                                    onClick={() => {
-                                                        setSelectedPlaybook({
-                                                            playbook,
-                                                            classifications: [], // Will be loaded when editing
-                                                        });
-                                                        setIsEditModalOpen(true);
-                                                    }}
+                                                    onClick={() => handleEditClick(playbook)}
                                                     className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 font-medium"
                                                 >
                                                     Edit
@@ -413,8 +515,24 @@ export function PlaybooksTab({ demoMode = false }: PlaybooksTabProps = {}) {
                 />
             )}
 
-            {/* Create/Edit Modals would go here */}
-            {/* These would be separate components for creating and editing playbooks */}
+            {/* Create/Edit Modals */}
+            <PlaybookCreateModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSave={handleCreatePlaybook}
+                availableClassifications={availableClassifications}
+            />
+
+            <PlaybookEditModal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false);
+                    setEditingPlaybook(null);
+                }}
+                onSave={handleEditPlaybook}
+                playbook={editingPlaybook}
+                availableClassifications={availableClassifications}
+            />
         </div>
     );
 }
@@ -450,6 +568,18 @@ function PlaybookDetailModal({ playbook, onClose }: PlaybookDetailModalProps) {
                     <div>
                         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Purpose</h3>
                         <p className="text-gray-700 dark:text-gray-300">{playbook.playbook.purpose}</p>
+                    </div>
+
+                    {/* Quick Response Guide */}
+                    <div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Quick Response Guide</h3>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                            <ol className="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-300">
+                                {playbook.playbook.quickResponseGuide?.map((step, index) => (
+                                    <li key={index} className="text-sm leading-relaxed">{step}</li>
+                                ))}
+                            </ol>
+                        </div>
                     </div>
 
                     {/* Classifications */}

@@ -42,20 +42,32 @@ export function TicketActions({ ticket, userRole, userId, onTicketUpdated }: Tic
 
     // Handle status change
     const handleStatusChange = async (newStatus: TicketStatus) => {
+        if (loading) {
+            console.log('Status change already in progress, ignoring click');
+            return; // Prevent multiple simultaneous requests
+        }
+
         try {
             setLoading(true);
             setError(null);
+            
+            console.log('Updating ticket status:', { ticketId: ticket.id, currentStatus: ticket.status, newStatus });
 
             const response = await api.put(`/api/tickets/${ticket.id}`, {
                 status: newStatus,
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to update ticket status');
-            }
+            console.log('Status update response:', { ok: response.ok, status: response.status });
 
             const result = await response.json();
+            console.log('Status update result:', result);
+
+            if (!response.ok) {
+                throw new Error(result.error?.message || 'Failed to update ticket status');
+            }
+
             if (result.success) {
+                console.log('Status update successful');
                 onTicketUpdated(result.data);
             } else {
                 throw new Error(result.error?.message || 'Failed to update ticket status');
@@ -79,17 +91,32 @@ export function TicketActions({ ticket, userRole, userId, onTicketUpdated }: Tic
             setLoading(true);
             setError(null);
 
-            const response = await api.post(`/api/tickets/${ticket.id}/resolve`, {
+            // Prepare request body, only include knowledgeArticleTitle if creating KB article
+            const requestBody: any = {
                 resolution: resolutionDescription.trim(),
                 createKnowledgeArticle: createKnowledgeArticle,
-                knowledgeArticleTitle: createKnowledgeArticle ? `Solution: ${ticket.title}` : undefined,
-            });
+            };
+
+            // Only add knowledgeArticleTitle if we're creating a knowledge article
+            if (createKnowledgeArticle) {
+                requestBody.knowledgeArticleTitle = `Solution: ${ticket.title}`;
+            }
+
+            console.log('Resolving ticket with data:', requestBody);
+
+            const response = await api.post(`/api/tickets/${ticket.id}/resolve`, requestBody);
+
+            console.log('Resolve response:', { ok: response.ok, status: response.status });
 
             if (!response.ok) {
-                throw new Error('Failed to resolve ticket');
+                const errorResult = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+                console.error('Resolve request failed:', errorResult);
+                throw new Error(errorResult.error?.message || `HTTP ${response.status}: Failed to resolve ticket`);
             }
 
             const result = await response.json();
+            console.log('Resolve result:', result);
+
             if (result.success) {
                 onTicketUpdated(result.data.ticket || result.data);
                 setShowResolutionForm(false);

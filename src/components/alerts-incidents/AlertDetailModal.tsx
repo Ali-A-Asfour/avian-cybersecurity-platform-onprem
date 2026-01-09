@@ -5,6 +5,7 @@ import { SecurityAlert } from '@/types/alerts-incidents';
 import { Button } from '@/components/ui/Button';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { PlaybookRecommendation } from './PlaybookRecommendation';
 
 interface AlertDetailModalProps {
     alert: SecurityAlert;
@@ -13,6 +14,7 @@ interface AlertDetailModalProps {
     onEscalateToIncident: (alertId: string) => Promise<void>;
     onResolveAsBenign: (alertId: string, notes: string) => Promise<void>;
     onResolveAsFalsePositive: (alertId: string, notes: string) => Promise<void>;
+    demoMode?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function AlertDetailModal({
     onEscalateToIncident,
     onResolveAsBenign,
     onResolveAsFalsePositive,
+    demoMode = false,
 }: AlertDetailModalProps) {
     const [selectedAction, setSelectedAction] = useState<'escalate' | 'benign' | 'false_positive' | null>(null);
     const [notes, setNotes] = useState('');
@@ -292,6 +295,15 @@ export function AlertDetailModal({
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Playbook Recommendations */}
+                    <div className="px-6 py-4">
+                        <PlaybookRecommendation
+                            classification={alert.classification}
+                            demoMode={demoMode}
+                            className="mb-4"
+                        />
                     </div>
 
                     {/* Resolution Actions Form */}

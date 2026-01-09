@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { Ticket } from '@/types';
+import { Ticket, UserRole } from '@/types';
 import { SeverityBadge } from '@/components/ui/SeverityBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { TicketResolutionModal } from '@/components/help-desk/TicketResolutionModal';
@@ -16,13 +16,25 @@ export const dynamic = 'force-dynamic';
 
 export default function MyTicketsPage() {
     const router = useRouter();
-    const { isAuthenticated, loading: authLoading } = useAuth();
+    const { isAuthenticated, loading: authLoading, user } = useAuth();
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [ticketsLoading, setTicketsLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [resolutionModalOpen, setResolutionModalOpen] = useState(false);
     const [ticketToResolve, setTicketToResolve] = useState<Ticket | null>(null);
+
+    // Check if user can see detailed ticket information
+    // Only IT staff and admins can view ticket details
+    const canViewTicketDetails = user?.role && [
+        'it_helpdesk_analyst',
+        'security_analyst', 
+        'tenant_admin',
+        'super_admin'
+    ].includes(user.role);
+
+    // Check if user can perform ticket actions (status updates, resolution)
+    const canPerformTicketActions = canViewTicketDetails;
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
@@ -69,6 +81,13 @@ export default function MyTicketsPage() {
     };
 
     const handleTicketClick = (ticket: Ticket) => {
+        // Only allow detailed view for help desk staff and admins
+        // Regular users cannot click on tickets at all
+        if (!canViewTicketDetails) {
+            console.log('Access denied: User does not have permission to view ticket details');
+            return;
+        }
+        
         setSelectedTicket(ticket);
     };
 
@@ -191,7 +210,10 @@ export default function MyTicketsPage() {
                             My Tickets
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400 mt-1">
-                            Help desk tickets assigned to you. Use "Assign to me" in the general Helpdesk Tickets queue to add tickets here.
+                            {canViewTicketDetails 
+                                ? "Help desk tickets assigned to you. Use \"Assign to me\" in the general Helpdesk Tickets queue to add tickets here."
+                                : "Your submitted tickets and their current status."
+                            }
                         </p>
                     </div>
                     <Button
@@ -203,7 +225,7 @@ export default function MyTicketsPage() {
                     </Button>
                 </div>
 
-                {/* Help Desk Notice */}
+                {/* Help Notice */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                         <div className="text-blue-600 dark:text-blue-400 mt-0.5">
@@ -213,10 +235,13 @@ export default function MyTicketsPage() {
                         </div>
                         <div>
                             <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                Personal Help Desk Queue
+                                {canViewTicketDetails ? "Personal Help Desk Queue" : "My Ticket Status"}
                             </h3>
                             <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                                This queue shows only tickets you have assigned to yourself. To take on new tickets, visit the general "Helpdesk Tickets" queue and click "Assign to me".
+                                {canViewTicketDetails 
+                                    ? "This queue shows only tickets you have assigned to yourself. To take on new tickets, visit the general \"Helpdesk Tickets\" queue and click \"Assign to me\"."
+                                    : "Here you can view the status of tickets you have submitted. For detailed information or updates, please contact the help desk directly."
+                                }
                             </p>
                         </div>
                     </div>
@@ -243,6 +268,27 @@ export default function MyTicketsPage() {
 
                 {/* Tickets List */}
                 <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+                    {/* Show access restriction notice for regular users */}
+                    {!canViewTicketDetails && (
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 p-4">
+                            <div className="flex items-start space-x-3">
+                                <div className="text-yellow-600 dark:text-yellow-400 mt-0.5">
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                                        Limited Access - Regular User
+                                    </h3>
+                                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                                        You can view your ticket status but cannot access detailed information. Tickets are not clickable for regular users.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
                     {ticketsLoading ? (
                         <div className="p-8 text-center">
                             <div className="text-gray-500 dark:text-gray-400">Loading tickets...</div>
@@ -255,11 +301,17 @@ export default function MyTicketsPage() {
                                 </svg>
                             </div>
                             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                                {filterStatus === 'all' ? 'No tickets assigned to you' : `No ${filterStatus.replace('_', ' ')} tickets`}
+                                {filterStatus === 'all' 
+                                    ? (canViewTicketDetails ? 'No tickets assigned to you' : 'No tickets found')
+                                    : `No ${filterStatus.replace('_', ' ')} tickets`
+                                }
                             </h3>
                             <p className="text-gray-500 dark:text-gray-400">
                                 {filterStatus === 'all'
-                                    ? 'Visit the "Helpdesk Tickets" queue and click "Assign to me" to take on tickets.'
+                                    ? (canViewTicketDetails 
+                                        ? 'Visit the "Helpdesk Tickets" queue and click "Assign to me" to take on tickets.'
+                                        : 'You have not submitted any tickets yet.'
+                                    )
                                     : `No tickets with ${filterStatus.replace('_', ' ')} status found.`
                                 }
                             </p>
@@ -269,8 +321,16 @@ export default function MyTicketsPage() {
                             {filteredTickets.map((ticket) => (
                                 <div
                                     key={ticket.id}
-                                    className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                                    onClick={() => handleTicketClick(ticket)}
+                                    className={`p-4 ${canViewTicketDetails 
+                                        ? 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-l-4 border-transparent hover:border-blue-500' 
+                                        : 'cursor-not-allowed bg-gray-50 dark:bg-gray-900 border-l-4 border-red-300'
+                                    }`}
+                                    onClick={canViewTicketDetails ? () => handleTicketClick(ticket) : (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('Click blocked for regular user - role:', user?.role);
+                                        alert('Access denied: You do not have permission to view ticket details.');
+                                    }}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1 min-w-0">
@@ -293,14 +353,26 @@ export default function MyTicketsPage() {
                                             <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                                 {ticket.title}
                                             </h3>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                                                {ticket.description}
-                                            </p>
+                                            {/* Show description only to help desk staff and admins */}
+                                            {canViewTicketDetails && (
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                                    {ticket.description}
+                                                </p>
+                                            )}
                                             <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                                                 <span>Requester: {ticket.requester}</span>
                                                 <span>Created: {new Date(ticket.created_at).toLocaleDateString()}</span>
                                                 <span>Updated: {new Date(ticket.updated_at).toLocaleDateString()}</span>
+                                                {canViewTicketDetails && ticket.assignee && (
+                                                    <span>Assignee: {ticket.assignee}</span>
+                                                )}
                                             </div>
+                                            {/* Show click hint only for help desk staff */}
+                                            {canViewTicketDetails && (
+                                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                                    Click to view details and manage ticket
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="ml-4 flex-shrink-0">
                                             <SeverityBadge
@@ -315,8 +387,8 @@ export default function MyTicketsPage() {
                     )}
                 </div>
 
-                {/* Ticket Detail Modal */}
-                {selectedTicket && (
+                {/* Ticket Detail Modal - Only for help desk staff and admins */}
+                {selectedTicket && canViewTicketDetails && (
                     <Modal
                         isOpen={true}
                         onClose={() => setSelectedTicket(null)}
@@ -438,66 +510,70 @@ export default function MyTicketsPage() {
                                 </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                {selectedTicket.status === 'new' && (
-                                    <Button
-                                        onClick={() => handleStatusUpdate(selectedTicket.id, 'in_progress')}
-                                        size="sm"
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        Start Work
-                                    </Button>
-                                )}
-                                {selectedTicket.status === 'in_progress' && (
-                                    <>
+                            {/* Action Buttons - Only for help desk staff and admins */}
+                            {canPerformTicketActions && (
+                                <div className="flex space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                    {selectedTicket.status === 'new' && (
                                         <Button
-                                            onClick={() => handleStatusUpdate(selectedTicket.id, 'awaiting_response')}
+                                            onClick={() => handleStatusUpdate(selectedTicket.id, 'in_progress')}
                                             size="sm"
-                                            className="bg-orange-600 hover:bg-orange-700"
+                                            className="bg-blue-600 hover:bg-blue-700"
                                         >
-                                            Awaiting Response
+                                            Start Work
                                         </Button>
+                                    )}
+                                    {selectedTicket.status === 'in_progress' && (
+                                        <>
+                                            <Button
+                                                onClick={() => handleStatusUpdate(selectedTicket.id, 'awaiting_response')}
+                                                size="sm"
+                                                className="bg-orange-600 hover:bg-orange-700"
+                                            >
+                                                Awaiting Response
+                                            </Button>
+                                            <Button
+                                                onClick={() => handleResolveClick(selectedTicket)}
+                                                size="sm"
+                                                className="bg-green-600 hover:bg-green-700"
+                                            >
+                                                Mark Resolved
+                                            </Button>
+                                        </>
+                                    )}
+                                    {selectedTicket.status === 'awaiting_response' && (
                                         <Button
-                                            onClick={() => handleResolveClick(selectedTicket)}
+                                            onClick={() => handleStatusUpdate(selectedTicket.id, 'in_progress')}
                                             size="sm"
-                                            className="bg-green-600 hover:bg-green-700"
+                                            className="bg-blue-600 hover:bg-blue-700"
                                         >
-                                            Mark Resolved
+                                            Resume Work
                                         </Button>
-                                    </>
-                                )}
-                                {selectedTicket.status === 'awaiting_response' && (
-                                    <Button
-                                        onClick={() => handleStatusUpdate(selectedTicket.id, 'in_progress')}
-                                        size="sm"
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        Resume Work
-                                    </Button>
-                                )}
-                                {selectedTicket.status === 'resolved' && (
-                                    <Button
-                                        onClick={() => handleStatusUpdate(selectedTicket.id, 'closed')}
-                                        size="sm"
-                                        className="bg-gray-600 hover:bg-gray-700"
-                                    >
-                                        Close Ticket
-                                    </Button>
-                                )}
-                            </div>
+                                    )}
+                                    {selectedTicket.status === 'resolved' && (
+                                        <Button
+                                            onClick={() => handleStatusUpdate(selectedTicket.id, 'closed')}
+                                            size="sm"
+                                            className="bg-gray-600 hover:bg-gray-700"
+                                        >
+                                            Close Ticket
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </Modal>
                 )}
             </div>
 
-            {/* Ticket Resolution Modal */}
-            <TicketResolutionModal
-                isOpen={resolutionModalOpen}
-                onClose={() => setResolutionModalOpen(false)}
-                ticket={ticketToResolve}
-                onResolve={handleResolveTicket}
-            />
+            {/* Ticket Resolution Modal - Only for help desk staff and admins */}
+            {canPerformTicketActions && (
+                <TicketResolutionModal
+                    isOpen={resolutionModalOpen}
+                    onClose={() => setResolutionModalOpen(false)}
+                    ticket={ticketToResolve}
+                    onResolve={handleResolveTicket}
+                />
+            )}
         </ClientLayout>
     );
 }

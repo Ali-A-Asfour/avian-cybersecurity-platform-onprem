@@ -16,15 +16,19 @@ export async function POST(
         console.log('🔥 Demo escalation endpoint called for alert:', alertId);
 
         const body = await request.json();
-        const { incidentTitle, incidentDescription } = body;
-        console.log('📝 Escalation request body:', { incidentTitle, incidentDescription });
+        const { incidentTitle, incidentDescription, userId, assignedTo } = body;
+        console.log('📝 Escalation request body:', { incidentTitle, incidentDescription, userId, assignedTo });
+
+        // Get user ID from request body, or generate one based on session/tenant
+        const escalatingUserId = userId || assignedTo || `user-${Date.now()}`;
+        console.log(`👤 Using escalating user ID: ${escalatingUserId}`);
 
         // In demo mode, we simulate successful escalation
         // Create incident and update alert state
         console.log('🏗️ Creating incident via DemoStateManager...');
         const incidentId = DemoStateManager.escalateAlert(
             alertId,
-            'demo-user-123',
+            escalatingUserId,
             incidentTitle,
             incidentDescription
         );
