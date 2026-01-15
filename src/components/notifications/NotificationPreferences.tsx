@@ -234,8 +234,8 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
                 type="button"
                 onClick={() => handleGlobalSettingChange('quiet_hours_enabled', !globalSettings.quiet_hours_enabled)}
                 className={cn(
-                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                  globalSettings.quiet_hours_enabled ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700'
+                  'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                  globalSettings.quiet_hours_enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                 )}
               >
                 <span
@@ -311,8 +311,8 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
                   type="button"
                   onClick={() => handlePreferenceChange(preference.id, 'email', !preference.email)}
                   className={cn(
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                    preference.email ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700'
+                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                    preference.email ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                   )}
                 >
                   <span
@@ -330,8 +330,8 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
                   type="button"
                   onClick={() => handlePreferenceChange(preference.id, 'push', !preference.push)}
                   className={cn(
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                    preference.push ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700'
+                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                    preference.push ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                   )}
                 >
                   <span
@@ -349,8 +349,8 @@ export function NotificationPreferences({ className }: NotificationPreferencesPr
                   type="button"
                   onClick={() => handlePreferenceChange(preference.id, 'sms', !preference.sms)}
                   className={cn(
-                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-                    preference.sms ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-700'
+                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                    preference.sms ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
                   )}
                 >
                   <span
