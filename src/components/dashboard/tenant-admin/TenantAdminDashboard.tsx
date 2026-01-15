@@ -6,11 +6,9 @@ import { EnhancedErrorBoundary } from './EnhancedErrorBoundary';
 
 import { PartialDataIndicator } from './PartialDataIndicator';
 import { ErrorRecoveryPanel } from './ErrorRecoveryPanel';
-import { KPICardsRow } from './KPICardsRow';
 import {
     LazyAlertsTrendGraph,
     LazyDeviceCoverageChart,
-    LazyTicketBreakdownChart,
     LazyIntegrationHealthPanel,
     LazyRecentActivityFeed
 } from './LazyChartComponents';
@@ -69,37 +67,24 @@ const TenantAdminDashboardComponent: React.FC = () => {
         navigationService.navigatePreservingContext(url);
     }, []);
 
-    const handleTicketBreakdownClick = useCallback((type: 'security' | 'helpdesk') => {
-        const url = navigationService.generateTicketBreakdownUrl(type);
-        navigationService.navigatePreservingContext(url);
-    }, []);
-
     const handleIntegrationClick = useCallback((serviceName: string) => {
         const url = navigationService.generateIntegrationUrl(serviceName);
         navigationService.navigatePreservingContext(url);
     }, []);
 
     // Memoized data objects to prevent unnecessary re-renders
-    const kpiData = useMemo(() => data?.kpis || null, [data?.kpis]);
     const alertsTrendData = useMemo(() => data?.alertsTrend || [], [data?.alertsTrend]);
     const deviceCoverageData = useMemo(() =>
         data?.deviceCoverage || { protected: 0, missingAgent: 0, withAlerts: 0, total: 0 },
         [data?.deviceCoverage]
-    );
-    const ticketBreakdownData = useMemo(() =>
-        data?.ticketBreakdown || {
-            securityTickets: { created: 0, resolved: 0 },
-            helpdeskTickets: { created: 0, resolved: 0 }
-        },
-        [data?.ticketBreakdown]
     );
     const integrationsData = useMemo(() => data?.integrations || [], [data?.integrations]);
     const recentActivityData = useMemo(() => data?.recentActivity || [], [data?.recentActivity]);
 
     // Calculate available and failed components for partial data handling
     const { availableComponents, failedComponents } = useMemo(() => {
-        const components = ['KPI Cards', 'Alerts Trend', 'Device Coverage', 'Ticket Breakdown', 'Integration Health', 'Recent Activity'];
-        const errorKeys = ['kpis', 'alertsTrend', 'deviceCoverage', 'ticketBreakdown', 'integrations', 'recentActivity'];
+        const components = ['Alerts Trend', 'Device Coverage', 'Integration Health', 'Recent Activity'];
+        const errorKeys = ['alertsTrend', 'deviceCoverage', 'integrations', 'recentActivity'];
 
         const available: string[] = [];
         const failed: string[] = [];
@@ -119,10 +104,8 @@ const TenantAdminDashboardComponent: React.FC = () => {
     // Handle individual component retry
     const handleRetryComponent = useCallback(async (componentName: string) => {
         const componentMap: Record<string, keyof typeof loading> = {
-            'KPI Cards': 'kpis',
             'Alerts Trend': 'alertsTrend',
             'Device Coverage': 'deviceCoverage',
-            'Ticket Breakdown': 'ticketBreakdown',
             'Integration Health': 'integrations',
             'Recent Activity': 'recentActivity'
         };
@@ -239,22 +222,6 @@ const TenantAdminDashboardComponent: React.FC = () => {
                 </div>
             )}
 
-            {/* KPI Cards Row - spans full width, responsive columns */}
-            <section className="xl:col-span-4" aria-labelledby="kpi-section-title">
-                <h2 id="kpi-section-title" className="sr-only">Key Performance Indicators</h2>
-                <EnhancedErrorBoundary
-                    componentName="KPI Cards"
-                    onRetry={() => refreshComponent('kpis')}
-                >
-                    <KPICardsRow
-                        data={kpiData}
-                        loading={loading.kpis}
-                        error={errors.kpis}
-                        onRetry={refresh}
-                    />
-                </EnhancedErrorBoundary>
-            </section>
-
             {/* Alerts Trend Graph - full width */}
             <section className="xl:col-span-4" aria-labelledby="alerts-trend-title">
                 <h2 id="alerts-trend-title" className="sr-only">Security Alerts Trend</h2>
@@ -279,7 +246,7 @@ const TenantAdminDashboardComponent: React.FC = () => {
 
             {/* Middle Charts Row - Enhanced responsive layout for 1280px+ support */}
             <section
-                className="col-span-1 md:col-span-1 xl:col-span-1"
+                className="col-span-1 md:col-span-1 xl:col-span-2"
                 aria-labelledby="device-coverage-title"
             >
                 <h2 id="device-coverage-title" className="sr-only">Device Coverage Distribution</h2>
@@ -299,33 +266,6 @@ const TenantAdminDashboardComponent: React.FC = () => {
                             data={deviceCoverageData}
                             onSegmentClick={handleDeviceCoverageClick}
                             loading={loading.deviceCoverage}
-                        />
-                    </Suspense>
-                </EnhancedErrorBoundary>
-            </section>
-
-            <section
-                className="col-span-1 md:col-span-1 xl:col-span-1"
-                aria-labelledby="ticket-breakdown-title"
-            >
-                <h2 id="ticket-breakdown-title" className="sr-only">Ticket Breakdown</h2>
-                <EnhancedErrorBoundary
-                    componentName="Ticket Breakdown Chart"
-                    onRetry={() => refreshComponent('ticketBreakdown')}
-                >
-                    <Suspense fallback={
-                        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4 sm:p-6" style={{ minHeight: '280px' }}>
-                            <div className="animate-pulse">
-                                <div className="h-4 bg-neutral-700 rounded w-1/2 mb-4"></div>
-                                <div className="h-48 bg-neutral-700 rounded"></div>
-                            </div>
-                        </div>
-                    }>
-                        <LazyTicketBreakdownChart
-                            data={ticketBreakdownData}
-                            chartType="donut"
-                            onSegmentClick={handleTicketBreakdownClick}
-                            loading={loading.ticketBreakdown}
                         />
                     </Suspense>
                 </EnhancedErrorBoundary>
