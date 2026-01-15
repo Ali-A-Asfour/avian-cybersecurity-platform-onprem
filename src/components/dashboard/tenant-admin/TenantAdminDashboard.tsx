@@ -272,7 +272,7 @@ const TenantAdminDashboardComponent: React.FC = () => {
             </section>
 
             <section
-                className="col-span-1 md:col-span-2 xl:col-span-2"
+                className="col-span-1 md:col-span-1 xl:col-span-2"
                 aria-labelledby="integration-health-title"
             >
                 <h2 id="integration-health-title" className="sr-only">Integration Health Status</h2>
