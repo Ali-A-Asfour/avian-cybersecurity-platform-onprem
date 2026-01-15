@@ -212,39 +212,6 @@ export function AssetInventory({ tenantId }: AssetInventoryProps) {
     return <Badge color={config.color}>{config.label}</Badge>;
   };
 
-  const getRiskScoreBadge = (score: number) => {
-    let color: 'green' | 'yellow' | 'orange' | 'red' = 'green';
-    let label = 'Low';
-
-    if (score >= 75) {
-      color = 'red';
-      label = 'Critical';
-    } else if (score >= 50) {
-      color = 'orange';
-      label = 'High';
-    } else if (score >= 25) {
-      color = 'yellow';
-      label = 'Medium';
-    }
-
-    return <Badge color={color}>{label} ({score})</Badge>;
-  };
-
-  const handleScanAsset = async (assetId: string) => {
-    try {
-      // Use mock data for development
-      const { delay } = await import('@/lib/mock-data');
-      await delay(2000); // Simulate scan time
-
-      // Simulate scan results
-      const vulnerabilitiesFound = Math.floor(Math.random() * 8);
-      alert(`Scan completed. Found ${vulnerabilitiesFound} vulnerabilities.`);
-      fetchAssets(); // Refresh the list
-    } catch (error) {
-      alert('Failed to initiate scan');
-    }
-  };
-
   const columns = [
     {
       key: 'name',
@@ -280,15 +247,6 @@ export function AssetInventory({ tenantId }: AssetInventoryProps) {
       ),
     },
     {
-      key: 'security_tools',
-      label: 'Security Tools',
-      render: (asset: Asset) => (
-        <div className="text-sm text-gray-900 dark:text-white">
-          {asset.security_tools.length} installed
-        </div>
-      ),
-    },
-    {
       key: 'vulnerabilities',
       label: 'Vulnerabilities',
       render: (asset: Asset) => {
@@ -316,38 +274,11 @@ export function AssetInventory({ tenantId }: AssetInventoryProps) {
       render: (asset: Asset) => getComplianceStatusBadge(asset.compliance_status),
     },
     {
-      key: 'risk_score',
-      label: 'Risk Score',
-      render: (asset: Asset) => getRiskScoreBadge(asset.risk_score),
-    },
-    {
       key: 'last_scan',
       label: 'Last Scan',
       render: (asset: Asset) => (
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {new Date(asset.last_scan).toLocaleDateString()}
-        </div>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (asset: Asset) => (
-        <div className="flex space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setSelectedAssetId(asset.id)}
-          >
-            View
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleScanAsset(asset.id)}
-          >
-            Scan
-          </Button>
         </div>
       ),
     },

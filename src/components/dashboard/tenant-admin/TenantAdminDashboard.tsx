@@ -119,7 +119,7 @@ const TenantAdminDashboardComponent: React.FC = () => {
     return (
         <DashboardLayout>
             {/* Dashboard Header with Auto-refresh Status */}
-            <header className="xl:col-span-4 bg-neutral-900 border-b border-neutral-700 px-4 sm:px-6 py-4 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-4 sm:mb-6">
+            <header className="xl:col-span-4 bg-neutral-800 border border-neutral-700 rounded-lg px-4 sm:px-6 py-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold text-neutral-100">

@@ -33,14 +33,14 @@ const DashboardLayoutComponent: React.FC<DashboardLayoutProps> = ({
     return (
         <main
             className={cn(
-                // Enhanced responsive container with 1280px minimum support
-                "w-full max-w-7xl mx-auto",
-                // Responsive padding: tighter on smaller screens, more generous on larger
-                "px-3 sm:px-4 lg:px-6 xl:px-8",
-                "py-3 sm:py-4 lg:py-6",
+                // Full width container without max-width constraint
+                "w-full",
+                // Responsive padding: tighter on smaller screens
+                "px-4 sm:px-6 lg:px-8",
+                "py-4 sm:py-6",
                 // Responsive spacing between sections
-                "space-y-3 sm:space-y-4 lg:space-y-6",
-                // Ensure proper overflow handling for narrow viewports
+                "space-y-4 sm:space-y-6",
+                // Ensure proper overflow handling
                 "overflow-x-hidden"
             )}
             role="main"
@@ -49,16 +49,14 @@ const DashboardLayoutComponent: React.FC<DashboardLayoutProps> = ({
             <div className={cn(
                 // Base layout styles for SOC dark theme
                 "bg-neutral-900 text-neutral-100",
-                // Enhanced responsive grid layout with better 1280px support
-                "grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6",
+                // Enhanced responsive grid layout
+                "grid grid-cols-1 gap-4 sm:gap-6",
                 // Tablet layout: 2 columns for middle section
                 "md:grid-cols-2",
-                // Desktop layout: 4 columns with auto-sizing rows (1280px+)
+                // Desktop layout: 4 columns with auto-sizing rows
                 "xl:grid-cols-4 xl:auto-rows-min",
-                // Ensure minimum viewport support and prevent overflow
-                "min-w-0 w-full", // Prevent grid overflow and ensure full width
-                // Better handling of content at 1280px breakpoint
-                "xl:min-w-[1280px]", // Ensure minimum width at xl breakpoint
+                // Prevent grid overflow and ensure full width
+                "min-w-0 w-full",
                 className
             )}>
                 {children}
