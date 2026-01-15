@@ -54,18 +54,6 @@ const KPICardsRowComponent: React.FC<KPICardsRowProps> = ({
         }
     }, []);
 
-    const handleComplianceClick = useCallback(() => {
-        const url = navigationService.generateKPIUrl('compliance');
-        if (typeof window !== 'undefined' && window.location) {
-            try {
-                navigationService.navigatePreservingContext(url);
-            } catch (error) {
-                // Silently handle navigation errors in test environment
-                // This allows tests to run without navigation issues
-            }
-        }
-    }, []);
-
     // Error boundary for the entire KPI row
     if (error && !loading) {
         return (
@@ -134,26 +122,6 @@ const KPICardsRowComponent: React.FC<KPICardsRowProps> = ({
                 loading={loading}
                 error={error?.component === 'kpis' ? error.message : undefined}
             />
-
-            {/* Compliance Score KPI Card */}
-            <KPICard
-                title="Compliance Score"
-                value={loading ? '...' : `${data?.complianceScore ?? 0}%`}
-                subtitle="Overall compliance"
-                trend={
-                    data?.complianceScore
-                        ? data.complianceScore >= 90
-                            ? 'stable'
-                            : data.complianceScore >= 70
-                                ? 'down'
-                                : 'down'
-                        : 'stable'
-                }
-                trendValue={data?.complianceScore}
-                onClick={handleComplianceClick}
-                loading={loading}
-                error={error?.component === 'kpis' ? error.message : undefined}
-            />
         </section>
     );
 };
@@ -174,8 +142,7 @@ export const KPICardsRow = memo(KPICardsRowComponent, (prevProps, nextProps) => 
     const dataEqual = (
         prevData.criticalAlerts === nextData.criticalAlerts &&
         prevData.securityTicketsOpen === nextData.securityTicketsOpen &&
-        prevData.helpdeskTicketsOpen === nextData.helpdeskTicketsOpen &&
-        prevData.complianceScore === nextData.complianceScore
+        prevData.helpdeskTicketsOpen === nextData.helpdeskTicketsOpen
     );
 
     // Compare error objects

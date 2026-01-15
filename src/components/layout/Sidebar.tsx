@@ -43,12 +43,6 @@ const AlertsIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const ComplianceIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
 const ReportsIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -114,7 +108,6 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
         { name: 'Helpdesk Tickets', href: '/tickets', icon: TicketsIcon, badge: ticketCounts.tickets || undefined },
         { name: 'Alerts & Incidents', href: '/alerts-incidents', icon: AlertsIcon, badge: ticketCounts.alerts || undefined },
         { name: 'Assets', href: '/assets', icon: AssetsIcon },
-        { name: 'Compliance', href: '/compliance', icon: ComplianceIcon },
         { name: 'Reports', href: '/reports', icon: ReportsIcon },
         { name: 'Platform Admin', href: '/admin', icon: AdminIcon },
         { name: 'Performance', href: '/performance', icon: ReportsIcon },
@@ -124,7 +117,6 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
     case 'tenant_admin':
       return [
         ...baseNavigation,
-        { name: 'Compliance', href: '/compliance', icon: ComplianceIcon },
         { name: 'Asset Inventory', href: '/assets', icon: AssetsIcon },
         { name: 'Team Members', href: '/admin/users', icon: AdminIcon },
         { name: 'Notifications', href: '/notifications', icon: NotificationsIcon },
@@ -135,7 +127,6 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
       return [
         ...baseNavigation,
         { name: 'Alerts & Incidents', href: '/alerts-incidents', icon: AlertsIcon, badge: ticketCounts.alerts || undefined },
-        { name: 'Compliance', href: '/compliance', icon: ComplianceIcon },
         { name: 'Asset Inventory', href: '/assets', icon: AssetsIcon },
         { name: 'Reports', href: '/reports', icon: ReportsIcon },
         { name: 'Settings', href: '/settings', icon: SettingsIcon },
