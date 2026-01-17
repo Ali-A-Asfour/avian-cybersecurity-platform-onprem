@@ -16,7 +16,7 @@ export const dateStringGenerator = fc.date({ min: new Date('2020-01-01'), max: n
     .map(d => d.toISOString().split('T')[0]);
 
 // String generators with realistic constraints
-export const serviceNameGenerator = fc.constantFrom('microsoft', 'sonicwall', 'edr-antivirus', 'avian-agents');
+export const serviceNameGenerator = fc.constantFrom('microsoft', 'sonicwall', 'defender');
 export const statusGenerator = fc.constantFrom('healthy', 'warning', 'error');
 export const activityTypeGenerator = fc.constantFrom('alert', 'compliance', 'device', 'ticket', 'integration');
 export const trendGenerator = fc.constantFrom('up', 'down', 'stable');

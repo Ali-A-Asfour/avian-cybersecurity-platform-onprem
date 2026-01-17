@@ -66,8 +66,13 @@ const AlertsTrendGraphComponent: React.FC<AlertsTrendGraphProps> = ({
         setIsInteracting(false);
     }, []);
 
+    // Check if clicking is disabled (empty function or null)
+    const isClickDisabled = !onPointClick || onPointClick.toString() === '() => {}';
+
     // Handle click events for navigation
     const handleChartClick = useCallback((data: any) => {
+        if (isClickDisabled) return; // Don't handle clicks if disabled
+        
         if (data && data.activeLabel) {
             try {
                 onPointClick(data.activeLabel);
@@ -75,7 +80,7 @@ const AlertsTrendGraphComponent: React.FC<AlertsTrendGraphProps> = ({
                 console.error('Error handling chart click:', err);
             }
         }
-    }, [onPointClick]);
+    }, [onPointClick, isClickDisabled]);
 
     // Memoize tooltip component to prevent unnecessary re-renders
     const CustomTooltip = useMemo(() => ({ active, payload, label }: any) => {
@@ -86,7 +91,6 @@ const AlertsTrendGraphComponent: React.FC<AlertsTrendGraphProps> = ({
                     <p className="text-green-400 font-medium">
                         {payload[0].value} alerts
                     </p>
-                    <p className="text-neutral-400 text-xs mt-1">Click to view details</p>
                 </div>
             );
         }
@@ -103,12 +107,15 @@ const AlertsTrendGraphComponent: React.FC<AlertsTrendGraphProps> = ({
                 Security Alerts Trend (7 Days)
             </h3>
             <div
-                className={`h-40 sm:h-48 transition-opacity duration-200 ${isInteracting ? 'cursor-pointer' : ''}`}
-                tabIndex={0}
-                role="button"
-                aria-label="Interactive chart - use arrow keys to navigate data points, press Enter to view details"
+                className={`h-40 sm:h-48 transition-opacity duration-200 ${isInteracting && !isClickDisabled ? 'cursor-pointer' : ''}`}
+                tabIndex={isClickDisabled ? -1 : 0}
+                role={isClickDisabled ? "img" : "button"}
+                aria-label={isClickDisabled 
+                    ? "Security alerts trend chart - view only" 
+                    : "Interactive chart - use arrow keys to navigate data points, press Enter to view details"
+                }
                 onKeyDown={(e) => {
-                    if (e.key === 'Enter' && hoveredPoint) {
+                    if (!isClickDisabled && e.key === 'Enter' && hoveredPoint) {
                         onPointClick(hoveredPoint);
                     }
                 }}
@@ -147,14 +154,14 @@ const AlertsTrendGraphComponent: React.FC<AlertsTrendGraphProps> = ({
                                 fill: '#029904',
                                 strokeWidth: 2,
                                 r: 3,
-                                cursor: 'pointer'
+                                cursor: isClickDisabled ? 'default' : 'pointer'
                             }}
                             activeDot={{
                                 r: 6,
                                 stroke: '#029904',
                                 strokeWidth: 3,
                                 fill: '#1F2937',
-                                cursor: 'pointer'
+                                cursor: isClickDisabled ? 'default' : 'pointer'
                             }}
                             animationDuration={300}
                             animationEasing="ease-in-out"
@@ -162,7 +169,7 @@ const AlertsTrendGraphComponent: React.FC<AlertsTrendGraphProps> = ({
                     </LineChart>
                 </ResponsiveContainer>
             </div>
-            {hoveredPoint && (
+            {hoveredPoint && !isClickDisabled && (
                 <div className="mt-2 text-sm text-neutral-400" aria-live="polite">
                     Hover over {formatDate(hoveredPoint)} - Click to view detailed alerts
                 </div>

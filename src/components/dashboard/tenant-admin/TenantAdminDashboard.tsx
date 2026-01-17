@@ -6,16 +6,15 @@ import { EnhancedErrorBoundary } from './EnhancedErrorBoundary';
 
 import { PartialDataIndicator } from './PartialDataIndicator';
 import { ErrorRecoveryPanel } from './ErrorRecoveryPanel';
+import { MyTicketsPanel } from './MyTicketsPanel';
 import {
     LazyAlertsTrendGraph,
     LazyDeviceCoverageChart,
     LazyIntegrationHealthPanel,
-    LazyRecentActivityFeed
 } from './LazyChartComponents';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { navigationService } from '@/services/navigationService';
-import { ActivityItem } from '@/types/dashboard';
 
 /**
  * TenantAdminDashboard Main Component
@@ -46,22 +45,6 @@ const TenantAdminDashboardComponent: React.FC = () => {
     });
 
     // Memoized navigation handlers to prevent unnecessary re-renders
-    const handleActivityClick = useCallback((activity: ActivityItem) => {
-        // Extract ID from activity for navigation
-        const activityId = activity.id.replace('activity-', '');
-
-        // Navigate based on activity type using navigation service
-        const url = navigationService.generateActivityUrl(activity.type, activityId);
-
-        // Navigate while preserving role and tenant context
-        navigationService.navigatePreservingContext(url);
-    }, []);
-
-    const handleAlertsTrendClick = useCallback((date: string) => {
-        const url = navigationService.generateAlertsTrendUrl(date);
-        navigationService.navigatePreservingContext(url);
-    }, []);
-
     const handleDeviceCoverageClick = useCallback((segment: 'protected' | 'missing-agent' | 'with-alerts') => {
         const url = navigationService.generateDeviceCoverageUrl(segment);
         navigationService.navigatePreservingContext(url);
@@ -79,21 +62,25 @@ const TenantAdminDashboardComponent: React.FC = () => {
         [data?.deviceCoverage]
     );
     const integrationsData = useMemo(() => data?.integrations || [], [data?.integrations]);
-    const recentActivityData = useMemo(() => data?.recentActivity || [], [data?.recentActivity]);
 
     // Calculate available and failed components for partial data handling
     const { availableComponents, failedComponents } = useMemo(() => {
-        const components = ['Alerts Trend', 'Device Coverage', 'Integration Health', 'Recent Activity'];
-        const errorKeys = ['alertsTrend', 'deviceCoverage', 'integrations', 'recentActivity'];
+        const components = ['Alerts Trend', 'Device Coverage', 'Integration Health', 'My Tickets'];
+        const errorKeys = ['alertsTrend', 'deviceCoverage', 'integrations'];
 
         const available: string[] = [];
         const failed: string[] = [];
 
         components.forEach((component, index) => {
-            const errorKey = errorKeys[index];
-            if (errors[errorKey]) {
-                failed.push(component);
+            if (index < errorKeys.length) {
+                const errorKey = errorKeys[index];
+                if (errors[errorKey]) {
+                    failed.push(component);
+                } else {
+                    available.push(component);
+                }
             } else {
+                // My Tickets doesn't have server-side errors, always available
                 available.push(component);
             }
         });
@@ -106,8 +93,7 @@ const TenantAdminDashboardComponent: React.FC = () => {
         const componentMap: Record<string, keyof typeof loading> = {
             'Alerts Trend': 'alertsTrend',
             'Device Coverage': 'deviceCoverage',
-            'Integration Health': 'integrations',
-            'Recent Activity': 'recentActivity'
+            'Integration Health': 'integrations'
         };
 
         const componentKey = componentMap[componentName];
@@ -130,6 +116,19 @@ const TenantAdminDashboardComponent: React.FC = () => {
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                        {/* Create New Ticket Button */}
+                        <a
+                            href="/tickets/new"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-neutral-900"
+                            aria-label="Create new support ticket"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span className="hidden sm:inline">Create New Ticket</span>
+                            <span className="sm:hidden">New Ticket</span>
+                        </a>
+                        
                         {/* Auto-refresh Status */}
                         <div className="flex items-center space-x-4">
                             <div
@@ -236,7 +235,7 @@ const TenantAdminDashboardComponent: React.FC = () => {
                     }>
                         <LazyAlertsTrendGraph
                             data={alertsTrendData}
-                            onPointClick={handleAlertsTrendClick}
+                            onPointClick={() => {}} // Disabled for tenant admins - they can see stats but not navigate to alerts
                             loading={loading.alertsTrend}
                             error={errors.alertsTrend?.message}
                         />
@@ -300,38 +299,10 @@ const TenantAdminDashboardComponent: React.FC = () => {
                 </EnhancedErrorBoundary>
             </section>
 
-            {/* Recent Activity Feed - full width */}
-            <section className="xl:col-span-4" aria-labelledby="activity-feed-title">
-                <h2 id="activity-feed-title" className="sr-only">Recent System Activity</h2>
-                <EnhancedErrorBoundary
-                    componentName="Recent Activity Feed"
-                    onRetry={() => refreshComponent('recentActivity')}
-                >
-                    <Suspense fallback={
-                        <div className="bg-neutral-800 border border-neutral-700 rounded-lg p-4 sm:p-6">
-                            <div className="animate-pulse">
-                                <div className="h-4 bg-neutral-700 rounded w-1/3 mb-4"></div>
-                                <div className="space-y-3">
-                                    {[1, 2, 3].map((i) => (
-                                        <div key={i} className="flex items-center space-x-3">
-                                            <div className="w-8 h-8 bg-neutral-700 rounded-full"></div>
-                                            <div className="flex-1">
-                                                <div className="h-3 bg-neutral-700 rounded w-3/4 mb-1"></div>
-                                                <div className="h-2 bg-neutral-700 rounded w-1/2"></div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    }>
-                        <LazyRecentActivityFeed
-                            activities={recentActivityData}
-                            onActivityClick={handleActivityClick}
-                            loading={loading.recentActivity}
-                        />
-                    </Suspense>
-                </EnhancedErrorBoundary>
+            {/* My Tickets Panel - full width */}
+            <section className="xl:col-span-4" aria-labelledby="my-tickets-title">
+                <h2 id="my-tickets-title" className="sr-only">My Support Tickets</h2>
+                <MyTicketsPanel />
             </section>
         </DashboardLayout>
     );

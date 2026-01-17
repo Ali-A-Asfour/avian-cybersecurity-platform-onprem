@@ -25,6 +25,7 @@ declare global {
 // Initialize the store if it doesn't exist
 if (!global.mockUsersStore) {
   global.mockUsersStore = [
+    // ACME Corp users
     {
       id: '1',
       email: 'admin@demo.com',
@@ -90,11 +91,56 @@ if (!global.mockUsersStore) {
       lastLogin: null,
       password: 'user123',
     },
+    
+    // TechCorp users (different organization)
+    {
+      id: '6',
+      email: 'admin@techcorp.com',
+      firstName: 'Tech',
+      lastName: 'Admin',
+      role: 'tenant_admin',
+      tenantId: 'tech-corp',
+      isActive: true,
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      password: 'admin123',
+    },
+    {
+      id: '7',
+      email: 'analyst@techcorp.com',
+      firstName: 'Tech',
+      lastName: 'Analyst',
+      role: 'security_analyst',
+      tenantId: 'tech-corp',
+      isActive: true,
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      lastLogin: null,
+      password: 'analyst123',
+    },
+    {
+      id: '8',
+      email: 'user@techcorp.com',
+      firstName: 'Tech',
+      lastName: 'User',
+      role: 'user',
+      tenantId: 'tech-corp',
+      isActive: true,
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      lastLogin: null,
+      password: 'user123',
+    },
   ];
 }
 
 export function getMockUsers(): MockUser[] {
   return global.mockUsersStore || [];
+}
+
+export function getMockUsersByTenant(tenantId: string): MockUser[] {
+  return global.mockUsersStore?.filter(user => user.tenantId === tenantId) || [];
 }
 
 export function addMockUser(user: MockUser): MockUser {

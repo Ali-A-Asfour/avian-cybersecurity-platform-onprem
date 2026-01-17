@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-// import { db } from '@/lib/database';
+import { getDb } from '@/lib/database';
 import { users } from '../../../../../database/schemas/main';
 import { eq } from 'drizzle-orm';
 import { extractTokenFromCookie, verifyToken, validateSession } from '@/lib/jwt';
@@ -16,16 +16,85 @@ import { extractTokenFromCookie, verifyToken, validateSession } from '@/lib/jwt'
  */
 export async function GET(req: NextRequest) {
     try {
-        // Check database connection
-        if (!db) {
-            return NextResponse.json(
-                { error: 'Service temporarily unavailable' },
-                { status: 503 }
-            );
+        // Handle demo/bypass mode
+        if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+            // Extract token from cookie or Authorization header
+            let token = extractTokenFromCookie(req.headers.get('cookie'));
+            
+            // If no token in cookie, try Authorization header
+            if (!token) {
+                const authHeader = req.headers.get('authorization');
+                if (authHeader?.startsWith('Bearer ')) {
+                    token = authHeader.substring(7);
+                }
+            }
+
+            if (!token) {
+                return NextResponse.json(
+                    { error: 'Not authenticated' },
+                    { status: 401 }
+                );
+            }
+
+            try {
+                // Decode the demo token
+                const decoded = JSON.parse(atob(token));
+                
+                // Check if token is expired
+                if (decoded.exp && decoded.exp < Date.now()) {
+                    return NextResponse.json(
+                        { error: 'Token expired' },
+                        { status: 401 }
+                    );
+                }
+
+                // Import mock users store
+                const { findMockUserById } = await import('@/lib/mock-users-store');
+                const user = findMockUserById(decoded.userId);
+
+                if (!user || !user.isActive) {
+                    return NextResponse.json(
+                        { error: 'User not found or inactive' },
+                        { status: 404 }
+                    );
+                }
+
+                return NextResponse.json({
+                    success: true,
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        name: `${user.firstName} ${user.lastName}`,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        role: user.role,
+                        tenantId: user.tenantId,
+                        mfaEnabled: false,
+                        lastLogin: user.lastLogin,
+                        createdAt: user.createdAt,
+                    },
+                });
+            } catch (error) {
+                return NextResponse.json(
+                    { error: 'Invalid token' },
+                    { status: 401 }
+                );
+            }
         }
 
-        // Extract token from cookie
-        const token = extractTokenFromCookie(req.headers.get('cookie'));
+        // Production mode - use database
+        const db = await getDb();
+
+        // Extract token from cookie or Authorization header
+        let token = extractTokenFromCookie(req.headers.get('cookie'));
+        
+        // If no token in cookie, try Authorization header
+        if (!token) {
+            const authHeader = req.headers.get('authorization');
+            if (authHeader?.startsWith('Bearer ')) {
+                token = authHeader.substring(7);
+            }
+        }
 
         if (!token) {
             return NextResponse.json(

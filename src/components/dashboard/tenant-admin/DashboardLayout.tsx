@@ -31,19 +31,16 @@ const DashboardLayoutComponent: React.FC<DashboardLayoutProps> = ({
     className
 }) => {
     return (
-        <main
+        <div
             className={cn(
                 // Full width container without max-width constraint
                 "w-full",
-                // Responsive padding: tighter on smaller screens
-                "px-4 sm:px-6 lg:px-8",
-                "py-4 sm:py-6",
                 // Responsive spacing between sections
                 "space-y-4 sm:space-y-6",
                 // Ensure proper overflow handling
                 "overflow-x-hidden"
             )}
-            role="main"
+            role="region"
             aria-label="Tenant Admin Dashboard"
         >
             <div className={cn(
@@ -61,7 +58,7 @@ const DashboardLayoutComponent: React.FC<DashboardLayoutProps> = ({
             )}>
                 {children}
             </div>
-        </main>
+        </div>
     );
 };
 

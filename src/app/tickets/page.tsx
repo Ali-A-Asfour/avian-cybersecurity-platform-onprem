@@ -107,8 +107,6 @@ export default function TicketsPage() {
                 // Set default tab based on user role
                 if (authUser.role === UserRole.TENANT_ADMIN) {
                     setActiveTab('tenant-admin');
-                } else if (authUser.role === UserRole.USER) {
-                    setActiveTab('my-tickets');
                 } else {
                     setActiveTab('unassigned');
                 }
@@ -197,13 +195,12 @@ export default function TicketsPage() {
         );
     }
 
-    // Check if user has ticket access - now includes regular users
+    // Check if user has ticket access - excludes regular users who should only create tickets
     const hasTicketAccess = [
         UserRole.IT_HELPDESK_ANALYST,
         UserRole.SECURITY_ANALYST,
         UserRole.TENANT_ADMIN,
-        UserRole.SUPER_ADMIN,
-        UserRole.USER
+        UserRole.SUPER_ADMIN
     ].includes(user.role);
 
     if (!hasTicketAccess) {
@@ -318,14 +315,14 @@ export default function TicketsPage() {
                             </TabsTrigger>
                         )}
 
-                        {/* My Tickets - for help desk staff, super admin, and regular users */}
-                        {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN, UserRole.USER].includes(user.role) && (
+                        {/* My Tickets - for help desk staff and super admin */}
+                        {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN].includes(user.role) && (
                             <TabsTrigger value="my-tickets" className="flex items-center gap-2">
                                 <User className="h-4 w-4" />
-                                {user.role === UserRole.USER ? 'My Tickets' : 'My Assigned Tickets'}
+                                My Assigned Tickets
                                 {metrics && (
                                     <Badge variant="secondary" className="ml-1">
-                                        {user.role === UserRole.USER ? metrics.total_tickets : metrics.assigned_tickets}
+                                        {metrics.assigned_tickets}
                                     </Badge>
                                 )}
                             </TabsTrigger>
@@ -377,7 +374,7 @@ export default function TicketsPage() {
                     )}
 
                     {/* My Tickets Tab Content */}
-                    {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN, UserRole.USER].includes(user.role) && (
+                    {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN].includes(user.role) && (
                         <TabsContent value="my-tickets">
                             <MyTicketsQueue
                                 userRole={user.role}
@@ -429,7 +426,7 @@ export default function TicketsPage() {
                                     </a>
                                 )}
                             </div>
-                            <KnowledgeBaseSearch showApprovedOnly={user.role === UserRole.USER} />
+                            <KnowledgeBaseSearch showApprovedOnly={false} />
                         </div>
                     </TabsContent>
                 </Tabs>

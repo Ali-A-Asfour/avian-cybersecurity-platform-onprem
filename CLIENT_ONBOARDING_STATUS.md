@@ -29,7 +29,7 @@
 ### 4. Navigation Integration
 - **File**: `src/components/layout/Sidebar.tsx`
 - **Status**: Complete
-- **Added**: "Client Onboarding" link for Super Admin and Tenant Admin roles
+- **Updated**: "Client Onboarding" moved to "Tenant Management" for Super Admin roles only
 
 ### 5. Security Implementation
 - **Credential Encryption**: Uses same encryption system as SonicWall devices

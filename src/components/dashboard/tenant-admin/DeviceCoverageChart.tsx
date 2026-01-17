@@ -21,13 +21,13 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
         return (
             <div
                 className="flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg p-4 sm:p-6"
-                style={{ minHeight: '280px' }}
+                style={{ minHeight: '320px' }}
                 role="status"
                 aria-label="Loading device coverage data"
             >
                 <div className="animate-pulse">
                     <div className="h-4 bg-neutral-700 rounded w-1/2 mb-4"></div>
-                    <div className="h-48 sm:h-64 bg-neutral-700 rounded"></div>
+                    <div className="h-60 bg-neutral-700 rounded"></div>
                 </div>
                 <span className="sr-only">Loading device coverage data...</span>
             </div>
@@ -111,13 +111,13 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
     return (
         <div
             className="flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg p-4 sm:p-6"
-            style={{ minHeight: '280px', paddingTop: '10px' }}
+            style={{ minHeight: '320px' }}
             role="img"
             aria-label={`Device coverage chart: ${data.protected} protected devices (${Math.round((data.protected / data.total) * 100)}%), ${data.missingAgent} missing agent (${Math.round((data.missingAgent / data.total) * 100)}%), ${data.withAlerts} with alerts (${Math.round((data.withAlerts / data.total) * 100)}%). Total: ${data.total} devices.`}
         >
             <h3 className="text-white text-base sm:text-lg font-semibold mb-4">Device Coverage</h3>
             <div
-                style={{ height: '240px' }}
+                style={{ height: '260px' }}
                 tabIndex={0}
                 role="button"
                 aria-label="Interactive device coverage chart - press Enter to navigate to device details"
@@ -132,7 +132,7 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
                 }}
             >
                 <ResponsiveContainer width="100%" height="100%">
-                    <PieChart margin={{ top: 20, right: 10, bottom: 20, left: 10 }}>
+                    <PieChart margin={{ top: 40, right: 20, bottom: 30, left: 20 }}>
                         <Pie
                             data={chartData}
                             cx="50%"

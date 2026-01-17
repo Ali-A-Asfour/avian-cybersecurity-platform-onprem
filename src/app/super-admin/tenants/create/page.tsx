@@ -29,7 +29,7 @@ interface MicrosoftCredentials {
   clientSecret: string;
 }
 
-export default function OnboardingPage() {
+export default function CreateTenantPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
@@ -37,11 +37,13 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Form states
-  const [clientInfo, setClientInfo] = useState({
+  const [tenantInfo, setTenantInfo] = useState({
     name: '',
+    domain: '',
     industry: '',
     contact: '',
-    timezone: 'EST'
+    timezone: 'EST',
+    identifier: '' // Alternative identifier for clients without domains
   });
   
   const [sonicwallDevices, setSonicwallDevices] = useState<SonicWallDevice[]>([]);
@@ -74,12 +76,9 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Redirect to new tenant management system
+    // Check if user has permission to create tenants (super admin only)
     if (!authLoading && isAuthenticated && user) {
-      if (user.role === 'super_admin') {
-        router.push('/super-admin/tenants');
-        return;
-      } else {
+      if (user.role !== 'super_admin') {
         router.push('/dashboard');
         return;
       }
@@ -89,8 +88,8 @@ export default function OnboardingPage() {
   const steps: OnboardingStep[] = [
     {
       id: 'basic',
-      title: 'Basic Information',
-      description: 'Client details and contact information',
+      title: 'Tenant Information',
+      description: 'Organization details and contact information',
       completed: currentStep > 1,
       current: currentStep === 1
     },
@@ -110,8 +109,8 @@ export default function OnboardingPage() {
     },
     {
       id: 'verification',
-      title: 'Verification',
-      description: 'Test connections and complete setup',
+      title: 'Create Tenant',
+      description: 'Review and create the new tenant',
       completed: currentStep > 4,
       current: currentStep === 4
     }
@@ -206,21 +205,21 @@ export default function OnboardingPage() {
   const handleCompleteOnboarding = async () => {
     setLoading(true);
     try {
-      // Save all configuration
-      const response = await api.post('/api/onboarding/complete', {
-        clientInfo,
+      // Create the tenant with security configuration
+      const response = await api.post('/api/super-admin/tenants', {
+        tenantInfo,
         sonicwallDevices,
         microsoftCreds
       });
 
       const result = await response.json();
       if (result.success) {
-        router.push('/dashboard?onboarding=complete');
+        router.push('/super-admin/tenants?created=true');
       } else {
-        setError('Failed to complete onboarding');
+        setError('Failed to create tenant');
       }
     } catch (err) {
-      setError('Failed to save configuration');
+      setError('Failed to create tenant');
     } finally {
       setLoading(false);
     }
@@ -231,7 +230,7 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-neutral-400">Redirecting to Tenant Management...</p>
+          <p className="text-neutral-400">Loading...</p>
         </div>
       </div>
     );
@@ -243,10 +242,10 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-            🏢 Client Onboarding
+            🏢 Create New Tenant
           </h1>
           <p className="text-neutral-600 dark:text-neutral-400 mt-2">
-            Set up security monitoring for your new client
+            Set up a new organization with security monitoring
           </p>
         </div>
 
@@ -293,22 +292,30 @@ export default function OnboardingPage() {
         {/* Step Content */}
         <div className="bg-white dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 p-8">
           
-          {/* Step 1: Basic Information */}
+          {/* Step 1: Tenant Information */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
-                Client Information
+                Tenant Information
               </h2>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-blue-900 mb-2">Client Identification</h3>
+                <p className="text-sm text-blue-800">
+                  <strong>Domain:</strong> Use if the client has their own website domain (e.g., acme-corp.com)<br/>
+                  <strong>Client Identifier:</strong> A unique code for this client (e.g., company abbreviation, client number)
+                </p>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                    Company Name *
+                    Organization Name *
                   </label>
                   <input
                     type="text"
-                    value={clientInfo.name}
-                    onChange={(e) => setClientInfo(prev => ({ ...prev, name: e.target.value }))}
+                    value={tenantInfo.name}
+                    onChange={(e) => setTenantInfo(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="ACME Corporation"
                   />
@@ -316,17 +323,46 @@ export default function OnboardingPage() {
                 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Domain
+                  </label>
+                  <input
+                    type="text"
+                    value={tenantInfo.domain}
+                    onChange={(e) => setTenantInfo(prev => ({ ...prev, domain: e.target.value }))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="acme-corp.com (optional)"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">Leave blank if client doesn't have their own domain</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Client Identifier *
+                  </label>
+                  <input
+                    type="text"
+                    value={tenantInfo.identifier}
+                    onChange={(e) => setTenantInfo(prev => ({ ...prev, identifier: e.target.value }))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="acme-corp or acme-123"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">Unique identifier for this client (e.g., company abbreviation, client code)</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                     Industry
                   </label>
                   <select
-                    value={clientInfo.industry}
-                    onChange={(e) => setClientInfo(prev => ({ ...prev, industry: e.target.value }))}
+                    value={tenantInfo.industry}
+                    onChange={(e) => setTenantInfo(prev => ({ ...prev, industry: e.target.value }))}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select Industry</option>
                     <option value="manufacturing">Manufacturing</option>
                     <option value="healthcare">Healthcare</option>
                     <option value="finance">Finance</option>
+                    <option value="law">Law</option>
                     <option value="retail">Retail</option>
                     <option value="technology">Technology</option>
                     <option value="other">Other</option>
@@ -339,10 +375,10 @@ export default function OnboardingPage() {
                   </label>
                   <input
                     type="email"
-                    value={clientInfo.contact}
-                    onChange={(e) => setClientInfo(prev => ({ ...prev, contact: e.target.value }))}
+                    value={tenantInfo.contact}
+                    onChange={(e) => setTenantInfo(prev => ({ ...prev, contact: e.target.value }))}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="john.doe@acme.com"
+                    placeholder="admin@acme-corp.com"
                   />
                 </div>
                 
@@ -351,8 +387,8 @@ export default function OnboardingPage() {
                     Timezone
                   </label>
                   <select
-                    value={clientInfo.timezone}
-                    onChange={(e) => setClientInfo(prev => ({ ...prev, timezone: e.target.value }))}
+                    value={tenantInfo.timezone}
+                    onChange={(e) => setTenantInfo(prev => ({ ...prev, timezone: e.target.value }))}
                     className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="EST">Eastern (EST)</option>
@@ -366,7 +402,7 @@ export default function OnboardingPage() {
               <div className="flex justify-end">
                 <button
                   onClick={() => setCurrentStep(2)}
-                  disabled={!clientInfo.name || !clientInfo.contact}
+                  disabled={!tenantInfo.name || !tenantInfo.identifier || !tenantInfo.contact}
                   className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
                 >
                   Continue to SonicWall Setup
@@ -701,8 +737,85 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 4: Verification */}
+          {/* Step 4: Create Tenant */}
           {currentStep === 4 && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                Create Tenant
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div>
+                    <div className="font-medium text-green-900">✅ Tenant Information</div>
+                    <div className="text-sm text-green-700">
+                      {tenantInfo.name} ({tenantInfo.domain || tenantInfo.identifier}) setup complete
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="font-medium text-green-900">✅ SonicWall Devices</div>
+                    <div className="text-sm text-green-700">{sonicwallDevices.length} device(s) configured</div>
+                  </div>
+                  {sonicwallDevices.length > 0 && (
+                    <div className="space-y-2">
+                      {sonicwallDevices.map((device, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                          <div>
+                            <div className="font-medium text-sm">{device.deviceName}</div>
+                            <div className="text-xs text-neutral-600">
+                              {device.managementIp} • {device.location}
+                              {device.networkSegment && ` • ${device.networkSegment}`}
+                            </div>
+                          </div>
+                          <div className="text-green-600 text-sm">🟢 Ready</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div>
+                    <div className="font-medium text-green-900">✅ Microsoft Defender</div>
+                    <div className="text-sm text-green-700">Graph API connection verified</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-medium text-blue-900 mb-2">What happens next?</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• A new tenant organization will be created: <strong>{tenantInfo.name}</strong></li>
+                  <li>• Security monitoring will be configured for all {sonicwallDevices.length} SonicWall device{sonicwallDevices.length !== 1 ? 's' : ''}</li>
+                  <li>• Microsoft Defender integration will be activated</li>
+                  <li>• An initial tenant admin user will be created</li>
+                  <li>• The tenant will be ready for user onboarding</li>
+                </ul>
+              </div>
+              
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setCurrentStep(3)}
+                  className="px-6 py-2 bg-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-400"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleCompleteOnboarding}
+                  disabled={loading || sonicwallDevices.length === 0}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+                >
+                  {loading ? '🔄 Creating Tenant...' : '🎉 Create Tenant'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Setup Verification */}
+          {currentStep === 5 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
                 Setup Verification

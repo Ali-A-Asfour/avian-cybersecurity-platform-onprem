@@ -63,7 +63,7 @@ export default function NewTicketPage() {
 
   const isSimplifiedForm = isUser || currentUser.role === UserRole.TENANT_ADMIN;
 
-  const handleSubmit = async (_e: unknown) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -85,14 +85,14 @@ export default function NewTicketPage() {
       
       // Redirect to tickets list
       router.push('/tickets');
-    } catch {
+    } catch (error) {
       console.error('Error creating ticket:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleChange = (_e: unknown) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value

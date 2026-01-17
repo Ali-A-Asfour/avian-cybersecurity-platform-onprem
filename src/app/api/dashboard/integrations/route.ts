@@ -17,14 +17,9 @@ export async function GET() {
                 lastSync: new Date(Date.now() - 2 * 60 * 1000).toISOString() // 2 minutes ago
             },
             {
-                serviceName: 'edr-antivirus',
+                serviceName: 'defender',
                 status: 'warning' as const,
                 lastSync: new Date(Date.now() - 15 * 60 * 1000).toISOString() // 15 minutes ago
-            },
-            {
-                serviceName: 'avian-agents',
-                status: 'healthy' as const,
-                lastSync: new Date(Date.now() - 1 * 60 * 1000).toISOString() // 1 minute ago
             }
         ],
         timestamp: new Date().toISOString()

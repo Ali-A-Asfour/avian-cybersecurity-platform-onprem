@@ -53,6 +53,21 @@ export async function POST(request: NextRequest) {
 
     const { user } = authResult;
 
+    // Check if user has permission to access client onboarding
+    const allowedRoles = ['super_admin'];
+    if (!allowedRoles.includes(user.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Insufficient permissions to access client onboarding',
+          },
+        },
+        { status: 403 }
+      );
+    }
+
     // Apply tenant middleware
     const tenantResult = await tenantMiddleware(request, user);
     if (!tenantResult.success || !tenantResult.tenant) {

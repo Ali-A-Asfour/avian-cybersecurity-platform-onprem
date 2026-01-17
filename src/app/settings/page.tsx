@@ -7,12 +7,15 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import { SystemConfiguration } from '@/components/settings/SystemConfiguration';
+import { useDemoContext } from '@/contexts/DemoContext';
+import { UserRole } from '@/types';
 
 type SettingsTab = 'profile' | 'notifications' | 'system';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { currentUser } = useDemoContext();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   useEffect(() => {
@@ -25,11 +28,22 @@ export default function SettingsPage() {
     return null;
   }
 
-  const tabs = [
+  // Define tabs based on user role
+  const baseTabs = [
     { id: 'profile' as SettingsTab, label: 'Profile', icon: '👤' },
     { id: 'notifications' as SettingsTab, label: 'Notifications', icon: '🔔' },
-    { id: 'system' as SettingsTab, label: 'System', icon: '⚙️' },
   ];
+
+  // Only show system tab for admin roles
+  const systemTab = { id: 'system' as SettingsTab, label: 'System', icon: '⚙️' };
+  const canAccessSystem = [
+    UserRole.TENANT_ADMIN,
+    UserRole.SUPER_ADMIN,
+    UserRole.IT_HELPDESK_ANALYST,
+    UserRole.SECURITY_ANALYST
+  ].includes(currentUser.role as UserRole);
+
+  const tabs = canAccessSystem ? [...baseTabs, systemTab] : baseTabs;
 
   return (
     <ClientLayout>
@@ -91,9 +105,25 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {activeTab === 'system' && (
+          {activeTab === 'system' && canAccessSystem && (
             <div className="p-6">
               <SystemConfiguration />
+            </div>
+          )}
+
+          {activeTab === 'system' && !canAccessSystem && (
+            <div className="p-6">
+              <div className="text-center">
+                <div className="text-red-500 mb-4">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Access Denied</h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  You don't have permission to access system settings.
+                </p>
+              </div>
             </div>
           )}
         </div>

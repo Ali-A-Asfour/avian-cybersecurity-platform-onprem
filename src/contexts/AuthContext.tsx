@@ -43,11 +43,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      */
     const logout = useCallback(async () => {
         try {
-            const sessionId = localStorage.getItem('session-id');
+            const authToken = localStorage.getItem('auth-token');
             
-            // Stub: Will be replaced with Redis session deletion
-            if (sessionId) {
-                // await deleteSession(sessionId);
+            // Call logout API if we have a token
+            if (authToken) {
+                try {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                        },
+                    });
+                } catch (error) {
+                    console.error('Logout API call failed:', error);
+                }
             }
         } catch (error) {
             console.error('Logout error:', error);
@@ -55,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             localStorage.removeItem('auth-user');
             localStorage.removeItem('auth-token');
-            localStorage.removeItem('session-id');
+            localStorage.removeItem('session-expires');
             localStorage.removeItem('selected-tenant');
             sessionStorage.removeItem('selectedTenant');
             router.push('/login');
@@ -237,44 +246,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
-            const sessionId = localStorage.getItem('session-id');
             const authToken = localStorage.getItem('auth-token');
             const storedUser = localStorage.getItem('auth-user');
             
-            console.log('[AuthContext] checkAuth - sessionId:', !!sessionId, 'authToken:', !!authToken, 'storedUser:', !!storedUser);
+            console.log('[AuthContext] checkAuth - authToken:', !!authToken, 'storedUser:', !!storedUser);
             
-            // Check if either session-id or auth-token exists
-            if (!sessionId && !authToken) {
-                console.log('[AuthContext] No session or token found');
+            // Check if auth token exists
+            if (!authToken) {
+                console.log('[AuthContext] No auth token found');
                 setUser(null);
                 return false;
             }
 
-            // Stub: Will be replaced with Redis session validation
-            if (storedUser) {
+            // For demo/development mode, validate token format and use stored user
+            if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+                if (storedUser) {
+                    try {
+                        const parsedUser = JSON.parse(storedUser);
+                        console.log('[AuthContext] Setting user from localStorage:', parsedUser);
+                        setUser(parsedUser);
+                        return true;
+                    } catch (parseError) {
+                        console.error('[AuthContext] Failed to parse stored user:', parseError);
+                        // Clear invalid data
+                        localStorage.removeItem('auth-user');
+                        localStorage.removeItem('auth-token');
+                        setUser(null);
+                        return false;
+                    }
+                }
+            } else {
+                // For production, validate token with server
                 try {
-                    const parsedUser = JSON.parse(storedUser);
-                    console.log('[AuthContext] Setting user from localStorage:', parsedUser);
-                    setUser(parsedUser);
-                    return true;
-                } catch (parseError) {
-                    console.error('[AuthContext] Failed to parse stored user:', parseError);
-                    // Clear invalid data
-                    localStorage.removeItem('auth-user');
-                    localStorage.removeItem('session-id');
-                    localStorage.removeItem('auth-token');
-                    setUser(null);
-                    return false;
+                    const response = await fetch('/api/auth/me', {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`,
+                        },
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.user) {
+                            const authUser: AuthUser = {
+                                id: data.user.id,
+                                email: data.user.email,
+                                name: data.user.name,
+                                role: data.user.role,
+                                tenantId: data.user.tenantId,
+                            };
+                            setUser(authUser);
+                            localStorage.setItem('auth-user', JSON.stringify(authUser));
+                            return true;
+                        }
+                    }
+                } catch (error) {
+                    console.error('[AuthContext] Token validation failed:', error);
                 }
             }
 
-            console.log('[AuthContext] No valid stored user found');
+            console.log('[AuthContext] No valid authentication found');
+            setUser(null);
+            localStorage.removeItem('auth-user');
+            localStorage.removeItem('auth-token');
             return false;
         } catch (error) {
             console.error('[AuthContext] Auth check failed:', error);
             setUser(null);
             localStorage.removeItem('auth-user');
-            localStorage.removeItem('session-id');
             localStorage.removeItem('auth-token');
             return false;
         }
@@ -296,25 +334,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         rememberMe: boolean = false
     ) => {
         try {
-            // Stub implementation - will be replaced with real authentication
-            const authUser: AuthUser = {
-                id: 'stub-user-id',
-                email: email,
-                name: 'Stub User',
-                role: 'admin',
-                tenantId: 'stub-tenant',
-            };
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    rememberMe,
+                }),
+            });
 
-            setUser(authUser);
-            localStorage.setItem('session-id', 'stub-session-id');
-            localStorage.setItem('auth-user', JSON.stringify(authUser));
+            const data = await response.json();
 
-            if (authUser.role === 'super_admin') {
-                localStorage.removeItem('selected-tenant');
-                sessionStorage.removeItem('selectedTenant');
-                router.push('/super-admin');
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
+            }
+
+            if (data.success && data.user && data.token) {
+                const authUser: AuthUser = {
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: data.user.name,
+                    role: data.user.role,
+                    tenantId: data.user.tenantId,
+                };
+
+                setUser(authUser);
+                localStorage.setItem('auth-user', JSON.stringify(authUser));
+                localStorage.setItem('auth-token', data.token);
+
+                if (data.session?.expiresAt) {
+                    localStorage.setItem('session-expires', data.session.expiresAt);
+                }
+
+                // Navigate based on role
+                if (authUser.role === 'super_admin') {
+                    localStorage.removeItem('selected-tenant');
+                    sessionStorage.removeItem('selectedTenant');
+                    router.push('/super-admin');
+                } else {
+                    router.push('/dashboard');
+                }
             } else {
-                router.push('/dashboard');
+                throw new Error('Invalid response from server');
             }
         } catch (error) {
             console.error('Login failed:', error);

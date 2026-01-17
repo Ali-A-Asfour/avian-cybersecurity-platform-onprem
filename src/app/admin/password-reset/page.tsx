@@ -344,8 +344,8 @@ export default function AdminPasswordResetPage() {
                                 <p>• The user will be able to log in immediately with the new password</p>
                                 <p>• Any account lockouts will be cleared automatically</p>
                                 <p>• {user.role === 'super_admin' 
-                                    ? 'As a super admin, you can reset passwords for all users' 
-                                    : 'As a tenant admin, you can reset passwords for users in your organization'
+                                    ? 'As a super admin, you can reset passwords for all users across all organizations' 
+                                    : 'As a tenant admin, you can reset passwords for regular users in your organization'
                                 }</p>
                                 <p>• Make sure to communicate the new password to the user securely</p>
                             </div>

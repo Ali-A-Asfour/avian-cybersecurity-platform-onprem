@@ -54,10 +54,8 @@ const IntegrationHealthPanelComponent: React.FC<IntegrationHealthPanelProps> = (
                 return 'Microsoft';
             case 'sonicwall':
                 return 'SonicWall';
-            case 'edr-antivirus':
-                return 'EDR/Antivirus';
-            case 'avian-agents':
-                return 'AVIAN Agents';
+            case 'defender':
+                return 'Defender';
             default:
                 return serviceName;
         }
@@ -69,10 +67,8 @@ const IntegrationHealthPanelComponent: React.FC<IntegrationHealthPanelProps> = (
                 return '🏢';
             case 'sonicwall':
                 return '🛡️';
-            case 'edr-antivirus':
+            case 'defender':
                 return '🔍';
-            case 'avian-agents':
-                return '🤖';
             default:
                 return '⚙️';
         }

@@ -109,7 +109,7 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
     case 'super_admin':
       return [
         ...baseNavigation,
-        { name: 'Client Onboarding', href: '/onboarding', icon: OnboardingIcon },
+        { name: 'Tenant Management', href: '/super-admin/tenants', icon: OnboardingIcon },
         { name: 'Data Sources', href: '/data-sources', icon: DatabaseIcon },
         { name: 'Threat Lake', href: '/threat-lake', icon: ThreatLakeIcon },
         { name: 'Helpdesk Tickets', href: '/tickets', icon: TicketsIcon, badge: ticketCounts.tickets || undefined },
@@ -125,7 +125,6 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
     case 'tenant_admin':
       return [
         ...baseNavigation,
-        { name: 'Client Onboarding', href: '/onboarding', icon: OnboardingIcon },
         { name: 'Asset Inventory', href: '/assets', icon: AssetsIcon },
         { name: 'Team Members', href: '/admin/users', icon: AdminIcon },
         { name: 'Password Reset', href: '/admin/password-reset', icon: SettingsIcon },
