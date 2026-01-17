@@ -1,358 +1,361 @@
 /**
- * EDR Posture Score Calculator
- * 
- * Calculates an overall security posture score (0-100) for a tenant based on:
- * - Device risk scores (30% weight)
- * - Active alerts by severity (25% weight)
- * - Critical vulnerabilities (25% weight)
- * - Compliance status (20% weight)
- * 
- * The posture score provides a single metric to track security improvements over time.
+ * EDR Security Posture Calculator
+ * Calculates security posture scores based on device risk, alerts, vulnerabilities, and compliance
  */
 
-import { db } from './database';
-import { edrDevices, edrAlerts, edrVulnerabilities, edrDeviceVulnerabilities, edrCompliance } from '../../database/schemas/edr';
-import { eq, and, gte, sql } from 'drizzle-orm';
-import { storePostureScore } from './edr-database-operations';
-import type { PostureScore, PostureFactors } from '../types/edr';
+import { db } from '@/lib/database';
+import { 
+  edrDevices, 
+  edrAlerts, 
+  edrVulnerabilities,
+  edrCompliance,
+  edrPostureScores 
+} from '../../database/schemas/edr';
+import { eq, and, gte, count } from 'drizzle-orm';
 
-/**
- * Weight factors for posture score calculation
- */
-const WEIGHTS = {
-    DEVICE_RISK: 0.30,      // 30%
-    ACTIVE_ALERTS: 0.25,    // 25%
-    VULNERABILITIES: 0.25,  // 25%
-    COMPLIANCE: 0.20,       // 20%
-};
-
-/**
- * Risk score thresholds
- */
-const RISK_THRESHOLDS = {
-    HIGH_RISK: 70,          // Risk score >= 70 is considered high risk
-};
-
-/**
- * CVSS score thresholds
- */
-const CVSS_THRESHOLDS = {
-    CRITICAL: 7.0,          // CVSS >= 7.0 is considered critical
-};
-
-/**
- * Alert severity weights for scoring
- */
-const ALERT_SEVERITY_WEIGHTS = {
-    high: 1.0,
-    medium: 0.5,
-    low: 0.2,
-};
-
-/**
- * Ensure database connection is available
- */
-function ensureDb() {
-    if (!db) {
-        throw new Error('Database connection not available');
-    }
-    return db;
+export interface PostureCalculation {
+  score: number; // 0-100
+  deviceCount: number;
+  highRiskDeviceCount: number;
+  activeAlertCount: number;
+  criticalVulnerabilityCount: number;
+  nonCompliantDeviceCount: number;
+  factors: {
+    deviceRiskFactor: number; // 0-100
+    alertFactor: number; // 0-100
+    vulnerabilityFactor: number; // 0-100
+    complianceFactor: number; // 0-100
+  };
 }
 
 /**
- * Calculate device risk component (30% of total score)
- * Returns a score from 0-100 where 100 is best (lowest risk)
+ * Calculate security posture score for a tenant
  */
-async function calculateDeviceRiskScore(tenantId: string): Promise<{
-    score: number;
-    deviceCount: number;
-    highRiskDeviceCount: number;
-    averageRiskScore: number;
-}> {
-    const devices = await ensureDb()
-        .select({
-            riskScore: edrDevices.riskScore,
-        })
-        .from(edrDevices)
-        .where(eq(edrDevices.tenantId, tenantId));
+export async function calculatePostureScore(tenantId: string): Promise<PostureCalculation> {
+  try {
+    // Get all devices for tenant
+    const devices = await db
+      .select()
+      .from(edrDevices)
+      .where(eq(edrDevices.tenantId, tenantId));
 
     if (devices.length === 0) {
-        return {
-            score: 100, // No devices = perfect score
-            deviceCount: 0,
-            highRiskDeviceCount: 0,
-            averageRiskScore: 0,
-        };
+      return {
+        score: 100, // Perfect score if no devices
+        deviceCount: 0,
+        highRiskDeviceCount: 0,
+        activeAlertCount: 0,
+        criticalVulnerabilityCount: 0,
+        nonCompliantDeviceCount: 0,
+        factors: {
+          deviceRiskFactor: 100,
+          alertFactor: 100,
+          vulnerabilityFactor: 100,
+          complianceFactor: 100,
+        },
+      };
     }
 
-    // Calculate average risk score
-    const totalRisk = devices.reduce((sum, device) => sum + (device.riskScore || 0), 0);
-    const averageRiskScore = totalRisk / devices.length;
+    // Calculate device risk factor
+    const deviceRiskFactor = await calculateDeviceRiskFactor(devices);
+    const highRiskDeviceCount = devices.filter(device => device.riskScore >= 70).length;
 
-    // Count high-risk devices
-    const highRiskDeviceCount = devices.filter(
-        (device) => (device.riskScore || 0) >= RISK_THRESHOLDS.HIGH_RISK
-    ).length;
+    // Calculate alert factor
+    const { alertFactor, activeAlertCount } = await calculateAlertFactor(tenantId);
 
-    // Convert average risk (0-100, higher is worse) to score (0-100, higher is better)
-    // Invert the risk score: 100 - averageRisk
-    const score = Math.max(0, Math.min(100, 100 - averageRiskScore));
+    // Calculate vulnerability factor
+    const { vulnerabilityFactor, criticalVulnerabilityCount } = await calculateVulnerabilityFactor(tenantId);
 
-    return {
-        score,
-        deviceCount: devices.length,
-        highRiskDeviceCount,
-        averageRiskScore,
-    };
-}
+    // Calculate compliance factor
+    const { complianceFactor, nonCompliantDeviceCount } = await calculateComplianceFactor(tenantId);
 
-/**
- * Calculate active alerts component (25% of total score)
- * Returns a score from 0-100 where 100 is best (no alerts)
- */
-async function calculateActiveAlertsScore(tenantId: string): Promise<{
-    score: number;
-    activeAlertCount: number;
-    severityDistribution: { low: number; medium: number; high: number };
-}> {
-    const alerts = await ensureDb()
-        .select({
-            severity: edrAlerts.severity,
-        })
-        .from(edrAlerts)
-        .where(
-            and(
-                eq(edrAlerts.tenantId, tenantId),
-                eq(edrAlerts.status, 'active')
-            )
-        );
-
-    const severityDistribution = {
-        low: 0,
-        medium: 0,
-        high: 0,
+    // Calculate overall score (weighted average)
+    const weights = {
+      deviceRisk: 0.3,
+      alerts: 0.25,
+      vulnerabilities: 0.25,
+      compliance: 0.2,
     };
 
-    // Count alerts by severity
-    alerts.forEach((alert) => {
-        const severity = alert.severity?.toLowerCase();
-        if (severity === 'high') {
-            severityDistribution.high++;
-        } else if (severity === 'medium') {
-            severityDistribution.medium++;
-        } else if (severity === 'low') {
-            severityDistribution.low++;
-        }
-    });
-
-    const activeAlertCount = alerts.length;
-
-    if (activeAlertCount === 0) {
-        return {
-            score: 100, // No active alerts = perfect score
-            activeAlertCount: 0,
-            severityDistribution,
-        };
-    }
-
-    // Calculate weighted alert impact
-    // Each severity has a different weight
-    const weightedAlertCount =
-        severityDistribution.high * ALERT_SEVERITY_WEIGHTS.high +
-        severityDistribution.medium * ALERT_SEVERITY_WEIGHTS.medium +
-        severityDistribution.low * ALERT_SEVERITY_WEIGHTS.low;
-
-    // Normalize to 0-100 scale
-    // Assume 10 weighted alerts = 0 score, 0 weighted alerts = 100 score
-    // Use exponential decay to penalize more alerts
-    const maxWeightedAlerts = 10;
-    const score = Math.max(0, Math.min(100, 100 * Math.exp(-weightedAlertCount / maxWeightedAlerts)));
-
-    return {
-        score,
-        activeAlertCount,
-        severityDistribution,
-    };
-}
-
-/**
- * Calculate vulnerabilities component (25% of total score)
- * Returns a score from 0-100 where 100 is best (no critical vulnerabilities)
- */
-async function calculateVulnerabilitiesScore(tenantId: string): Promise<{
-    score: number;
-    criticalVulnerabilityCount: number;
-    totalVulnerabilityCount: number;
-}> {
-    const vulnerabilities = await ensureDb()
-        .select({
-            cvssScore: edrVulnerabilities.cvssScore,
-        })
-        .from(edrVulnerabilities)
-        .where(eq(edrVulnerabilities.tenantId, tenantId));
-
-    const totalVulnerabilityCount = vulnerabilities.length;
-
-    if (totalVulnerabilityCount === 0) {
-        return {
-            score: 100, // No vulnerabilities = perfect score
-            criticalVulnerabilityCount: 0,
-            totalVulnerabilityCount: 0,
-        };
-    }
-
-    // Count critical vulnerabilities (CVSS >= 7.0)
-    const criticalVulnerabilityCount = vulnerabilities.filter((vuln) => {
-        const cvssScore = parseFloat(vuln.cvssScore || '0');
-        return cvssScore >= CVSS_THRESHOLDS.CRITICAL;
-    }).length;
-
-    // Calculate score based on critical vulnerabilities
-    // Assume 20 critical vulnerabilities = 0 score, 0 critical vulnerabilities = 100 score
-    // Use exponential decay
-    const maxCriticalVulns = 20;
-    const score = Math.max(
-        0,
-        Math.min(100, 100 * Math.exp(-criticalVulnerabilityCount / maxCriticalVulns))
+    const score = Math.round(
+      deviceRiskFactor * weights.deviceRisk +
+      alertFactor * weights.alerts +
+      vulnerabilityFactor * weights.vulnerabilities +
+      complianceFactor * weights.compliance
     );
 
     return {
-        score,
-        criticalVulnerabilityCount,
-        totalVulnerabilityCount,
+      score: Math.max(0, Math.min(100, score)), // Ensure 0-100 range
+      deviceCount: devices.length,
+      highRiskDeviceCount,
+      activeAlertCount,
+      criticalVulnerabilityCount,
+      nonCompliantDeviceCount,
+      factors: {
+        deviceRiskFactor,
+        alertFactor,
+        vulnerabilityFactor,
+        complianceFactor,
+      },
     };
+  } catch (error) {
+    throw new Error(`Failed to calculate posture score: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
- * Calculate compliance component (20% of total score)
- * Returns a score from 0-100 where 100 is best (all devices compliant)
+ * Calculate device risk factor based on individual device risk scores
  */
-async function calculateComplianceScore(tenantId: string): Promise<{
-    score: number;
-    nonCompliantDeviceCount: number;
-    totalDeviceCount: number;
-    compliancePercentage: number;
-}> {
-    const complianceRecords = await ensureDb()
-        .select({
-            complianceState: edrCompliance.complianceState,
-        })
-        .from(edrCompliance)
-        .where(eq(edrCompliance.tenantId, tenantId));
+async function calculateDeviceRiskFactor(devices: any[]): Promise<number> {
+  if (devices.length === 0) return 100;
 
-    const totalDeviceCount = complianceRecords.length;
+  // Calculate average risk score
+  const totalRiskScore = devices.reduce((sum, device) => sum + (device.riskScore || 0), 0);
+  const averageRiskScore = totalRiskScore / devices.length;
 
-    if (totalDeviceCount === 0) {
-        return {
-            score: 100, // No devices = perfect score
-            nonCompliantDeviceCount: 0,
-            totalDeviceCount: 0,
-            compliancePercentage: 100,
-        };
-    }
-
-    // Count compliant devices
-    const compliantDeviceCount = complianceRecords.filter(
-        (record) => record.complianceState?.toLowerCase() === 'compliant'
-    ).length;
-
-    const nonCompliantDeviceCount = totalDeviceCount - compliantDeviceCount;
-
-    // Calculate compliance percentage
-    const compliancePercentage = (compliantDeviceCount / totalDeviceCount) * 100;
-
-    // Score is directly the compliance percentage
-    const score = compliancePercentage;
-
-    return {
-        score,
-        nonCompliantDeviceCount,
-        totalDeviceCount,
-        compliancePercentage,
-    };
+  // Convert to posture factor (lower risk = higher posture score)
+  // Risk score 0 = posture 100, Risk score 100 = posture 0
+  return Math.max(0, 100 - averageRiskScore);
 }
 
 /**
- * Calculate overall posture score for a tenant
- * Combines all components with their respective weights
+ * Calculate alert factor based on active alerts
  */
-export async function calculatePostureScore(tenantId: string): Promise<{
-    score: number;
-    factors: PostureFactors;
-    deviceCount: number;
-    highRiskDeviceCount: number;
-    activeAlertCount: number;
-    criticalVulnerabilityCount: number;
-    nonCompliantDeviceCount: number;
-}> {
-    // Calculate each component
-    const deviceRisk = await calculateDeviceRiskScore(tenantId);
-    const activeAlerts = await calculateActiveAlertsScore(tenantId);
-    const vulnerabilities = await calculateVulnerabilitiesScore(tenantId);
-    const compliance = await calculateComplianceScore(tenantId);
+async function calculateAlertFactor(tenantId: string): Promise<{ alertFactor: number; activeAlertCount: number }> {
+  try {
+    // Get active alerts from last 7 days
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Calculate weighted total score
-    const totalScore =
-        deviceRisk.score * WEIGHTS.DEVICE_RISK +
-        activeAlerts.score * WEIGHTS.ACTIVE_ALERTS +
-        vulnerabilities.score * WEIGHTS.VULNERABILITIES +
-        compliance.score * WEIGHTS.COMPLIANCE;
+    const activeAlerts = await db
+      .select()
+      .from(edrAlerts)
+      .where(and(
+        eq(edrAlerts.tenantId, tenantId),
+        eq(edrAlerts.status, 'active'),
+        gte(edrAlerts.detectedAt, sevenDaysAgo)
+      ));
 
-    // Round to nearest integer
-    const finalScore = Math.round(totalScore);
+    const activeAlertCount = activeAlerts.length;
 
-    // Build factors object
-    const factors: PostureFactors = {
-        deviceRiskAverage: deviceRisk.averageRiskScore,
-        alertSeverityDistribution: activeAlerts.severityDistribution,
-        vulnerabilityExposure: vulnerabilities.criticalVulnerabilityCount,
-        compliancePercentage: compliance.compliancePercentage,
-    };
+    // Calculate factor based on alert count and severity
+    let alertScore = 0;
+    let totalWeight = 0;
 
-    return {
-        score: finalScore,
-        factors,
-        deviceCount: deviceRisk.deviceCount,
-        highRiskDeviceCount: deviceRisk.highRiskDeviceCount,
-        activeAlertCount: activeAlerts.activeAlertCount,
-        criticalVulnerabilityCount: vulnerabilities.criticalVulnerabilityCount,
-        nonCompliantDeviceCount: compliance.nonCompliantDeviceCount,
-    };
-}
+    activeAlerts.forEach(alert => {
+      let weight = 1;
+      let severityScore = 50; // Default
 
-/**
- * Calculate and store posture score for a tenant
- * This is the main entry point for posture score calculation
- */
-export async function calculateAndStorePostureScore(
-    tenantId: string
-): Promise<PostureScore> {
-    // Calculate the score
-    const calculation = await calculatePostureScore(tenantId);
+      switch (alert.severity.toLowerCase()) {
+        case 'critical':
+          weight = 4;
+          severityScore = 0; // Critical alerts heavily impact score
+          break;
+        case 'high':
+          weight = 3;
+          severityScore = 25;
+          break;
+        case 'medium':
+          weight = 2;
+          severityScore = 50;
+          break;
+        case 'low':
+          weight = 1;
+          severityScore = 75;
+          break;
+        case 'info':
+          weight = 0.5;
+          severityScore = 90;
+          break;
+      }
 
-    // Store in database
-    const result = await storePostureScore({
-        tenantId,
-        score: calculation.score,
-        deviceCount: calculation.deviceCount,
-        highRiskDeviceCount: calculation.highRiskDeviceCount,
-        activeAlertCount: calculation.activeAlertCount,
-        criticalVulnerabilityCount: calculation.criticalVulnerabilityCount,
-        nonCompliantDeviceCount: calculation.nonCompliantDeviceCount,
-        calculatedAt: new Date(),
+      alertScore += severityScore * weight;
+      totalWeight += weight;
     });
 
-    // Return the full posture score object
-    return {
-        id: result.id,
-        tenantId,
-        score: calculation.score,
-        deviceCount: calculation.deviceCount,
-        highRiskDeviceCount: calculation.highRiskDeviceCount,
-        activeAlertCount: calculation.activeAlertCount,
-        criticalVulnerabilityCount: calculation.criticalVulnerabilityCount,
-        nonCompliantDeviceCount: calculation.nonCompliantDeviceCount,
-        calculatedAt: new Date(),
-        createdAt: new Date(),
-    };
+    let alertFactor = 100; // Perfect score if no alerts
+    if (totalWeight > 0) {
+      alertFactor = Math.round(alertScore / totalWeight);
+    }
+
+    // Apply penalty for high alert volume
+    if (activeAlertCount > 50) {
+      alertFactor = Math.max(0, alertFactor - 20);
+    } else if (activeAlertCount > 20) {
+      alertFactor = Math.max(0, alertFactor - 10);
+    } else if (activeAlertCount > 10) {
+      alertFactor = Math.max(0, alertFactor - 5);
+    }
+
+    return { alertFactor, activeAlertCount };
+  } catch (error) {
+    console.error('Error calculating alert factor:', error);
+    return { alertFactor: 50, activeAlertCount: 0 }; // Default neutral score
+  }
+}
+
+/**
+ * Calculate vulnerability factor based on CVE vulnerabilities
+ */
+async function calculateVulnerabilityFactor(tenantId: string): Promise<{ vulnerabilityFactor: number; criticalVulnerabilityCount: number }> {
+  try {
+    const vulnerabilities = await db
+      .select()
+      .from(edrVulnerabilities)
+      .where(eq(edrVulnerabilities.tenantId, tenantId));
+
+    const criticalVulnerabilities = vulnerabilities.filter(vuln => 
+      vuln.severity.toLowerCase() === 'critical' || vuln.cvssScore >= 9.0
+    );
+    const criticalVulnerabilityCount = criticalVulnerabilities.length;
+
+    if (vulnerabilities.length === 0) {
+      return { vulnerabilityFactor: 100, criticalVulnerabilityCount: 0 };
+    }
+
+    // Calculate factor based on vulnerability severity distribution
+    let vulnerabilityScore = 0;
+    let totalWeight = 0;
+
+    vulnerabilities.forEach(vuln => {
+      let weight = 1;
+      let severityScore = 50;
+
+      if (vuln.cvssScore) {
+        // Use CVSS score for more accurate assessment
+        if (vuln.cvssScore >= 9.0) {
+          weight = 4;
+          severityScore = 0; // Critical
+        } else if (vuln.cvssScore >= 7.0) {
+          weight = 3;
+          severityScore = 25; // High
+        } else if (vuln.cvssScore >= 4.0) {
+          weight = 2;
+          severityScore = 50; // Medium
+        } else {
+          weight = 1;
+          severityScore = 75; // Low
+        }
+      } else {
+        // Fallback to severity string
+        switch (vuln.severity.toLowerCase()) {
+          case 'critical':
+            weight = 4;
+            severityScore = 0;
+            break;
+          case 'high':
+            weight = 3;
+            severityScore = 25;
+            break;
+          case 'medium':
+            weight = 2;
+            severityScore = 50;
+            break;
+          case 'low':
+            weight = 1;
+            severityScore = 75;
+            break;
+        }
+      }
+
+      // Apply exploitability penalty
+      if (vuln.exploitability === 'high') {
+        severityScore = Math.max(0, severityScore - 25);
+      } else if (vuln.exploitability === 'medium') {
+        severityScore = Math.max(0, severityScore - 10);
+      }
+
+      vulnerabilityScore += severityScore * weight;
+      totalWeight += weight;
+    });
+
+    let vulnerabilityFactor = Math.round(vulnerabilityScore / totalWeight);
+
+    // Apply penalty for high vulnerability count
+    if (vulnerabilities.length > 100) {
+      vulnerabilityFactor = Math.max(0, vulnerabilityFactor - 20);
+    } else if (vulnerabilities.length > 50) {
+      vulnerabilityFactor = Math.max(0, vulnerabilityFactor - 10);
+    } else if (vulnerabilities.length > 20) {
+      vulnerabilityFactor = Math.max(0, vulnerabilityFactor - 5);
+    }
+
+    return { vulnerabilityFactor, criticalVulnerabilityCount };
+  } catch (error) {
+    console.error('Error calculating vulnerability factor:', error);
+    return { vulnerabilityFactor: 50, criticalVulnerabilityCount: 0 };
+  }
+}
+
+/**
+ * Calculate compliance factor based on device compliance status
+ */
+async function calculateComplianceFactor(tenantId: string): Promise<{ complianceFactor: number; nonCompliantDeviceCount: number }> {
+  try {
+    // Get all devices for tenant
+    const devices = await db
+      .select()
+      .from(edrDevices)
+      .where(eq(edrDevices.tenantId, tenantId));
+
+    if (devices.length === 0) {
+      return { complianceFactor: 100, nonCompliantDeviceCount: 0 };
+    }
+
+    // Count compliant vs non-compliant devices
+    const compliantDevices = devices.filter(device => 
+      device.intuneComplianceState === 'compliant'
+    );
+    const nonCompliantDevices = devices.filter(device => 
+      device.intuneComplianceState === 'noncompliant'
+    );
+    const unknownComplianceDevices = devices.filter(device => 
+      !device.intuneComplianceState || device.intuneComplianceState === 'unknown'
+    );
+
+    const nonCompliantDeviceCount = nonCompliantDevices.length;
+
+    // Calculate compliance percentage
+    const compliancePercentage = (compliantDevices.length / devices.length) * 100;
+
+    // Apply penalty for unknown compliance status
+    const unknownPenalty = (unknownComplianceDevices.length / devices.length) * 20;
+
+    const complianceFactor = Math.max(0, Math.round(compliancePercentage - unknownPenalty));
+
+    return { complianceFactor, nonCompliantDeviceCount };
+  } catch (error) {
+    console.error('Error calculating compliance factor:', error);
+    return { complianceFactor: 50, nonCompliantDeviceCount: 0 };
+  }
+}
+
+/**
+ * Get posture score trend for a tenant
+ */
+export async function getPostureScoreTrend(tenantId: string, days: number = 30): Promise<Array<{ date: string; score: number }>> {
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const scores = await db
+      .select({
+        score: edrPostureScores.score,
+        calculatedAt: edrPostureScores.calculatedAt,
+      })
+      .from(edrPostureScores)
+      .where(and(
+        eq(edrPostureScores.tenantId, tenantId),
+        gte(edrPostureScores.calculatedAt, startDate)
+      ))
+      .orderBy(edrPostureScores.calculatedAt);
+
+    return scores.map(score => ({
+      date: score.calculatedAt.toISOString().split('T')[0],
+      score: score.score,
+    }));
+  } catch (error) {
+    console.error('Error getting posture score trend:', error);
+    return [];
+  }
 }

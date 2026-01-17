@@ -61,6 +61,28 @@ function AlertsPageContent() {
   const [showMockModal, setShowMockModal] = useState(false);
   const [generatingMock, setGeneratingMock] = useState(false);
 
+  const handleAcknowledge = async (alertId: string) => {
+    try {
+      // Simulate API call
+      const { delay } = await import('@/lib/mock-data');
+      await delay(300);
+
+      // Update the alert in the list
+      setAlerts(prev => prev.map(alert =>
+        alert.id === alertId ? { ...alert, acknowledged: true, acknowledgedAt: new Date(), acknowledgedBy: 'current-user' } as any : alert
+      ));
+
+      // Update selected alert if it's the same one
+      if (selectedAlert?.id === alertId) {
+        setSelectedAlert(prev => prev ? { ...prev, acknowledged: true, acknowledgedAt: new Date(), acknowledgedBy: 'current-user' } as any : null);
+      }
+
+      console.log(`Alert ${alertId} acknowledged successfully`);
+    } catch (error) {
+      console.error('Error acknowledging alert:', error);
+    }
+  };
+
   useEffect(() => {
     fetchAlerts();
   }, [filters]);
@@ -247,6 +269,7 @@ function AlertsPageContent() {
           onAlertClick={handleAlertClick}
           onStatusUpdate={handleStatusUpdate}
           onInvestigate={handleInvestigate}
+          onAcknowledge={handleAcknowledge}
         />
 
         {/* Alert Detail Modal */}
@@ -337,8 +360,43 @@ function AlertsPageContent() {
                 </div>
               </div>
 
+              {/* Acknowledgment Status */}
+              {(selectedAlert as any).acknowledged && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium text-green-800 dark:text-green-200">Alert Acknowledged</span>
+                  </div>
+                  <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
+                    <div>
+                      <span className="font-medium">Acknowledged by:</span> {(selectedAlert as any).acknowledgedBy || 'Unknown'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Acknowledged at:</span>{' '}
+                      {(selectedAlert as any).acknowledgedAt ? new Date((selectedAlert as any).acknowledgedAt).toLocaleString() : 'Unknown'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                {/* Acknowledge Button */}
+                {!(selectedAlert as any).acknowledged && (
+                  <Button
+                    onClick={() => handleAcknowledge(selectedAlert.id)}
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Acknowledge
+                  </Button>
+                )}
+                
                 {selectedAlert.status === 'open' && (
                   <Button
                     onClick={() => handleStatusUpdate(selectedAlert.id, 'investigating')}

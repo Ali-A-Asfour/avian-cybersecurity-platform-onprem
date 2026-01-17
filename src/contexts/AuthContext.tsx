@@ -1,10 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useCallback, useState } from 'react';
+import React, { createContext, useContext, useEffect, useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-
-// TODO: Implement Passport.js + JWT authentication (Task 4)
-// This is a temporary stub to allow compilation
+import { SessionTimeoutWarning } from '@/components/auth/SessionTimeoutWarning';
 
 export interface AuthUser {
     id: string;
@@ -34,6 +32,192 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // TEMPORARY: Disable auth for development - set DISABLE_AUTH=true in .env.local to bypass login
     const authDisabled = process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true';
 
+    // Session timeout state
+    const [isWarningVisible, setIsWarningVisible] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(0);
+    const warningShownRef = useRef(false);
+    const expiredHandledRef = useRef(false);
+
+    /**
+     * Logout user
+     */
+    const logout = useCallback(async () => {
+        try {
+            const sessionId = localStorage.getItem('session-id');
+            
+            // Stub: Will be replaced with Redis session deletion
+            if (sessionId) {
+                // await deleteSession(sessionId);
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        } finally {
+            setUser(null);
+            localStorage.removeItem('auth-user');
+            localStorage.removeItem('auth-token');
+            localStorage.removeItem('session-id');
+            localStorage.removeItem('selected-tenant');
+            sessionStorage.removeItem('selectedTenant');
+            router.push('/login');
+        }
+    }, [router]);
+
+    /**
+     * Get session expiration time from localStorage
+     */
+    const getSessionExpiration = useCallback((): Date | null => {
+        try {
+            const authToken = localStorage.getItem('auth-token');
+            if (!authToken) {
+                return null;
+            }
+
+            // Decode JWT to get expiration (without verification)
+            const parts = authToken.split('.');
+            if (parts.length !== 3) {
+                return null;
+            }
+
+            const payload = JSON.parse(atob(parts[1]));
+            if (!payload.exp) {
+                return null;
+            }
+
+            // JWT exp is in seconds, convert to milliseconds
+            return new Date(payload.exp * 1000);
+        } catch (error) {
+            console.error('Failed to get session expiration:', error);
+            return null;
+        }
+    }, []);
+
+    /**
+     * Calculate time remaining until session expires
+     */
+    const calculateTimeRemaining = useCallback((): number => {
+        const expirationDate = getSessionExpiration();
+        if (!expirationDate) {
+            return 0;
+        }
+
+        const now = new Date();
+        const remaining = Math.floor((expirationDate.getTime() - now.getTime()) / 1000);
+        return Math.max(0, remaining);
+    }, [getSessionExpiration]);
+
+    /**
+     * Check session status and update state
+     */
+    const checkSessionStatus = useCallback(() => {
+        if (!user || authDisabled) {
+            // No user logged in or auth disabled, reset state
+            setIsWarningVisible(false);
+            setTimeRemaining(0);
+            warningShownRef.current = false;
+            expiredHandledRef.current = false;
+            return;
+        }
+
+        // Check if we have a JWT token - if not, skip session timeout checks
+        // This handles stub/mock authentication scenarios
+        const authToken = localStorage.getItem('auth-token');
+        if (!authToken) {
+            console.log('[SessionTimeout] No JWT token found, skipping session timeout checks');
+            return;
+        }
+
+        const remaining = calculateTimeRemaining();
+        
+        // If we can't calculate remaining time (invalid token), skip checks
+        if (remaining === 0 && !getSessionExpiration()) {
+            console.log('[SessionTimeout] Cannot determine session expiration, skipping checks');
+            return;
+        }
+
+        const warningThresholdSeconds = 5 * 60; // 5 minutes
+
+        // Check if session has expired
+        if (remaining <= 0) {
+            if (!expiredHandledRef.current) {
+                console.log('[SessionTimeout] Session expired, logging out...');
+                setIsWarningVisible(false);
+                setTimeRemaining(0);
+                expiredHandledRef.current = true;
+                
+                // Logout user
+                logout();
+            }
+            return;
+        }
+
+        // Check if we should show warning
+        if (remaining <= warningThresholdSeconds) {
+            if (!warningShownRef.current) {
+                console.log(`[SessionTimeout] Warning: ${remaining} seconds remaining`);
+                warningShownRef.current = true;
+            }
+
+            setIsWarningVisible(true);
+            setTimeRemaining(remaining);
+        } else {
+            // Session is healthy
+            setIsWarningVisible(false);
+            setTimeRemaining(remaining);
+            warningShownRef.current = false;
+        }
+    }, [user, authDisabled, calculateTimeRemaining, getSessionExpiration, logout]);
+
+    /**
+     * Extend the session by refreshing the token
+     */
+    const extendSession = useCallback(async (): Promise<boolean> => {
+        try {
+            console.log('[SessionTimeout] Extending session...');
+            
+            const response = await fetch('/api/auth/extend-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                console.error('[SessionTimeout] Failed to extend session:', response.statusText);
+                return false;
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log('[SessionTimeout] Session extended successfully');
+                
+                // Update token in localStorage
+                if (data.token) {
+                    localStorage.setItem('auth-token', data.token);
+                }
+
+                // Reset warning state
+                warningShownRef.current = false;
+                setIsWarningVisible(false);
+                setTimeRemaining(calculateTimeRemaining());
+
+                return true;
+            }
+
+            return false;
+        } catch (error) {
+            console.error('[SessionTimeout] Error extending session:', error);
+            return false;
+        }
+    }, [calculateTimeRemaining]);
+
+    /**
+     * Dismiss the warning (user acknowledges but doesn't extend)
+     */
+    const dismissWarning = useCallback(() => {
+        setIsWarningVisible(false);
+    }, []);
+
     /**
      * Check authentication status
      */
@@ -52,7 +236,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return true;
         }
 
-        // TODO: Implement JWT + Redis session validation (Task 4)
         try {
             const sessionId = localStorage.getItem('session-id');
             const authToken = localStorage.getItem('auth-token');
@@ -112,7 +295,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password: string,
         rememberMe: boolean = false
     ) => {
-        // TODO: Implement Passport.js + JWT authentication (Task 4)
         try {
             // Stub implementation - will be replaced with real authentication
             const authUser: AuthUser = {
@@ -137,31 +319,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Login failed:', error);
             throw error;
-        }
-    }, [router]);
-
-    /**
-     * Logout user
-     */
-    const logout = useCallback(async () => {
-        // TODO: Implement JWT + Redis session cleanup (Task 4)
-        try {
-            const sessionId = localStorage.getItem('session-id');
-            
-            // Stub: Will be replaced with Redis session deletion
-            if (sessionId) {
-                // await deleteSession(sessionId);
-            }
-        } catch (error) {
-            console.error('Logout error:', error);
-        } finally {
-            setUser(null);
-            localStorage.removeItem('auth-user');
-            localStorage.removeItem('auth-token'); // Clear the JWT token
-            localStorage.removeItem('session-id');
-            localStorage.removeItem('selected-tenant');
-            sessionStorage.removeItem('selectedTenant');
-            router.push('/login');
         }
     }, [router]);
 
@@ -214,17 +371,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, [checkAuth]);
 
+    /**
+     * Set up session timeout monitoring
+     */
+    useEffect(() => {
+        if (!user || authDisabled) {
+            return;
+        }
+
+        // Initial check
+        checkSessionStatus();
+
+        // Set up interval for periodic checks (every 30 seconds)
+        const interval = setInterval(() => {
+            checkSessionStatus();
+        }, 30 * 1000);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [user, authDisabled, checkSessionStatus]);
+
+    /**
+     * Update countdown every second when warning is visible
+     */
+    useEffect(() => {
+        if (!isWarningVisible) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            setTimeRemaining(prev => Math.max(0, prev - 1));
+        }, 1000);
+
+        return () => {
+            clearInterval(interval);
+        };
+    }, [isWarningVisible]);
+
     const value: AuthContextType = {
         user,
         loading,
-        isAuthenticated: authDisabled || !!user, // Always authenticated if auth is disabled
+        isAuthenticated: authDisabled || !!user,
         login,
         logout,
         refreshUser,
         checkAuth,
     };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>
+            {children}
+            
+            {/* Session Timeout Warning Modal */}
+            {!authDisabled && (
+                <SessionTimeoutWarning
+                    isVisible={isWarningVisible}
+                    timeRemaining={timeRemaining}
+                    onExtend={extendSession}
+                    onDismiss={dismissWarning}
+                    onLogout={logout}
+                />
+            )}
+        </AuthContext.Provider>
+    );
 }
 
 /**
@@ -268,7 +478,7 @@ export function useRequireRole(allowedRoles: string | string[]) {
             } else if (user) {
                 const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
                 if (!roles.includes(user.role)) {
-                    router.push('/dashboard'); // Redirect to dashboard if wrong role
+                    router.push('/dashboard');
                 }
             }
         }

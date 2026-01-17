@@ -92,6 +92,12 @@ const ThreatLakeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const OnboardingIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+  </svg>
+);
+
 
 
 const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; alerts: number; tickets: number }): NavItem[] => {
@@ -103,6 +109,7 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
     case 'super_admin':
       return [
         ...baseNavigation,
+        { name: 'Client Onboarding', href: '/onboarding', icon: OnboardingIcon },
         { name: 'Data Sources', href: '/data-sources', icon: DatabaseIcon },
         { name: 'Threat Lake', href: '/threat-lake', icon: ThreatLakeIcon },
         { name: 'Helpdesk Tickets', href: '/tickets', icon: TicketsIcon, badge: ticketCounts.tickets || undefined },
@@ -110,6 +117,7 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
         { name: 'Assets', href: '/assets', icon: AssetsIcon },
         { name: 'Reports', href: '/reports', icon: ReportsIcon },
         { name: 'Platform Admin', href: '/admin', icon: AdminIcon },
+        { name: 'Password Reset', href: '/admin/password-reset', icon: SettingsIcon },
         { name: 'Performance', href: '/performance', icon: ReportsIcon },
         { name: 'Settings', href: '/settings', icon: SettingsIcon },
       ];
@@ -117,8 +125,10 @@ const getNavigationForRole = (role: string, ticketCounts: { helpDesk: number; al
     case 'tenant_admin':
       return [
         ...baseNavigation,
+        { name: 'Client Onboarding', href: '/onboarding', icon: OnboardingIcon },
         { name: 'Asset Inventory', href: '/assets', icon: AssetsIcon },
         { name: 'Team Members', href: '/admin/users', icon: AdminIcon },
+        { name: 'Password Reset', href: '/admin/password-reset', icon: SettingsIcon },
         { name: 'Notifications', href: '/notifications', icon: NotificationsIcon },
         { name: 'Settings', href: '/settings', icon: SettingsIcon },
       ];

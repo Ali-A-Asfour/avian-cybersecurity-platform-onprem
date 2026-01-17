@@ -217,8 +217,8 @@ export const edrCompliance = pgTable(
  * EDR Remote Actions Table
  * Logs all remote actions executed on devices with user attribution
  */
-export const edrActions = pgTable(
-    'edr_actions',
+export const edrRemoteActions = pgTable(
+    'edr_remote_actions',
     {
         id: uuid('id').primaryKey().defaultRandom(),
         tenantId: uuid('tenant_id')
@@ -241,19 +241,19 @@ export const edrActions = pgTable(
         createdAt: timestamp('created_at').notNull().defaultNow(),
     },
     (table) => ({
-        tenantIdx: index('idx_edr_actions_tenant').on(table.tenantId),
-        deviceIdx: index('idx_edr_actions_device').on(table.deviceId),
-        userIdx: index('idx_edr_actions_user').on(table.userId),
-        initiatedIdx: index('idx_edr_actions_initiated').on(
+        tenantIdx: index('idx_edr_remote_actions_tenant').on(table.tenantId),
+        deviceIdx: index('idx_edr_remote_actions_device').on(table.deviceId),
+        userIdx: index('idx_edr_remote_actions_user').on(table.userId),
+        initiatedIdx: index('idx_edr_remote_actions_initiated').on(
             sql`${table.initiatedAt} DESC`
         ),
         // Check constraints
         checkActionType: check(
-            'check_edr_action_type_valid',
+            'check_edr_remote_action_type_valid',
             sql`${table.actionType} IN ('isolate', 'unisolate', 'scan', 'resolve_alert')`
         ),
         checkStatus: check(
-            'check_edr_action_status_valid',
+            'check_edr_remote_action_status_valid',
             sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed')`
         ),
     })
@@ -326,7 +326,7 @@ export const edrDevicesRelations = relations(edrDevices, ({ one, many }) => ({
     alerts: many(edrAlerts),
     deviceVulnerabilities: many(edrDeviceVulnerabilities),
     compliance: one(edrCompliance),
-    actions: many(edrActions),
+    actions: many(edrRemoteActions),
 }));
 
 export const edrAlertsRelations = relations(edrAlerts, ({ one }) => ({
@@ -376,17 +376,17 @@ export const edrComplianceRelations = relations(edrCompliance, ({ one }) => ({
     }),
 }));
 
-export const edrActionsRelations = relations(edrActions, ({ one }) => ({
+export const edrRemoteActionsRelations = relations(edrRemoteActions, ({ one }) => ({
     tenant: one(tenants, {
-        fields: [edrActions.tenantId],
+        fields: [edrRemoteActions.tenantId],
         references: [tenants.id],
     }),
     device: one(edrDevices, {
-        fields: [edrActions.deviceId],
+        fields: [edrRemoteActions.deviceId],
         references: [edrDevices.id],
     }),
     user: one(users, {
-        fields: [edrActions.userId],
+        fields: [edrRemoteActions.userId],
         references: [users.id],
     }),
 }));

@@ -77,7 +77,17 @@ export default function SettingsPage() {
 
           {activeTab === 'notifications' && (
             <div className="p-6">
-              <NotificationPreferences />
+              <div className="text-center">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Configure your notification preferences for alerts, tickets, and system events.
+                </p>
+                <button
+                  onClick={() => router.push('/settings/notifications')}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Open Notification Settings
+                </button>
+              </div>
             </div>
           )}
 

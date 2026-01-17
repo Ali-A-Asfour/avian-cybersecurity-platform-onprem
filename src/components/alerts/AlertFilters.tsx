@@ -83,7 +83,8 @@ export function AlertFilters({ filters, onFiltersChange, onRefresh }: AlertFilte
       localFilters.status?.length ||
       localFilters.source?.length ||
       localFilters.created_after ||
-      localFilters.created_before
+      localFilters.created_before ||
+      localFilters.acknowledged !== undefined
     );
   };
 
@@ -143,6 +144,36 @@ export function AlertFilters({ filters, onFiltersChange, onRefresh }: AlertFilte
           className={`transition-all ${localFilters.status?.includes(AlertStatus.INVESTIGATING) ? 'ring-2 ring-amber-300' : 'opacity-60 hover:opacity-100'}`}
         >
           <StatusBadge status="investigating" size="sm" />
+        </button>
+        
+        {/* Acknowledgment Filter */}
+        <button
+          onClick={() => handleFilterChange('acknowledged', localFilters.acknowledged === false ? undefined : false)}
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            localFilters.acknowledged === false
+              ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 ring-2 ring-orange-300'
+              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-60 hover:opacity-100'
+          }`}
+          title="Show only unacknowledged alerts"
+        >
+          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
+          Unacknowledged
+        </button>
+        <button
+          onClick={() => handleFilterChange('acknowledged', localFilters.acknowledged === true ? undefined : true)}
+          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            localFilters.acknowledged === true
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 ring-2 ring-green-300'
+              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 opacity-60 hover:opacity-100'
+          }`}
+          title="Show only acknowledged alerts"
+        >
+          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          Acknowledged
         </button>
       </div>
 

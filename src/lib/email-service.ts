@@ -1,312 +1,250 @@
 /**
  * Email Service
- * 
- * Implements email sending using Nodemailer with SMTP
- * Supports email verification and password reset emails
- * 
- * Requirements: 10.1, 11.1
+ * Handles sending emails for password resets, alerts, and notifications
  */
 
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-import { config } from './config';
-import { logger } from './logger';
-
-/**
- * Email options
- */
-export interface EmailOptions {
+interface EmailOptions {
   to: string;
   subject: string;
   html: string;
   text?: string;
 }
 
+interface PasswordResetEmailData {
+  email: string;
+  resetLink: string;
+  expiresInMinutes: number;
+}
+
 /**
- * Email service for sending transactional emails
+ * Send email (implementation depends on email provider)
  */
-export class EmailService {
-  private static transporter: Transporter | null = null;
-
-  /**
-   * Initialize email transporter
-   */
-  private static getTransporter(): Transporter {
-    if (!this.transporter) {
-      this.transporter = nodemailer.createTransport({
-        host: config.email.host,
-        port: config.email.port,
-        secure: config.email.secure, // true for 465, false for other ports
-        auth: {
-          user: config.email.user,
-          pass: config.email.password,
-        },
-      });
-
-      logger.info('Email transporter initialized', {
-        host: config.email.host,
-        port: config.email.port,
-        secure: config.email.secure,
-      });
-    }
-
-    return this.transporter;
+export async function sendEmail(options: EmailOptions): Promise<void> {
+  // For development/testing, log to console
+  if (process.env.NODE_ENV === 'development' || !process.env.EMAIL_ENABLED) {
+    console.log('📧 Email would be sent:');
+    console.log('To:', options.to);
+    console.log('Subject:', options.subject);
+    console.log('---');
+    return;
   }
 
-  /**
-   * Send an email
-   * Requirements: 10.1, 11.1
-   */
-  static async sendEmail(options: EmailOptions): Promise<{
-    success: boolean;
-    messageId?: string;
-    error?: string;
-  }> {
-    try {
-      const transporter = this.getTransporter();
-
-      const info = await transporter.sendMail({
-        from: config.email.from,
+  // Production email sending
+  // This can be implemented with various providers:
+  // - AWS SES
+  // - SendGrid
+  // - Mailgun
+  // - SMTP server
+  
+  try {
+    // Example with fetch to an email API endpoint
+    const response = await fetch(process.env.EMAIL_API_URL || '', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.EMAIL_API_KEY}`,
+      },
+      body: JSON.stringify({
         to: options.to,
         subject: options.subject,
-        text: options.text,
         html: options.html,
-      });
-
-      logger.info('Email sent successfully', {
-        to: options.to,
-        subject: options.subject,
-        messageId: info.messageId,
-      });
-
-      return {
-        success: true,
-        messageId: info.messageId,
-      };
-    } catch (error) {
-      logger.error('Failed to send email', error instanceof Error ? error : new Error(String(error)), {
-        to: options.to,
-        subject: options.subject,
-      });
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to send email',
-      };
-    }
-  }
-
-  /**
-   * Send email verification email
-   * Requirements: 10.1
-   */
-  static async sendVerificationEmail(
-    email: string,
-    verificationToken: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const verificationUrl = `${config.app.baseUrl}/verify-email?token=${verificationToken}`;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Verify Your Email</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
-            <h1 style="color: #2c3e50; margin-top: 0;">Verify Your Email Address</h1>
-            <p>Thank you for registering with AVIAN Cybersecurity Platform!</p>
-            <p>Please click the button below to verify your email address and activate your account:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${verificationUrl}" 
-                 style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                Verify Email Address
-              </a>
-            </div>
-            <p style="color: #7f8c8d; font-size: 14px;">
-              Or copy and paste this link into your browser:<br>
-              <a href="${verificationUrl}" style="color: #3498db; word-break: break-all;">${verificationUrl}</a>
-            </p>
-            <p style="color: #7f8c8d; font-size: 14px; margin-top: 30px;">
-              This verification link will expire in 24 hours.
-            </p>
-            <p style="color: #7f8c8d; font-size: 14px;">
-              If you didn't create an account with us, please ignore this email.
-            </p>
-          </div>
-          <div style="text-align: center; color: #95a5a6; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} AVIAN Cybersecurity Platform. All rights reserved.</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const text = `
-Verify Your Email Address
-
-Thank you for registering with AVIAN Cybersecurity Platform!
-
-Please visit the following link to verify your email address and activate your account:
-
-${verificationUrl}
-
-This verification link will expire in 24 hours.
-
-If you didn't create an account with us, please ignore this email.
-
-© ${new Date().getFullYear()} AVIAN Cybersecurity Platform. All rights reserved.
-    `.trim();
-
-    return await this.sendEmail({
-      to: email,
-      subject: 'Verify Your Email Address - AVIAN Platform',
-      html,
-      text,
+        text: options.text,
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error(`Email API error: ${response.status}`);
+    }
+
+    console.log(`✅ Email sent to ${options.to}`);
+  } catch (error) {
+    console.error('Failed to send email:', error);
+    throw new Error('Failed to send email');
+  }
+}
+
+export class EmailService {
+  private static instance: EmailService;
+
+  private constructor() {}
+
+  static getInstance(): EmailService {
+    if (!EmailService.instance) {
+      EmailService.instance = new EmailService();
+    }
+    return EmailService.instance;
   }
 
   /**
    * Send password reset email
-   * Requirements: 11.1
    */
-  static async sendPasswordResetEmail(
-    email: string,
-    resetToken: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const resetUrl = `${config.app.baseUrl}/reset-password?token=${resetToken}`;
+  async sendPasswordResetEmail(data: PasswordResetEmailData): Promise<void> {
+    const html = this.generatePasswordResetHTML(data);
+    const text = this.generatePasswordResetText(data);
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Reset Your Password</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
-            <h1 style="color: #2c3e50; margin-top: 0;">Reset Your Password</h1>
-            <p>We received a request to reset your password for your AVIAN Cybersecurity Platform account.</p>
-            <p>Click the button below to reset your password:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" 
-                 style="background-color: #e74c3c; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                Reset Password
-              </a>
-            </div>
-            <p style="color: #7f8c8d; font-size: 14px;">
-              Or copy and paste this link into your browser:<br>
-              <a href="${resetUrl}" style="color: #e74c3c; word-break: break-all;">${resetUrl}</a>
-            </p>
-            <p style="color: #e74c3c; font-size: 14px; margin-top: 30px; font-weight: bold;">
-              This password reset link will expire in 1 hour.
-            </p>
-            <p style="color: #7f8c8d; font-size: 14px;">
-              If you didn't request a password reset, please ignore this email and your password will remain unchanged.
-            </p>
-            <p style="color: #7f8c8d; font-size: 14px;">
-              For security reasons, we recommend changing your password if you didn't make this request.
-            </p>
-          </div>
-          <div style="text-align: center; color: #95a5a6; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} AVIAN Cybersecurity Platform. All rights reserved.</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const text = `
-Reset Your Password
-
-We received a request to reset your password for your AVIAN Cybersecurity Platform account.
-
-Visit the following link to reset your password:
-
-${resetUrl}
-
-This password reset link will expire in 1 hour.
-
-If you didn't request a password reset, please ignore this email and your password will remain unchanged.
-
-For security reasons, we recommend changing your password if you didn't make this request.
-
-© ${new Date().getFullYear()} AVIAN Cybersecurity Platform. All rights reserved.
-    `.trim();
-
-    return await this.sendEmail({
-      to: email,
-      subject: 'Reset Your Password - AVIAN Platform',
+    await sendEmail({
+      to: data.email,
+      subject: 'AVIAN Security - Password Reset Request',
       html,
       text,
     });
   }
 
   /**
-   * Send password changed notification email
+   * Generate password reset HTML email
    */
-  static async sendPasswordChangedEmail(
-    email: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Password Changed</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
-            <h1 style="color: #2c3e50; margin-top: 0;">Password Changed Successfully</h1>
-            <p>Your password for your AVIAN Cybersecurity Platform account has been changed successfully.</p>
-            <p style="color: #27ae60; font-weight: bold;">
-              ✓ Your account is secure
-            </p>
-            <p style="color: #7f8c8d; font-size: 14px; margin-top: 30px;">
-              If you didn't make this change, please contact our support team immediately.
-            </p>
-          </div>
-          <div style="text-align: center; color: #95a5a6; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} AVIAN Cybersecurity Platform. All rights reserved.</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const text = `
-Password Changed Successfully
-
-Your password for your AVIAN Cybersecurity Platform account has been changed successfully.
-
-✓ Your account is secure
-
-If you didn't make this change, please contact our support team immediately.
-
-© ${new Date().getFullYear()} AVIAN Cybersecurity Platform. All rights reserved.
-    `.trim();
-
-    return await this.sendEmail({
-      to: email,
-      subject: 'Password Changed - AVIAN Platform',
-      html,
-      text,
-    });
-  }
-
-  /**
-   * Verify email configuration (for testing)
-   */
-  static async verifyConnection(): Promise<boolean> {
-    try {
-      const transporter = this.getTransporter();
-      await transporter.verify();
-      logger.info('Email configuration verified successfully');
-      return true;
-    } catch (error) {
-      logger.error('Email configuration verification failed', error instanceof Error ? error : new Error(String(error)));
-      return false;
+  private generatePasswordResetHTML(data: PasswordResetEmailData): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Reset</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
     }
+    .container {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 40px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo {
+      font-size: 32px;
+      font-weight: bold;
+      color: #0ea5e9;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 20px;
+    }
+    .content {
+      color: #4b5563;
+      margin-bottom: 30px;
+    }
+    .button {
+      display: inline-block;
+      background: #0ea5e9;
+      color: #ffffff;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .button:hover {
+      background: #0284c7;
+    }
+    .warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 14px;
+      color: #6b7280;
+      text-align: center;
+    }
+    .link {
+      color: #0ea5e9;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🛡️ AVIAN</div>
+      <div class="title">Password Reset Request</div>
+    </div>
+    
+    <div class="content">
+      <p>Hello,</p>
+      
+      <p>We received a request to reset the password for your AVIAN Security account associated with <strong>${data.email}</strong>.</p>
+      
+      <p>Click the button below to reset your password:</p>
+      
+      <div style="text-align: center;">
+        <a href="${data.resetLink}" class="button">Reset Password</a>
+      </div>
+      
+      <p>Or copy and paste this link into your browser:</p>
+      <p class="link">${data.resetLink}</p>
+      
+      <div class="warning">
+        <strong>⚠️ Security Notice:</strong>
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          <li>This link will expire in <strong>${data.expiresInMinutes} minutes</strong></li>
+          <li>This link can only be used once</li>
+          <li>If you didn't request this reset, please ignore this email</li>
+          <li>Your password will remain unchanged until you create a new one</li>
+        </ul>
+      </div>
+      
+      <p>If you didn't request a password reset, you can safely ignore this email. Your account remains secure.</p>
+    </div>
+    
+    <div class="footer">
+      <p>This is an automated message from AVIAN Security Platform.</p>
+      <p>Please do not reply to this email.</p>
+      <p>&copy; ${new Date().getFullYear()} AVIAN Security. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+  }
+
+  /**
+   * Generate password reset plain text email
+   */
+  private generatePasswordResetText(data: PasswordResetEmailData): string {
+    return `
+AVIAN Security - Password Reset Request
+
+Hello,
+
+We received a request to reset the password for your AVIAN Security account associated with ${data.email}.
+
+To reset your password, visit this link:
+${data.resetLink}
+
+SECURITY NOTICE:
+- This link will expire in ${data.expiresInMinutes} minutes
+- This link can only be used once
+- If you didn't request this reset, please ignore this email
+- Your password will remain unchanged until you create a new one
+
+If you didn't request a password reset, you can safely ignore this email. Your account remains secure.
+
+---
+This is an automated message from AVIAN Security Platform.
+Please do not reply to this email.
+
+© ${new Date().getFullYear()} AVIAN Security. All rights reserved.
+    `.trim();
   }
 }
+
+// Export singleton instance
+export const emailService = EmailService.getInstance();

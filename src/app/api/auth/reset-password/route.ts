@@ -1,379 +1,266 @@
 /**
- * Reset Password API Endpoint
- * POST /api/auth/reset-password
- * Validates reset token and updates password
- * Part of production authentication system (Task 3.2)
+ * Reset Password API
+ * Handles password reset with token
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-// import { db } from '@/lib/database';
-import { users, passwordResetTokens, sessions, authAuditLogs } from '../../../../../database/schemas/main';
+import { db } from '@/lib/database';
+import { users } from '../../../../../database/schemas/main';
+import { passwordResetTokens } from '../../../../../database/schemas/password-reset';
 import { eq, and, gt } from 'drizzle-orm';
-import { hashPassword, validatePassword, isPasswordInHistory } from '@/lib/password';
+import bcrypt from 'bcryptjs';
 
-/**
- * Reset password request body
- */
-interface ResetPasswordRequest {
-    token: string;
-    newPassword: string;
-    confirmPassword: string;
-}
-
-/**
- * Log authentication event
- */
-async function logAuthEvent(
-    userId: string | null,
-    email: string,
-    action: string,
-    result: string,
-    ipAddress?: string,
-    userAgent?: string,
-    metadata?: Record<string, any>
-): Promise<void> {
-    if (!db) return;
-
-    try {
-        await db.insert(authAuditLogs).values({
-            user_id: userId,
-            email,
-            action,
-            result,
-            ip_address: ipAddress,
-            user_agent: userAgent,
-            metadata: metadata || {},
-        });
-    } catch (error) {
-        console.error('Failed to log auth event:', error);
-    }
-}
-
-/**
- * Send password reset confirmation email
- */
-async function sendPasswordResetConfirmation(
-    email: string,
-    userName: string
-): Promise<void> {
-    // TODO: Implement with your email service
-    console.log('='.repeat(80));
-    console.log('PASSWORD RESET CONFIRMATION');
-    console.log('='.repeat(80));
-    console.log(`To: ${email}`);
-    console.log(`Name: ${userName}`);
-    console.log('Your password has been successfully reset.');
-    console.log('If you did not make this change, please contact support immediately.');
-    console.log('='.repeat(80));
-
-    // In production, replace with actual email service
-}
+const MIN_PASSWORD_LENGTH = 8;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
 
 /**
  * POST /api/auth/reset-password
- * Reset user password with valid token
+ * Reset password with token
  */
-export async function POST(req: NextRequest) {
-    const startTime = Date.now();
-    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
-    const userAgent = req.headers.get('user-agent') || 'unknown';
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { token, password } = body;
 
-    try {
-        // Check database connection
-        if (!db) {
-            return NextResponse.json(
-                { error: 'Service temporarily unavailable' },
-                { status: 503 }
-            );
-        }
-
-        // Parse request body
-        let body: ResetPasswordRequest;
-        try {
-            body = await req.json();
-        } catch (error) {
-            return NextResponse.json(
-                { error: 'Invalid request body' },
-                { status: 400 }
-            );
-        }
-
-        const { token, newPassword, confirmPassword } = body;
-
-        // Validate required fields
-        if (!token || !newPassword || !confirmPassword) {
-            return NextResponse.json(
-                { error: 'Token and passwords are required' },
-                { status: 400 }
-            );
-        }
-
-        // Check passwords match
-        if (newPassword !== confirmPassword) {
-            return NextResponse.json(
-                { error: 'Passwords do not match' },
-                { status: 400 }
-            );
-        }
-
-        // Validate password strength
-        const passwordValidation = validatePassword(newPassword);
-        if (!passwordValidation.isValid) {
-            return NextResponse.json(
-                {
-                    error: 'Password does not meet requirements',
-                    details: passwordValidation.errors,
-                },
-                { status: 400 }
-            );
-        }
-
-        // Find valid reset token
-        const [resetTokenRecord] = await db
-            .select()
-            .from(passwordResetTokens)
-            .where(
-                and(
-                    eq(passwordResetTokens.token, token),
-                    gt(passwordResetTokens.expires_at, new Date())
-                )
-            )
-            .limit(1);
-
-        if (!resetTokenRecord) {
-            await logAuthEvent(
-                null,
-                'unknown',
-                'reset_password',
-                'invalid_token',
-                ipAddress,
-                userAgent,
-                { token: token.substring(0, 8) + '...' }
-            );
-
-            return NextResponse.json(
-                {
-                    error: 'Invalid or expired reset token. Please request a new password reset.',
-                },
-                { status: 400 }
-            );
-        }
-
-        // Get user
-        const [user] = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, resetTokenRecord.user_id))
-            .limit(1);
-
-        if (!user) {
-            await logAuthEvent(
-                resetTokenRecord.user_id,
-                'unknown',
-                'reset_password',
-                'user_not_found',
-                ipAddress,
-                userAgent
-            );
-
-            return NextResponse.json(
-                { error: 'User not found' },
-                { status: 404 }
-            );
-        }
-
-        // Check if account is active
-        if (!user.is_active) {
-            await logAuthEvent(
-                user.id,
-                user.email,
-                'reset_password',
-                'account_inactive',
-                ipAddress,
-                userAgent
-            );
-
-            return NextResponse.json(
-                { error: 'Account is inactive. Please contact support.' },
-                { status: 403 }
-            );
-        }
-
-        // Check if new password is in history
-        const inHistory = await isPasswordInHistory(user.id, newPassword);
-        if (inHistory) {
-            await logAuthEvent(
-                user.id,
-                user.email,
-                'reset_password',
-                'password_in_history',
-                ipAddress,
-                userAgent
-            );
-
-            return NextResponse.json(
-                {
-                    error: 'Password has been used recently. Please choose a different password.',
-                },
-                { status: 400 }
-            );
-        }
-
-        // Hash new password
-        const newPasswordHash = await hashPassword(newPassword);
-
-        // Update user's password
-        await db
-            .update(users)
-            .set({
-                password_hash: newPasswordHash,
-                updated_at: new Date(),
-                // Reset failed login attempts
-                failed_login_attempts: 0,
-                last_failed_login: null,
-                locked_until: null,
-                account_locked: false,
-            })
-            .where(eq(users.id, user.id));
-
-        // Delete the used reset token
-        await db
-            .delete(passwordResetTokens)
-            .where(eq(passwordResetTokens.id, resetTokenRecord.id));
-
-        // Delete all other reset tokens for this user
-        await db
-            .delete(passwordResetTokens)
-            .where(eq(passwordResetTokens.user_id, user.id));
-
-        // Invalidate all existing sessions (force re-login)
-        await db
-            .delete(sessions)
-            .where(eq(sessions.user_id, user.id));
-
-        // Send confirmation email
-        const userName = `${user.first_name} ${user.last_name}`;
-        await sendPasswordResetConfirmation(user.email, userName);
-
-        // Log successful password reset
-        await logAuthEvent(
-            user.id,
-            user.email,
-            'reset_password',
-            'success',
-            ipAddress,
-            userAgent,
-            {
-                passwordStrength: passwordValidation.strength,
-                duration: Date.now() - startTime,
-            }
-        );
-
-        return NextResponse.json(
-            {
-                success: true,
-                message: 'Password has been reset successfully. Please log in with your new password.',
-            },
-            { status: 200 }
-        );
-    } catch (error) {
-        console.error('Reset password error:', error);
-
-        await logAuthEvent(
-            null,
-            'unknown',
-            'reset_password',
-            'error',
-            ipAddress,
-            userAgent,
-            {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                duration: Date.now() - startTime,
-            }
-        );
-
-        return NextResponse.json(
-            { error: 'An error occurred. Please try again later.' },
-            { status: 500 }
-        );
+    // Validate input
+    if (!token || typeof token !== 'string') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: 'Reset token is required',
+          },
+        },
+        { status: 400 }
+      );
     }
+
+    if (!password || typeof password !== 'string') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_PASSWORD',
+            message: 'Password is required',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'WEAK_PASSWORD',
+            message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long`,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!PASSWORD_REGEX.test(password)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'WEAK_PASSWORD',
+            message: 'Password must contain uppercase, lowercase, number, and special character',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Find valid reset token
+    const tokenResults = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false),
+          gt(passwordResetTokens.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    if (tokenResults.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: 'Invalid or expired reset token',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const resetToken = tokenResults[0];
+
+    // Get user
+    const userResults = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, resetToken.userId))
+      .limit(1);
+
+    if (userResults.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message: 'User not found',
+          },
+        },
+        { status: 404 }
+      );
+    }
+
+    const user = userResults[0];
+
+    // Check if account is active
+    if (!user.is_active) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'ACCOUNT_INACTIVE',
+            message: 'Account is inactive',
+          },
+        },
+        { status: 403 }
+      );
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Update user password and reset failed login attempts
+    await db
+      .update(users)
+      .set({
+        password_hash: passwordHash,
+        password_changed_at: new Date(),
+        password_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+        failed_login_attempts: 0,
+        account_locked: false,
+        locked_until: null,
+        updated_at: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    // Mark token as used
+    await db
+      .update(passwordResetTokens)
+      .set({
+        used: true,
+        usedAt: new Date(),
+      })
+      .where(eq(passwordResetTokens.id, resetToken.id));
+
+    console.log(`Password reset successful for user: ${user.email}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now log in with your new password.',
+    });
+
+  } catch (error) {
+    console.error('Error in POST /api/auth/reset-password:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An error occurred processing your request',
+        },
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /**
  * GET /api/auth/reset-password?token=xxx
- * Validate a reset token without using it
+ * Validate reset token
  */
-export async function GET(req: NextRequest) {
-    try {
-        if (!db) {
-            return NextResponse.json(
-                { error: 'Service temporarily unavailable' },
-                { status: 503 }
-            );
-        }
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const token = searchParams.get('token');
 
-        const { searchParams } = new URL(req.url);
-        const token = searchParams.get('token');
-
-        if (!token) {
-            return NextResponse.json(
-                { valid: false, error: 'Token is required' },
-                { status: 400 }
-            );
-        }
-
-        // Check if token exists and is not expired
-        const [resetTokenRecord] = await db
-            .select()
-            .from(passwordResetTokens)
-            .where(
-                and(
-                    eq(passwordResetTokens.token, token),
-                    gt(passwordResetTokens.expires_at, new Date())
-                )
-            )
-            .limit(1);
-
-        if (!resetTokenRecord) {
-            return NextResponse.json(
-                {
-                    valid: false,
-                    error: 'Invalid or expired token',
-                },
-                { status: 200 }
-            );
-        }
-
-        // Get user to check if account is active
-        const [user] = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, resetTokenRecord.user_id))
-            .limit(1);
-
-        if (!user || !user.is_active) {
-            return NextResponse.json(
-                {
-                    valid: false,
-                    error: 'Account not found or inactive',
-                },
-                { status: 200 }
-            );
-        }
-
-        return NextResponse.json(
-            {
-                valid: true,
-                email: user.email,
-                expiresAt: resetTokenRecord.expires_at.toISOString(),
-            },
-            { status: 200 }
-        );
-    } catch (error) {
-        console.error('Token validation error:', error);
-        return NextResponse.json(
-            { valid: false, error: 'Validation failed' },
-            { status: 500 }
-        );
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: 'Reset token is required',
+          },
+        },
+        { status: 400 }
+      );
     }
+
+    // Check if token is valid
+    const tokenResults = await db
+      .select({
+        id: passwordResetTokens.id,
+        userId: passwordResetTokens.userId,
+        expiresAt: passwordResetTokens.expiresAt,
+        used: passwordResetTokens.used,
+      })
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false),
+          gt(passwordResetTokens.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    if (tokenResults.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          valid: false,
+          error: {
+            code: 'INVALID_TOKEN',
+            message: 'Invalid or expired reset token',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const resetToken = tokenResults[0];
+
+    return NextResponse.json({
+      success: true,
+      valid: true,
+      expiresAt: resetToken.expiresAt,
+    });
+
+  } catch (error) {
+    console.error('Error in GET /api/auth/reset-password:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'An error occurred processing your request',
+        },
+      },
+      { status: 500 }
+    );
+  }
 }

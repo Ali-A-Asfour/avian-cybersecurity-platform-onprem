@@ -17,153 +17,258 @@ interface AnalystMetricsProps {
 function SecurityAnalystMetrics({ onNavigate }: AnalystMetricsProps) {
   const [myTicketsData, setMyTicketsData] = useState<any>(null);
   const [alertData, setAlertData] = useState<any>(null);
+  const [firewallData, setFirewallData] = useState<any>(null);
+  const [edrData, setEdrData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Initialize with mock data in development mode
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+    if (process.env.NODE_ENV === 'development' || process.env.BYPASS_AUTH === 'true') {
       const mockData = {
-        myTickets: { total: 12, urgent: 3, inProgress: 7, resolved: 2 },
-        agents: { total: 45, online: 42, offline: 3, alerts: 8 },
-        alerts: { total: 156, critical: 12, high: 34, medium: 67, low: 43 }
+        myTickets: { open: 5, critical: 2 },
+        alerts: { open: 23, myOpen: 8 },
+        firewall: { devices: 3, online: 2, threatsBlocked: 1247 },
+        edr: { devices: 156, highRisk: 12, isolated: 2 }
       };
 
       setMyTicketsData(mockData.myTickets);
       setAlertData(mockData.alerts);
+      setFirewallData(mockData.firewall);
+      setEdrData(mockData.edr);
       setLoading(false);
     } else {
-      fetchMyTicketsData();
-      fetchAlertData();
+      fetchDashboardData();
     }
 
-    // Set up real-time updates
+    // Set up real-time updates every 30 seconds
     const interval = setInterval(() => {
-      fetchMyTicketsData();
-      fetchAlertData();
+      fetchDashboardData();
     }, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchMyTicketsData = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await api.get('/api/dashboard/my-tickets');
-      const result = await response.json();
-      if (result.success) {
-        setMyTicketsData(result.data);
+      // Fetch all data in parallel
+      const [ticketsRes, alertsRes, firewallRes, edrRes] = await Promise.allSettled([
+        api.get('/api/dashboard/my-tickets'),
+        api.get('/api/alerts?limit=100'),
+        api.get('/api/firewall/devices'),
+        api.get('/api/edr/devices')
+      ]);
+
+      // Process tickets data
+      if (ticketsRes.status === 'fulfilled') {
+        const ticketsResult = await ticketsRes.value.json();
+        if (ticketsResult.success) {
+          setMyTicketsData(ticketsResult.data);
+        }
       }
+
+      // Process alerts data
+      if (alertsRes.status === 'fulfilled') {
+        const alertsResult = await alertsRes.value.json();
+        if (alertsResult.success) {
+          const alerts = alertsResult.data.alerts || [];
+          const openAlerts = alerts.filter((alert: any) => alert.status === 'open').length;
+          const myOpenAlerts = alerts.filter((alert: any) => 
+            alert.status === 'open' && alert.assigned_to === 'current_user'
+          ).length;
+
+          setAlertData({
+            open: openAlerts,
+            myOpen: myOpenAlerts
+          });
+        }
+      }
+
+      // Process firewall data
+      if (firewallRes.status === 'fulfilled') {
+        const firewallResult = await firewallRes.value.json();
+        if (firewallResult.success) {
+          const devices = firewallResult.data || [];
+          const onlineDevices = devices.filter((device: any) => device.status === 'active').length;
+          
+          setFirewallData({
+            devices: devices.length,
+            online: onlineDevices,
+            threatsBlocked: 1247 // This would come from aggregated stats
+          });
+        }
+      }
+
+      // Process EDR data
+      if (edrRes.status === 'fulfilled') {
+        const edrResult = await edrRes.value.json();
+        if (edrResult.success) {
+          const devices = edrResult.data || [];
+          const highRiskDevices = devices.filter((device: any) => device.riskScore >= 70).length;
+          const isolatedDevices = devices.filter((device: any) => device.status === 'isolated').length;
+          
+          setEdrData({
+            devices: devices.length,
+            highRisk: highRiskDevices,
+            isolated: isolatedDevices
+          });
+        }
+      }
+
     } catch (error) {
-      console.error('Failed to fetch my tickets data:', error);
+      console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAlertData = async () => {
-    try {
-      const response = await api.get('/api/alerts?limit=100');
-      const result = await response.json();
-      if (result.success) {
-        const alerts = result.data.alerts || [];
-        const criticalAlerts = alerts.filter((alert: any) => alert.severity === 'critical').length;
-        const highAlerts = alerts.filter((alert: any) => alert.severity === 'high').length;
-        const openAlerts = alerts.filter((alert: any) => alert.status === 'open').length;
-
-        setAlertData({
-          critical: criticalAlerts,
-          high: highAlerts,
-          open: openAlerts,
-          total: alerts.length
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch alert data:', error);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-neutral-200 dark:bg-neutral-700 rounded-lg h-24 animate-pulse"></div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i + 4} className="bg-neutral-200 dark:bg-neutral-700 rounded-lg h-24 animate-pulse"></div>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="bg-neutral-200 dark:bg-neutral-700 rounded-lg h-32 animate-pulse"></div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Security Tickets Section */}
-      <div>
-        <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">Security Tickets</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">My Open Tickets</h4>
-            <div className="text-2xl font-bold text-red-600">{myTicketsData?.open || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-              {myTicketsData?.overdue || 0} overdue • {myTicketsData?.total || 0} total
-            </p>
-          </div>
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Critical Assigned</h4>
-            <div className="text-2xl font-bold text-orange-600">{myTicketsData?.by_severity?.critical || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Critical tickets assigned to me</p>
-          </div>
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">In Progress</h4>
-            <div className="text-2xl font-bold text-blue-600">{myTicketsData?.in_progress || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Currently working on</p>
-          </div>
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Resolved Today</h4>
-            <div className="text-2xl font-bold text-green-600">{myTicketsData?.resolved_today || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Tickets resolved today</p>
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Open Alerts Widget */}
+      <div 
+        className="bg-white dark:bg-neutral-800 p-6 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate('alerts')}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Open Alerts</h3>
+          <div className="text-2xl">🚨</div>
+        </div>
+        <div className="text-3xl font-bold text-red-600 mb-2">{alertData?.open || 0}</div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Require investigation
+        </p>
+        <div className="mt-3 text-xs text-blue-600 hover:text-blue-700">
+          View All Alerts →
         </div>
       </div>
 
-      {/* Security Alerts Section */}
-      <div>
+      {/* My Open Alerts Widget */}
+      <div 
+        className="bg-white dark:bg-neutral-800 p-6 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate('my-alerts')}
+      >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Security Alerts</h3>
-          <button
-            onClick={() => onNavigate('alerts')}
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">My Open Alerts</h3>
+          <div className="text-2xl">👤</div>
+        </div>
+        <div className="text-3xl font-bold text-orange-600 mb-2">{alertData?.myOpen || 0}</div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Assigned to me
+        </p>
+        <div className="mt-3 text-xs text-blue-600 hover:text-blue-700">
+          View My Alerts →
+        </div>
+      </div>
+
+      {/* My Tickets Widget */}
+      <div 
+        className="bg-white dark:bg-neutral-800 p-6 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate('tickets')}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">My Tickets</h3>
+          <div className="text-2xl">🎫</div>
+        </div>
+        <div className="text-3xl font-bold text-blue-600 mb-2">{myTicketsData?.open || 0}</div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {myTicketsData?.critical || 0} critical priority
+        </p>
+        <div className="mt-3 text-xs text-blue-600 hover:text-blue-700">
+          View My Tickets →
+        </div>
+      </div>
+
+      {/* Firewall Status Widget */}
+      <div 
+        className="bg-white dark:bg-neutral-800 p-6 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate('firewall')}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Firewall Status</h3>
+          <div className="text-2xl">🔥</div>
+        </div>
+        <div className="flex items-center space-x-4 mb-2">
+          <div>
+            <div className="text-2xl font-bold text-green-600">{firewallData?.online || 0}</div>
+            <div className="text-xs text-neutral-500">Online</div>
+          </div>
+          <div className="text-neutral-300">/</div>
+          <div>
+            <div className="text-2xl font-bold text-neutral-600">{firewallData?.devices || 0}</div>
+            <div className="text-xs text-neutral-500">Total</div>
+          </div>
+        </div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {firewallData?.threatsBlocked || 0} threats blocked today
+        </p>
+        <div className="mt-3 text-xs text-blue-600 hover:text-blue-700">
+          View Firewalls →
+        </div>
+      </div>
+
+      {/* EDR Status Widget */}
+      <div 
+        className="bg-white dark:bg-neutral-800 p-6 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={() => onNavigate('edr')}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">EDR Status</h3>
+          <div className="text-2xl">🛡️</div>
+        </div>
+        <div className="flex items-center space-x-4 mb-2">
+          <div>
+            <div className="text-2xl font-bold text-red-600">{edrData?.highRisk || 0}</div>
+            <div className="text-xs text-neutral-500">High Risk</div>
+          </div>
+          <div className="text-neutral-300">/</div>
+          <div>
+            <div className="text-2xl font-bold text-neutral-600">{edrData?.devices || 0}</div>
+            <div className="text-xs text-neutral-500">Devices</div>
+          </div>
+        </div>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          {edrData?.isolated || 0} devices isolated
+        </p>
+        <div className="mt-3 text-xs text-blue-600 hover:text-blue-700">
+          View EDR →
+        </div>
+      </div>
+
+      {/* Quick Actions Widget */}
+      <div className="bg-white dark:bg-neutral-800 p-6 rounded-lg border border-neutral-200 dark:border-neutral-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-neutral-900 dark:text-neutral-100">Quick Actions</h3>
+          <div className="text-2xl">⚡</div>
+        </div>
+        <div className="space-y-3">
+          <button 
+            onClick={() => onNavigate('playbooks')}
+            className="w-full text-left p-2 rounded bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
           >
-            View All Alerts →
+            <div className="text-sm font-medium text-blue-900 dark:text-blue-100">📋 View Playbooks</div>
+          </button>
+          <button 
+            onClick={() => onNavigate('reports')}
+            className="w-full text-left p-2 rounded bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+          >
+            <div className="text-sm font-medium text-green-900 dark:text-green-100">📊 Generate Report</div>
+          </button>
+          <button 
+            onClick={() => onNavigate('settings')}
+            className="w-full text-left p-2 rounded bg-gray-50 dark:bg-gray-900/20 hover:bg-gray-100 dark:hover:bg-gray-900/30 transition-colors"
+          >
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">⚙️ Settings</div>
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Critical Alerts</h4>
-            <div className="text-2xl font-bold text-red-600">{alertData?.critical || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Require immediate attention</p>
-          </div>
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">High Priority</h4>
-            <div className="text-2xl font-bold text-orange-600">{alertData?.high || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">High severity alerts</p>
-          </div>
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Open Alerts</h4>
-            <div className="text-2xl font-bold text-yellow-600">{alertData?.open || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Awaiting investigation</p>
-          </div>
-          <div className="bg-white dark:bg-neutral-800 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-2">Total Today</h4>
-            <div className="text-2xl font-bold text-neutral-600 dark:text-neutral-300">{alertData?.total || 0}</div>
-            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">All alerts received</p>
-          </div>
-        </div>
       </div>
-
-
     </div>
   );
 }
