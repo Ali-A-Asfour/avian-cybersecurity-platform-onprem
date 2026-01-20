@@ -1,5 +1,5 @@
 import { eq, and, desc, count, sql } from 'drizzle-orm';
-import { db } from '../lib/database';
+import { getDb } from '../lib/database';
 import { tenants, users, auditLogs } from '../../database/schemas/main';
 import { TenantSchemaManager } from '../lib/tenant-schema';
 import { Tenant, TenantSettings, UserRole, AuditLog, PaginationParams } from '../types';
@@ -194,6 +194,52 @@ export class TenantService {
       throw new Error('Insufficient permissions to access this tenant');
     }
 
+    // Use demo mode in development with bypass mode
+    if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+      // Import mock tenant store functions
+      const { findMockTenantById } = await import('../lib/mock-tenant-store');
+      const mockTenant = findMockTenantById(tenantId);
+      
+      if (!mockTenant) {
+        return null;
+      }
+
+      // Convert mock tenant to Tenant format
+      return {
+        id: mockTenant.id,
+        name: mockTenant.name,
+        domain: mockTenant.domain,
+        logo_url: undefined,
+        theme_color: '#3B82F6',
+        settings: {
+          max_users: 100,
+          features_enabled: ['tickets', 'alerts', 'compliance', 'reports'],
+          notification_settings: {
+            email_enabled: true,
+            sms_enabled: false,
+            push_enabled: true,
+            digest_frequency: 'daily',
+          },
+          sla_settings: {
+            response_time_hours: 4,
+            resolution_time_hours: 24,
+            escalation_enabled: true,
+            escalation_time_hours: 8,
+          },
+          branding: {
+            primary_color: '#3B82F6',
+            secondary_color: '#64748B',
+            logo_url: undefined,
+            custom_css: '',
+          },
+        },
+        is_active: mockTenant.is_active,
+        created_at: new Date(mockTenant.created_at),
+        updated_at: new Date(mockTenant.last_activity),
+      } as Tenant;
+    }
+
+    const db = await getDb();
     const tenant = await db
       .select()
       .from(tenants)
@@ -340,6 +386,73 @@ export class TenantService {
       throw new Error('Insufficient permissions to update this tenant');
     }
 
+    // Use demo mode in development with bypass mode
+    if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+      // Import mock tenant store functions
+      const { findMockTenantById, updateMockTenant } = await import('../lib/mock-tenant-store');
+      const existingTenant = findMockTenantById(tenantId);
+      
+      if (!existingTenant) {
+        throw new Error('Tenant not found');
+      }
+
+      // Check if domain is being changed and if it already exists
+      if (data.domain && data.domain !== existingTenant.domain) {
+        const { tenantExists } = await import('../lib/mock-tenant-store');
+        const domainExists = tenantExists(data.domain, '');
+        if (domainExists) {
+          throw new Error('Tenant with this domain already exists');
+        }
+      }
+
+      // Update tenant in mock store
+      const updatedMockTenant = updateMockTenant(tenantId, {
+        name: data.name || existingTenant.name,
+        domain: data.domain || existingTenant.domain,
+        is_active: data.is_active !== undefined ? data.is_active : existingTenant.is_active,
+      });
+
+      if (!updatedMockTenant) {
+        throw new Error('Failed to update tenant');
+      }
+
+      // Convert back to Tenant format
+      return {
+        id: updatedMockTenant.id,
+        name: updatedMockTenant.name,
+        domain: updatedMockTenant.domain,
+        logo_url: data.logo_url || undefined,
+        theme_color: data.theme_color || '#3B82F6',
+        settings: data.settings || {
+          max_users: 100,
+          features_enabled: ['tickets', 'alerts', 'compliance', 'reports'],
+          notification_settings: {
+            email_enabled: true,
+            sms_enabled: false,
+            push_enabled: true,
+            digest_frequency: 'daily',
+          },
+          sla_settings: {
+            response_time_hours: 4,
+            resolution_time_hours: 24,
+            escalation_enabled: true,
+            escalation_time_hours: 8,
+          },
+          branding: {
+            primary_color: '#3B82F6',
+            secondary_color: '#64748B',
+            logo_url: undefined,
+            custom_css: '',
+          },
+        },
+        is_active: updatedMockTenant.is_active,
+        created_at: new Date(updatedMockTenant.created_at),
+        updated_at: new Date(),
+      } as Tenant;
+    }
+
+    const db = await getDb();
+
     // Get existing tenant
     const existingTenant = await db
       .select()
@@ -423,14 +536,16 @@ export class TenantService {
 
     // Use demo mode in development with bypass mode
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
-      // Check if tenant exists in demo store
-      const tenant = demoTenantStore.getTenant(tenantId);
-      if (!tenant) {
+      // Import mock tenant store functions
+      const { findMockTenantById, deleteMockTenant } = await import('../lib/mock-tenant-store');
+      const existingTenant = findMockTenantById(tenantId);
+      
+      if (!existingTenant) {
         throw new Error('Tenant not found');
       }
 
-      // Remove tenant from demo store (hard delete for demo)
-      const deleted = demoTenantStore.deleteTenant(tenantId);
+      // Remove tenant from mock store (hard delete for demo)
+      const deleted = deleteMockTenant(tenantId);
       if (!deleted) {
         throw new Error('Failed to delete tenant');
       }

@@ -281,10 +281,14 @@ export default function CreateTenantPage() {
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="text-red-600 mr-3">⚠️</div>
-              <div className="text-red-800">{error}</div>
+          <div className="bg-red-100 dark:bg-red-800 border-2 border-red-300 dark:border-red-600 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="text-red-800 dark:text-red-100 font-medium">{error}</div>
             </div>
           </div>
         )}

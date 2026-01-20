@@ -25,6 +25,8 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingTenant, setDeletingTenant] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -66,6 +68,46 @@ export default function TenantsPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteTenant = async (tenantId: string, tenantName: string) => {
+    if (!confirm(`Are you sure you want to delete "${tenantName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingTenant(tenantId);
+      setError(null);
+      setSuccessMessage(null);
+
+      const response = await fetch(`/api/tenants/${tenantId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Remove tenant from the list
+          setTenants(prev => prev.filter(t => t.id !== tenantId));
+          setSuccessMessage(`Tenant "${tenantName}" has been deleted successfully.`);
+          
+          // Clear success message after 5 seconds
+          setTimeout(() => setSuccessMessage(null), 5000);
+        } else {
+          setError(data.error?.message || 'Failed to delete tenant');
+        }
+      } else {
+        setError('Failed to delete tenant');
+      }
+    } catch (err) {
+      setError('Network error while deleting tenant');
+      console.error('Error deleting tenant:', err);
+    } finally {
+      setDeletingTenant(null);
     }
   };
 
@@ -111,10 +153,31 @@ export default function TenantsPage() {
           </Button>
         </div>
 
+        {/* Success Message */}
+        {successMessage && (
+          <div className="p-4 bg-green-100 dark:bg-green-800 border-2 border-green-300 dark:border-green-600 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-green-800 dark:text-green-100 font-medium">{successMessage}</p>
+            </div>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-red-800 dark:text-red-200">{error}</p>
+          <div className="p-4 bg-red-100 dark:bg-red-800 border-2 border-red-300 dark:border-red-600 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-red-800 dark:text-red-100 font-medium">{error}</p>
+            </div>
           </div>
         )}
 
@@ -182,10 +245,12 @@ export default function TenantsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                  onClick={() => handleDeleteTenant(tenant.id, tenant.name)}
+                  disabled={deletingTenant === tenant.id}
+                  className="flex items-center gap-1 text-red-600 hover:text-red-700 disabled:opacity-50"
                 >
                   <Trash2 className="w-3 h-3" />
-                  Delete
+                  {deletingTenant === tenant.id ? 'Deleting...' : 'Delete'}
                 </Button>
               </div>
             </Card>
