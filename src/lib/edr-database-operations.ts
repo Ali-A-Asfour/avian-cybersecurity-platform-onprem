@@ -21,7 +21,7 @@ import {
     edrVulnerabilities,
     edrDeviceVulnerabilities,
     edrCompliance,
-    edrActions,
+    edrRemoteActions,
     edrPostureScores,
 } from '../../database/schemas/edr';
 import { eq, and, inArray } from 'drizzle-orm';
@@ -435,7 +435,7 @@ export async function logRemoteAction(
     action: Omit<RemoteAction, 'id' | 'createdAt'>
 ): Promise<{ id: string }> {
     const result = await ensureDb()
-        .insert(edrActions)
+        .insert(edrRemoteActions)
         .values({
             tenantId: action.tenantId,
             deviceId: action.deviceId,
@@ -446,7 +446,7 @@ export async function logRemoteAction(
             initiatedAt: action.initiatedAt,
             completedAt: action.completedAt,
         })
-        .returning({ id: edrActions.id });
+        .returning({ id: edrRemoteActions.id });
 
     return result[0];
 }
@@ -460,13 +460,13 @@ export async function updateActionStatus(
     resultMessage?: string
 ): Promise<void> {
     await ensureDb()
-        .update(edrActions)
+        .update(edrRemoteActions)
         .set({
             status,
             resultMessage,
             completedAt: status === 'completed' || status === 'failed' ? new Date() : undefined,
         })
-        .where(eq(edrActions.id, actionId));
+        .where(eq(edrRemoteActions.id, actionId));
 }
 
 /**
@@ -478,8 +478,8 @@ export async function getActionById(
 ): Promise<RemoteAction | null> {
     const result = await ensureDb()
         .select()
-        .from(edrActions)
-        .where(and(eq(edrActions.id, actionId), eq(edrActions.tenantId, tenantId)))
+        .from(edrRemoteActions)
+        .where(and(eq(edrRemoteActions.id, actionId), eq(edrRemoteActions.tenantId, tenantId)))
         .limit(1);
 
     if (result.length === 0) return null;
@@ -508,9 +508,9 @@ export async function getDeviceActions(
 ): Promise<RemoteAction[]> {
     const result = await ensureDb()
         .select()
-        .from(edrActions)
-        .where(and(eq(edrActions.deviceId, deviceId), eq(edrActions.tenantId, tenantId)))
-        .orderBy(edrActions.initiatedAt);
+        .from(edrRemoteActions)
+        .where(and(eq(edrRemoteActions.deviceId, deviceId), eq(edrRemoteActions.tenantId, tenantId)))
+        .orderBy(edrRemoteActions.initiatedAt);
 
     return result.map((action) => ({
         id: action.id,

@@ -3,7 +3,7 @@ import { ConnectorRegistry } from '@/lib/connectors/base-connector';
 import { validateRequest } from '@/lib/validation';
 import { ErrorHandler, ApiErrors } from '@/lib/api-errors';
 import { authMiddleware, requireRole } from '@/middleware/auth.middleware';
-import { checkRateLimit } from '@/lib/rate-limiter';
+import { RateLimiter, RateLimitPolicies } from '@/lib/rate-limiter';
 import { UserRole } from '@/types';
 import { z } from 'zod';
 
@@ -25,9 +25,18 @@ export async function POST(
   try {
 
     // Apply rate limiting
-    const rateLimitResult = await checkRateLimit(request, { windowMs: 1 * 60 * 1000, maxRequests: 100 });
-    if (rateLimitResult) {
-      return rateLimitResult;
+    const clientIp = request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await RateLimiter.checkRateLimit(
+      clientIp, 
+      { windowMs: 1 * 60 * 1000, maxRequests: 100 },
+      'connector-actions'
+    );
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', retryAfter: rateLimitResult.retryAfter },
+        { status: 429 }
+      );
     }
 
     // Check permissions

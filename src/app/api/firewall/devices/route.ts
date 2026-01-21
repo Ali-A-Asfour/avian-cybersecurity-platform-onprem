@@ -14,7 +14,7 @@ const registerDeviceSchema = z.object({
   model: z.string().optional(),
   firmwareVersion: z.string().optional(),
   serialNumber: z.string().optional(),
-  managementIp: z.string().ip('Invalid IP address'),
+  managementIp: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address'),
   apiUsername: z.string().min(1, 'API username is required'),
   apiPassword: z.string().min(1, 'API password is required'),
 });
@@ -23,7 +23,7 @@ const updateDeviceSchema = z.object({
   model: z.string().optional(),
   firmwareVersion: z.string().optional(),
   serialNumber: z.string().optional(),
-  managementIp: z.string().ip('Invalid IP address').optional(),
+  managementIp: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address').optional(),
   apiUsername: z.string().min(1).optional(),
   apiPassword: z.string().min(1).optional(),
   status: z.enum(['active', 'inactive', 'offline']).optional(),

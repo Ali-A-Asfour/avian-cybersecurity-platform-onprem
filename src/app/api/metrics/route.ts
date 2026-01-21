@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { monitoring } from '@/lib/monitoring';
-import { authenticateRequest } from '@/middleware/auth.middleware';
+import { authMiddleware } from '@/middleware/auth.middleware';
 
 /**
  * GET /api/metrics
@@ -10,8 +10,8 @@ import { authenticateRequest } from '@/middleware/auth.middleware';
  */
 export async function GET(request: NextRequest) {
   // Authenticate request
-  const authResult = await authenticateRequest(request);
-  if (!authResult.authenticated || !authResult.user) {
+  const authResult = await authMiddleware(request);
+  if (!authResult.success || !authResult.user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }

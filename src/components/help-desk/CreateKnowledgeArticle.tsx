@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { BookOpen, Save, X } from 'lucide-react';
 import { api } from '@/lib/api-client';
-import { api } from '@/lib/api-client';
 
 interface CreateKnowledgeArticleProps {
     onArticleCreated?: (article: any) => void;

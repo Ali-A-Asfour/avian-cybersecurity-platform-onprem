@@ -4,7 +4,7 @@ import { AlertSeverity, AlertCategory } from '@/types';
 import { WebhookSecurity, WebhookRegistry, webhookSchemas } from '@/lib/webhook';
 import { validateRequest } from '@/lib/validation';
 import { ErrorHandler, ApiErrors } from '@/lib/api-errors';
-import { checkRateLimit } from '@/lib/rate-limiter';
+import { RateLimiter, RateLimitPolicies } from '@/lib/rate-limiter';
 import { z } from 'zod';
 // Removed crypto import - using Web Crypto API instead
 
@@ -73,16 +73,23 @@ export async function POST(request: NextRequest) {
 
   try {
     // Apply rate limiting for webhooks
-    const rateLimitResult = await checkRateLimit(request, { windowMs: 1 * 60 * 1000, maxRequests: 100 });
-    if (rateLimitResult) {
-      return rateLimitResult;
+    const clientIp = request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await RateLimiter.checkRateLimit(
+      clientIp, 
+      { windowMs: 1 * 60 * 1000, maxRequests: 100 },
+      'webhook'
+    );
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded', retryAfter: rateLimitResult.retryAfter },
+        { status: 429 }
+      );
     }
 
     // Get request context
     const source = request.headers.get('x-source-type') || 'unknown';
     const signature = request.headers.get('x-webhook-signature');
-    const clientIp = request.headers.get('x-forwarded-for') ||
-      request.headers.get('x-real-ip') || 'unknown';
 
     // Parse and validate request body
     const body = await request.json();
@@ -109,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract tenant ID with enhanced logic
-    const _tenantId = extractTenantId(request, body, source);
+    const tenantId = extractTenantId(request, body, source);
     if (!tenantId) {
       return ErrorHandler.handleError(
         ApiErrors.validation('Tenant ID could not be determined from webhook payload or headers'),
@@ -164,7 +171,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // Create alerts in bulk with enhanced error handling
-    const _result = await AlertService.bulkCreateAlerts(tenantId, enhancedAlerts);
+    const result = await AlertService.bulkCreateAlerts(tenantId, enhancedAlerts);
 
     if (!result.success) {
       return ErrorHandler.handleError(
@@ -274,7 +281,7 @@ async function _validateWebhookSignature(payload: unknown, signature: string): P
 
     // Simple constant-time comparison
     if (cleanBytes.length !== expectedBytes.length) return false;
-    const _result = 0;
+    let result = 0;
     for (let i = 0; i < cleanBytes.length; i++) {
       result |= cleanBytes[i] ^ expectedBytes[i];
     }

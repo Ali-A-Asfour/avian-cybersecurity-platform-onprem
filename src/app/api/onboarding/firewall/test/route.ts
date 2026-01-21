@@ -4,7 +4,7 @@ import { SonicWallAPIClient } from '@/lib/sonicwall/api-client';
 import { z } from 'zod';
 
 const testConnectionSchema = z.object({
-  managementIp: z.string().ip('Invalid IP address'),
+  managementIp: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address'),
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
 });

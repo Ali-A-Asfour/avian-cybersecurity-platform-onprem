@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
 import { db } from '@/lib/database';
-import { firewallDevices } from '../../../../database/schemas/firewall';
+import { firewallDevices } from '@/../database/schemas/firewall';
 import { EnvironmentCredentialManager } from '@/lib/sonicwall/encryption';
 import { sonicWallPollingEngine } from '@/lib/sonicwall/polling-engine';
 import { defenderSyncService } from '@/lib/defender/sync-service';
@@ -17,7 +17,7 @@ const completeOnboardingSchema = z.object({
     timezone: z.string().optional(),
   }),
   sonicwallDevices: z.array(z.object({
-    managementIp: z.string().ip('Invalid IP address'),
+    managementIp: z.string().regex(/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/, 'Invalid IP address'),
     username: z.string().min(1, 'Username is required'),
     password: z.string().min(1, 'Password is required'),
     deviceName: z.string().optional(),

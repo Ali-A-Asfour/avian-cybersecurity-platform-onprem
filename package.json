@@ -60,7 +60,7 @@
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.44.7",
     "express-rate-limit": "^8.2.1",
-    "imap": "^0.8.17",
+    "imap": "^0.8.19",
     "isomorphic-dompurify": "^2.35.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.548.0",

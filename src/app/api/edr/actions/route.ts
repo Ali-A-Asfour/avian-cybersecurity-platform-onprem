@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
 import { db } from '@/lib/database';
-import { edrActions, edrDevices } from '../../../../../database/schemas/edr';
+import { edrRemoteActions, edrDevices } from '../../../../../database/schemas/edr';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { MicrosoftGraphClient } from '@/lib/microsoft-graph-client';
 import { logRemoteAction, getDeviceById } from '@/lib/edr-database-operations';

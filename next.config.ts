@@ -22,13 +22,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: false, // Amplify supports Next.js Image Optimization
   },
-  // Body size limits
+  // Body size limits are now handled in middleware or individual API routes
   // Requirement 15.1: Request body size limits
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb', // Default limit for API routes
-    },
-  },
   // Security headers
   // Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6
   async headers() {

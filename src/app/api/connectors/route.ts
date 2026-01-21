@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SiemConnector } from '@/lib/connectors/siem-connector';
 import { ErrorHandler, ApiErrors } from '@/lib/api-errors';
 import { authMiddleware, requireRole } from '@/middleware/auth.middleware';
-import { checkRateLimit } from '@/lib/rate-limiter';
+import { RateLimiter, RateLimitPolicies } from '@/lib/rate-limiter';
 import { UserRole } from '@/types';
 import { z } from 'zod';
 
