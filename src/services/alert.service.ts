@@ -1,7 +1,6 @@
 import { eq, and, desc, asc, gte, lte, inArray, sql, count } from 'drizzle-orm';
 import { getTenantDatabase } from '@/lib/tenant-schema';
 import { alerts } from '../../database/schemas/tenant';
-import { mockDb } from '@/lib/mock-database';
 import { reportCacheService } from './reports/ReportCacheService';
 import {
   Alert,
@@ -75,6 +74,7 @@ export class AlertService {
     try {
       // Use mock database in development
       if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+        const { mockDb } = await import('@/lib/mock-database');
         const newAlert = await mockDb.createAlert(tenantId, alertData);
 
         // Check for automation rules
@@ -144,7 +144,8 @@ export class AlertService {
     try {
       // Use mock database in development
       if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
-        const _result = await mockDb.getAlerts(tenantId, filters);
+        const { mockDb } = await import('@/lib/mock-database');
+        const result = await mockDb.getAlerts(tenantId, filters);
         return {
           success: true,
           data: result,
@@ -273,6 +274,7 @@ export class AlertService {
     try {
       // Use mock database in development
       if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+        const { mockDb } = await import('@/lib/mock-database');
         const alert = await mockDb.getAlertById(tenantId, alertId);
         if (!alert) {
           return {
@@ -335,6 +337,7 @@ export class AlertService {
     try {
       // Use mock database in development
       if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+        const { mockDb } = await import('@/lib/mock-database');
         const updatedAlert = await mockDb.updateAlertStatus(tenantId, alertId, status);
         if (!updatedAlert) {
           return {
@@ -464,6 +467,7 @@ export class AlertService {
     try {
       // Use mock database in development
       if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+        const { mockDb } = await import('@/lib/mock-database');
         const newAlerts = await mockDb.bulkCreateAlerts(tenantId, alertsData);
 
         // Process automation rules for each alert
@@ -528,7 +532,7 @@ export class AlertService {
   /**
    * Get alert statistics for dashboard
    */
-  static async getAlertStats(_tenantId: string): Promise<ApiResponse<{
+  static async getAlertStats(tenantId: string): Promise<ApiResponse<{
     total: number;
     critical: number;
     high: number;
@@ -540,6 +544,7 @@ export class AlertService {
     try {
       // Use mock database in development
       if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+        const { mockDb } = await import('@/lib/mock-database');
         const stats = await mockDb.getAlertStats(tenantId);
         return {
           success: true,

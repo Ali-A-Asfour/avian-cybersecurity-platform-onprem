@@ -48,7 +48,7 @@ async function initializeDatabaseConnection(): Promise<postgres.Sql> {
         max: 10, // Connection pool size
         idle_timeout: 20,
         connect_timeout: 10,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false,
+        ssl: (process.env.NODE_ENV === 'production' && process.env.POSTGRES_SSL_DISABLED !== 'true') ? { rejectUnauthorized: true } : false,
         prepare: true, // Use prepared statements
         transform: {
           undefined: null, // Convert undefined to null
