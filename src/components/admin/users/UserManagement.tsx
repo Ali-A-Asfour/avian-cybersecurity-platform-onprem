@@ -366,15 +366,8 @@ function UserForm({ user, tenants, onSave, onCancel, loading }: UserFormProps) {
     onSave(formData);
   };
 
-  // Check if the selected role requires tenant selection
-  const requiresTenant = formData.role === UserRole.TENANT_ADMIN || formData.role === UserRole.USER;
-
-  // Clear tenant_id if role doesn't require it
-  React.useEffect(() => {
-    if (!requiresTenant) {
-      setFormData(prev => ({ ...prev, tenant_id: '' }));
-    }
-  }, [requiresTenant]);
+  // All roles require tenant selection
+  const requiresTenant = true;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

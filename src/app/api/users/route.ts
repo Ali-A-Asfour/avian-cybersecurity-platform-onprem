@@ -13,6 +13,7 @@ import {
   getNextMockUserId,
   type MockUser 
 } from '@/lib/mock-users-store';
+import { createUserRaw } from './create-raw';
 
 // Helper function to get current user from demo auth token
 function getCurrentUserFromToken(request: NextRequest) {
@@ -148,7 +149,7 @@ const createUserSchema = z.object({
   last_name: z.string().min(1, 'Last name is required').max(100, 'Last name too long'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.nativeEnum(UserRole),
-  tenant_id: z.string().uuid('Invalid tenant ID'),
+  tenant_id: z.string().uuid('Invalid tenant ID'), // Required for all roles
   mfa_enabled: z.boolean().optional().default(false),
 });
 
@@ -339,6 +340,18 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Auto-assign cross-tenant roles to default tenant if no tenant_id provided
+      const isCrossTenantRole = body.role === 'security_analyst' || body.role === 'it_helpdesk_analyst';
+      if (isCrossTenantRole && !body.tenant_id) {
+        // Use the current user's tenant as default for cross-tenant roles
+        body.tenant_id = currentUser.tenantId;
+      }
+
+      // Ensure tenant_id is set for all users (fallback to current user's tenant)
+      if (!body.tenant_id) {
+        body.tenant_id = currentUser.tenantId;
+      }
+
       // Check for duplicate email
       if (findMockUserByEmail(body.email)) {
         return NextResponse.json(
@@ -392,18 +405,37 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createUserSchema.parse(body);
 
-    // Create user
-    const newUser = await UserService.createUser(
-      validatedData,
-      user.user_id,
-      user.role,
-      user.tenant_id
-    );
+    // Use raw SQL approach to bypass ORM issues
+    try {
+      const newUser = await createUserRaw(
+        validatedData.email,
+        validatedData.first_name,
+        validatedData.last_name,
+        validatedData.role,
+        validatedData.tenant_id,
+        validatedData.password
+      );
 
-    return NextResponse.json({
-      success: true,
-      data: newUser,
-    }, { status: 201 });
+      return NextResponse.json({
+        success: true,
+        data: newUser,
+      }, { status: 201 });
+    } catch (rawError) {
+      console.error('Raw SQL user creation failed:', rawError);
+      
+      // Fallback to UserService if raw SQL fails
+      const newUser = await UserService.createUser(
+        validatedData,
+        user.user_id,
+        user.role,
+        user.tenant_id
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: newUser,
+      }, { status: 201 });
+    }
   } catch (error) {
     console.error('Create user error:', error);
 
