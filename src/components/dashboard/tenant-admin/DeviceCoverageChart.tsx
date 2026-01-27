@@ -35,26 +35,40 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
     }
 
     // Memoize chart data to prevent unnecessary recalculations
-    const chartData = useMemo(() => [
-        {
-            name: 'Protected',
-            value: data.protected,
-            percentage: Math.round((data.protected / data.total) * 100),
-            segment: 'protected' as const
-        },
-        {
-            name: 'Missing Agent',
-            value: data.missingAgent,
-            percentage: Math.round((data.missingAgent / data.total) * 100),
-            segment: 'missing-agent' as const
-        },
-        {
-            name: 'With Alerts',
-            value: data.withAlerts,
-            percentage: Math.round((data.withAlerts / data.total) * 100),
-            segment: 'with-alerts' as const
-        }
-    ], [data.protected, data.missingAgent, data.withAlerts, data.total]);
+    const chartData = useMemo(() => {
+        // Safely handle division by zero and undefined values
+        const safeTotal = data?.total || 0;
+        const safeProtected = data?.protected || 0;
+        const safeMissingAgent = data?.missingAgent || 0;
+        const safeWithAlerts = data?.withAlerts || 0;
+        
+        const calculatePercentage = (value: number, total: number): number => {
+            if (total === 0 || !total || !Number.isFinite(total)) return 0;
+            const percentage = (value / total) * 100;
+            return Number.isFinite(percentage) ? Math.round(percentage) : 0;
+        };
+
+        return [
+            {
+                name: 'Protected',
+                value: safeProtected,
+                percentage: calculatePercentage(safeProtected, safeTotal),
+                segment: 'protected' as const
+            },
+            {
+                name: 'Missing Agent',
+                value: safeMissingAgent,
+                percentage: calculatePercentage(safeMissingAgent, safeTotal),
+                segment: 'missing-agent' as const
+            },
+            {
+                name: 'With Alerts',
+                value: safeWithAlerts,
+                percentage: calculatePercentage(safeWithAlerts, safeTotal),
+                segment: 'with-alerts' as const
+            }
+        ];
+    }, [data?.protected, data?.missingAgent, data?.withAlerts, data?.total]);
 
     // Memoize colors to prevent object recreation
     const COLORS = useMemo(() => ({
@@ -64,6 +78,7 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
     }), []);
 
     const CustomLabel = ({ cx, cy }: any) => {
+        const safeTotal = data?.total || 0;
         return (
             <text
                 x={cx}
@@ -74,7 +89,7 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
                 fontSize={16}
                 fontWeight={600}
             >
-                <tspan x={cx} dy="-0.5em">{data.total}</tspan>
+                <tspan x={cx} dy="-0.5em">{safeTotal}</tspan>
                 <tspan x={cx} dy="1.2em" fontSize={12} fontWeight={400} fill="#D1D5DB">Total Devices</tspan>
             </text>
         );
@@ -113,7 +128,7 @@ const DeviceCoverageChartComponent: React.FC<DeviceCoverageChartProps> = ({
             className="flex flex-col bg-neutral-800 border border-neutral-700 rounded-lg p-4 sm:p-6"
             style={{ minHeight: '320px' }}
             role="img"
-            aria-label={`Device coverage chart: ${data.protected} protected devices (${Math.round((data.protected / data.total) * 100)}%), ${data.missingAgent} missing agent (${Math.round((data.missingAgent / data.total) * 100)}%), ${data.withAlerts} with alerts (${Math.round((data.withAlerts / data.total) * 100)}%). Total: ${data.total} devices.`}
+            aria-label={`Device coverage chart: ${data?.protected || 0} protected devices (${chartData.find(d => d.name === 'Protected')?.percentage || 0}%), ${data?.missingAgent || 0} missing agent (${chartData.find(d => d.name === 'Missing Agent')?.percentage || 0}%), ${data?.withAlerts || 0} with alerts (${chartData.find(d => d.name === 'With Alerts')?.percentage || 0}%). Total: ${data?.total || 0} devices.`}
         >
             <h3 className="text-white text-base sm:text-lg font-semibold mb-4">Device Coverage</h3>
             <div

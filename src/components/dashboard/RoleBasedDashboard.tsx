@@ -605,9 +605,9 @@ export function RoleBasedDashboard({ userRole, onNavigate }: RoleBasedDashboardP
               <Card className="p-4">
                 <h3 className="font-semibold text-gray-900 mb-2">Events Today</h3>
                 <div className="text-2xl font-bold text-purple-600">
-                  {selectedTenant.events_today > 1000
-                    ? `${(selectedTenant.events_today / 1000).toFixed(0)}K`
-                    : selectedTenant.events_today}
+                  {(selectedTenant?.events_today || 0) > 1000
+                    ? `${((selectedTenant?.events_today || 0) / 1000).toFixed(0)}K`
+                    : (selectedTenant?.events_today || 0)}
                 </div>
                 <div className="text-sm text-gray-500">Security events</div>
               </Card>

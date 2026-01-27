@@ -171,7 +171,7 @@ export function DashboardGrid({ onNavigate, userRole }: DashboardGridProps) {
         {widgets.showCompliance && (
           <MetricCard
             title="Compliance Score"
-            value={`${data.compliance.overallScore.toFixed(1)}%`}
+            value={`${(data.compliance?.overallScore || 0).toFixed(1)}%`}
             subtitle="Above target threshold"
             trend={{
               value: 1.2,
@@ -186,7 +186,7 @@ export function DashboardGrid({ onNavigate, userRole }: DashboardGridProps) {
         {widgets.showSLA && (
           <MetricCard
             title="SLA Performance"
-            value={`${data.sla.responseTime.percentage.toFixed(1)}%`}
+            value={`${(data.sla?.responseTime?.percentage || 0).toFixed(1)}%`}
             subtitle="Meeting targets"
             trend={{
               value: 0.3,

@@ -96,7 +96,7 @@ export function ComplianceGauge({ data, onClick }: ComplianceGaugeProps) {
                     {framework.name}
                   </span>
                   <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                    {framework.score.toFixed(1)}%
+                    {(framework.score || 0).toFixed(1)}%
                   </span>
                 </div>
                 <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-2">

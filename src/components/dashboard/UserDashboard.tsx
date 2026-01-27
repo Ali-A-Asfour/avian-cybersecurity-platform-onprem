@@ -39,8 +39,8 @@ export function UserDashboard() {
 
   const fetchUserTickets = async () => {
     try {
-      // Fetch tickets created by the current user (limit to 3 most recent)
-      const response = await api.get('/api/tickets/user?limit=3&sort_by=created_at&sort_order=desc');
+      // Fetch tickets created by the current user using the help desk API
+      const response = await api.get('/api/help-desk/queue/my-tickets?limit=3');
 
       if (!response.ok) {
         console.warn('Failed to fetch tickets, showing empty state');
@@ -50,9 +50,9 @@ export function UserDashboard() {
 
       const result = await response.json();
 
-      if (result.success && result.data) {
+      if (result.success && result.data && result.data.tickets) {
         // Map the API response to UserTicket format
-        const userTickets: UserTicket[] = result.data.map((ticket: any) => ({
+        const userTickets: UserTicket[] = result.data.tickets.map((ticket: any) => ({
           id: ticket.id,
           title: ticket.title,
           description: ticket.description || 'No description provided',
