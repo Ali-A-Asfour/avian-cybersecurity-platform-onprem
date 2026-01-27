@@ -1,84 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TicketService, CreateTicketRequest } from '@/services/ticket.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-import { TicketFilters, ApiResponse } from '@/types';
-import { ErrorHandler, ApiErrors } from '@/lib/api-errors';
-import { HelpDeskValidator, HelpDeskErrors } from '@/lib/help-desk/error-handling';
+import { ApiResponse } from '@/types';
+import { ticketStore } from '@/lib/ticket-store';
 
 export async function GET(request: NextRequest) {
   try {
     // Apply middleware
     const authResult = await authMiddleware(request);
     if (!authResult.success) {
-      return NextResponse.json({ success: false, error: { code: 'UNAUTHORIZED', message: authResult.error || 'Authentication failed' } }, { status: 401 });
+      return NextResponse.json({ 
+        success: false, 
+        error: { 
+          code: 'UNAUTHORIZED', 
+          message: authResult.error || 'Authentication failed' 
+        } 
+      }, { status: 401 });
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user!);
     if (!tenantResult.success) {
-      return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: tenantResult.error?.message || "Access denied" } }, { status: 403 });
+      return NextResponse.json({ 
+        success: false, 
+        error: { 
+          code: "FORBIDDEN", 
+          message: tenantResult.error?.message || "Access denied" 
+        } 
+      }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
 
     // Parse query parameters
-    const filters: TicketFilters = {
-      page: parseInt(searchParams.get('page') || '1'),
-      limit: parseInt(searchParams.get('limit') || '20'),
-      sort_by: searchParams.get('sort_by') || 'created_at',
-      sort_order: (searchParams.get('sort_order') as 'asc' | 'desc') || 'desc',
-    };
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const sortBy = searchParams.get('sort_by') || 'created_at';
+    const sortOrder = searchParams.get('sort_order') || 'desc';
 
-    // Parse array filters
-    if (searchParams.get('status')) {
-      filters.status = searchParams.get('status')!.split(',') as any[];
-    }
-    if (searchParams.get('severity')) {
-      filters.severity = searchParams.get('severity')!.split(',') as any[];
-    }
-    if (searchParams.get('priority')) {
-      filters.priority = searchParams.get('priority')!.split(',') as any[];
-    }
-    if (searchParams.get('category')) {
-      filters.category = searchParams.get('category')!.split(',') as any[];
-    }
+    // Get tickets from the ticket store
+    console.log('🎫 Tickets API: Fetching tickets for tenant:', tenantResult.tenant!.id);
+    const allTickets = ticketStore.getAllTickets(tenantResult.tenant!.id);
+    console.log('🎫 Tickets API: Found', allTickets.length, 'tickets for tenant', tenantResult.tenant!.id);
+    
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedTickets = allTickets.slice(startIndex, endIndex);
 
-    // Parse other filters
-    if (searchParams.get('assignee')) {
-      filters.assignee = searchParams.get('assignee')!;
-    }
-    if (searchParams.get('requester')) {
-      filters.requester = searchParams.get('requester')!;
-    }
-    if (searchParams.get('created_after')) {
-      filters.created_after = new Date(searchParams.get('created_after')!);
-    }
-    if (searchParams.get('created_before')) {
-      filters.created_before = new Date(searchParams.get('created_before')!);
-    }
-
-    // Apply role-based filtering
-    const result = await TicketService.getTickets(
-      tenantResult.tenant!.id,
-      filters,
-      authResult.user!.role,
-      authResult.user!.user_id
-    );
-
+    // Return tickets with pagination info
     const response: ApiResponse = {
       success: true,
-      data: result.tickets,
+      data: paginatedTickets,
       meta: {
-        total: result.total,
-        page: filters.page,
-        limit: filters.limit,
+        total: allTickets.length,
+        page: page,
+        limit: limit,
       },
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    const url = new URL(request.url);
-    return ErrorHandler.handleError(error, url.pathname);
+    console.error('Tickets API error:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal server error',
+        timestamp: new Date().toISOString(),
+        request_id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        path: '/api/tickets'
+      }
+    }, { status: 500 });
   }
 }
 
@@ -87,105 +80,80 @@ export async function POST(request: NextRequest) {
     // Apply middleware
     const authResult = await authMiddleware(request);
     if (!authResult.success) {
-      throw ApiErrors.unauthorized(authResult.error || 'Authentication failed');
+      return NextResponse.json({ 
+        success: false, 
+        error: { 
+          code: 'UNAUTHORIZED', 
+          message: authResult.error || 'Authentication failed' 
+        } 
+      }, { status: 401 });
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user!);
     if (!tenantResult.success) {
-      throw ApiErrors.forbidden(tenantResult.error?.message || 'Access denied');
-    }
-
-    // Validate role-based access for ticket creation
-    const { RoleBasedAccessService } = await import('@/services/help-desk/RoleBasedAccessService');
-    const accessValidation = RoleBasedAccessService.validateHelpDeskAccess('create_ticket', {
-      userId: authResult.user!.user_id,
-      userRole: authResult.user!.role,
-      tenantId: tenantResult.tenant!.id,
-    });
-
-    if (!accessValidation.allowed) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: accessValidation.reason || 'Access denied',
-          requiredRole: accessValidation.requiredRole
-        }
+      return NextResponse.json({ 
+        success: false, 
+        error: { 
+          code: "FORBIDDEN", 
+          message: tenantResult.error?.message || "Access denied" 
+        } 
       }, { status: 403 });
     }
 
+    // Parse request body
     const body = await request.json();
-
-    // Validate input using help desk validator
-    const validation = HelpDeskValidator.validateTicketCreation(body);
-    if (!validation.valid) {
-      throw ApiErrors.validation('Invalid ticket data', { errors: validation.errors });
-    }
-
-    const validatedData = validation.data!;
-
-    // Map impact level to ticket category for help desk system
-    // Help desk uses simplified categories based on impact level
-    const category = 'it_support'; // Default to IT support for help desk tickets
-
-    // Validate category access for the user creating the ticket
-    const categoryValidation = RoleBasedAccessService.validateHelpDeskAccess('create_ticket', {
-      userId: authResult.user!.user_id,
-      userRole: authResult.user!.role,
-      tenantId: tenantResult.tenant!.id,
-      ticketCategory: category as any,
-    });
-
-    if (!categoryValidation.allowed) {
+    
+    // Basic validation
+    if (!body.title || !body.description) {
       return NextResponse.json({
         success: false,
         error: {
-          code: 'FORBIDDEN',
-          message: categoryValidation.reason || 'Cannot create ticket in this category',
-          requiredRole: categoryValidation.requiredRole
+          code: 'VALIDATION_ERROR',
+          message: 'Title and description are required'
         }
-      }, { status: 403 });
+      }, { status: 400 });
     }
 
-    // Create ticket with validated data
-    // Note: requester should be the user's email, not user_id
-    // We'll use user_id as a fallback if email is not available
-    // Map severity to priority: critical -> urgent, others stay the same
-    const priorityMap: Record<string, string> = {
-      'critical': 'urgent',
-      'high': 'high',
-      'medium': 'medium',
-      'low': 'low',
+    // Create a ticket using the ticket store
+    const ticket = ticketStore.createTicket({
+      id: `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: body.title,
+      description: body.description,
+      severity: body.impactLevel || 'medium',
+      phoneNumber: body.phoneNumber,
+      contactMethod: body.contactMethod || 'email',
+      status: 'new',
+      priority: body.impactLevel === 'critical' ? 'urgent' : body.impactLevel || 'medium',
+      created_at: new Date().toISOString(),
+      created_by: authResult.user!.user_id,
+      tenant_id: tenantResult.tenant!.id,
+      category: 'it_support',
+      requester_email: (authResult.user as any).email || undefined,
+      tags: [],
+      device_name: body.deviceId || undefined
+    });
+
+    console.log('Created ticket:', ticket);
+
+    // Return success response
+    const response: ApiResponse = {
+      success: true,
+      data: ticket
     };
-    
-    const ticketData: CreateTicketRequest = {
-      title: validatedData.title,
-      description: validatedData.description,
-      category: category,
-      severity: validatedData.impactLevel,
-      priority: priorityMap[validatedData.impactLevel] || validatedData.impactLevel,
-      phoneNumber: validatedData.phoneNumber,
-      requester: (authResult.user as any).email || authResult.user!.user_id,
-    };
 
-    const ticket = await TicketService.createTicket(
-      tenantResult.tenant!.id,
-      authResult.user!.user_id,
-      ticketData
-    );
-
-    // Send notification email to user
-    try {
-      const { NotificationService } = await import('@/lib/help-desk/notification-service');
-      await NotificationService.sendTicketCreatedNotification(ticket, authResult.user!);
-    } catch (notificationError) {
-      // Log notification error but don't fail ticket creation
-      console.warn('Failed to send ticket creation notification:', notificationError);
-    }
-
-    return ErrorHandler.success(ticket, undefined, 201);
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
-    const url = new URL(request.url);
-    return ErrorHandler.handleError(error, url.pathname);
+    console.error('Ticket creation error:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to create ticket',
+        timestamp: new Date().toISOString(),
+        request_id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        path: '/api/tickets'
+      }
+    }, { status: 500 });
   }
 }

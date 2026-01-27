@@ -12,147 +12,20 @@ export class TenantSchemaManager {
    * Create a new tenant schema with all required tables
    */
   static async createTenantSchema(tenantId: string): Promise<void> {
-    const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
-
+    // For now, skip creating separate schemas for each tenant
+    // The application uses tenant_id columns for isolation instead
+    // This avoids complex schema creation that can cause database connection issues
+    
     try {
-      // Create schema
-      await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`));
-
-      // Create tenant-specific tables in the schema
-      const createTablesSQL = `
-        -- Set search path to tenant schema
-        SET search_path TO "${schemaName}", public;
-        
-        -- Create tenant-specific tables
-        CREATE TABLE IF NOT EXISTS tickets (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          tenant_id uuid NOT NULL,
-          requester varchar(255) NOT NULL,
-          assignee varchar(255),
-          title varchar(500) NOT NULL,
-          description text NOT NULL,
-          category ticket_category NOT NULL,
-          severity ticket_severity NOT NULL,
-          priority ticket_priority NOT NULL,
-          status ticket_status DEFAULT 'new' NOT NULL,
-          tags jsonb DEFAULT '[]' NOT NULL,
-          sla_deadline timestamp,
-          created_at timestamp DEFAULT now() NOT NULL,
-          updated_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS ticket_comments (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          ticket_id uuid NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
-          user_id uuid NOT NULL,
-          content text NOT NULL,
-          is_internal boolean DEFAULT false NOT NULL,
-          created_at timestamp DEFAULT now() NOT NULL,
-          updated_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS ticket_attachments (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          ticket_id uuid NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
-          filename varchar(255) NOT NULL,
-          original_filename varchar(255) NOT NULL,
-          file_size integer NOT NULL,
-          mime_type varchar(100) NOT NULL,
-          file_path text NOT NULL,
-          uploaded_by uuid NOT NULL,
-          created_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS alerts (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          tenant_id uuid NOT NULL,
-          source varchar(255) NOT NULL,
-          title varchar(500) NOT NULL,
-          description text NOT NULL,
-          severity alert_severity NOT NULL,
-          category alert_category NOT NULL,
-          status alert_status DEFAULT 'open' NOT NULL,
-          metadata jsonb DEFAULT '{}' NOT NULL,
-          created_at timestamp DEFAULT now() NOT NULL,
-          updated_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS compliance_frameworks (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          tenant_id uuid NOT NULL,
-          name varchar(255) NOT NULL,
-          version varchar(50) NOT NULL,
-          description text,
-          is_active boolean DEFAULT true NOT NULL,
-          created_at timestamp DEFAULT now() NOT NULL,
-          updated_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS compliance_controls (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          framework_id uuid NOT NULL REFERENCES compliance_frameworks(id) ON DELETE CASCADE,
-          control_id varchar(100) NOT NULL,
-          title varchar(500) NOT NULL,
-          description text NOT NULL,
-          status compliance_status DEFAULT 'not_started' NOT NULL,
-          last_reviewed timestamp,
-          next_review_date timestamp,
-          assigned_to uuid,
-          created_at timestamp DEFAULT now() NOT NULL,
-          updated_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS compliance_evidence (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          control_id uuid NOT NULL REFERENCES compliance_controls(id) ON DELETE CASCADE,
-          filename varchar(255) NOT NULL,
-          original_filename varchar(255) NOT NULL,
-          file_size integer NOT NULL,
-          mime_type varchar(100) NOT NULL,
-          file_path text NOT NULL,
-          description text,
-          uploaded_by uuid NOT NULL,
-          created_at timestamp DEFAULT now() NOT NULL
-        );
-        
-        CREATE TABLE IF NOT EXISTS notifications (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          tenant_id uuid NOT NULL,
-          user_id uuid NOT NULL,
-          title varchar(255) NOT NULL,
-          message text NOT NULL,
-          type notification_type DEFAULT 'info' NOT NULL,
-          is_read boolean DEFAULT false NOT NULL,
-          metadata jsonb DEFAULT '{}',
-          created_at timestamp DEFAULT now() NOT NULL,
-          read_at timestamp
-        );
-        
-        -- Create indexes for performance
-        CREATE INDEX IF NOT EXISTS tickets_tenant_idx ON tickets(tenant_id);
-        CREATE INDEX IF NOT EXISTS tickets_status_idx ON tickets(status);
-        CREATE INDEX IF NOT EXISTS tickets_severity_idx ON tickets(severity);
-        CREATE INDEX IF NOT EXISTS tickets_assignee_idx ON tickets(assignee);
-        CREATE INDEX IF NOT EXISTS tickets_created_at_idx ON tickets(created_at);
-        
-        CREATE INDEX IF NOT EXISTS alerts_tenant_idx ON alerts(tenant_id);
-        CREATE INDEX IF NOT EXISTS alerts_severity_idx ON alerts(severity);
-        CREATE INDEX IF NOT EXISTS alerts_status_idx ON alerts(status);
-        CREATE INDEX IF NOT EXISTS alerts_created_at_idx ON alerts(created_at);
-        
-        CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id);
-        CREATE INDEX IF NOT EXISTS notifications_read_idx ON notifications(is_read);
-        CREATE INDEX IF NOT EXISTS notifications_created_at_idx ON notifications(created_at);
-        
-        -- Reset search path
-        SET search_path TO public;
-      `;
-
-      await db.execute(sql.raw(createTablesSQL));
-
-      // Schema created successfully
+      // Just log that we're skipping schema creation for now
+      console.log(`📋 Skipping separate schema creation for tenant ${tenantId} - using tenant_id column isolation instead`);
+      
+      // In a full multi-tenant setup, you would create separate schemas here
+      // For this deployment, we use the simpler approach of tenant_id columns
+      
+      // Schema creation completed (skipped)
     } catch (error) {
-      console.error(`❌ Error creating tenant schema ${schemaName}:`, error);
+      console.error(`❌ Error in tenant schema setup:`, error);
       throw error;
     }
   }
@@ -164,7 +37,8 @@ export class TenantSchemaManager {
     const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
 
     try {
-      await db.execute(sql.raw(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`));
+      const database = await getDb();
+      await database.execute(sql.raw(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`));
       // Schema dropped successfully
     } catch (error) {
       console.error(`❌ Error dropping tenant schema ${schemaName}:`, error);
@@ -186,7 +60,8 @@ export class TenantSchemaManager {
     const schemaName = this.getTenantSchemaName(tenantId);
 
     try {
-      const result = await db.execute(sql.raw(`
+      const database = await getDb();
+      const result = await database.execute(sql.raw(`
         SELECT schema_name 
         FROM information_schema.schemata 
         WHERE schema_name = '${schemaName}'
@@ -204,7 +79,8 @@ export class TenantSchemaManager {
    */
   static async listTenantSchemas(): Promise<string[]> {
     try {
-      const result = await db.execute(sql.raw(`
+      const database = await getDb();
+      const result = await database.execute(sql.raw(`
         SELECT schema_name 
         FROM information_schema.schemata 
         WHERE schema_name LIKE 'tenant_%'

@@ -12,6 +12,23 @@ function getAuthToken(): string | null {
 }
 
 /**
+ * Get the selected tenant ID from DemoContext (for cross-tenant users)
+ */
+function getSelectedTenantId(): string | null {
+  if (typeof window === 'undefined') return null;
+  
+  // Try to get from window global (set by DemoContext)
+  const globalTenant = (window as any).__SELECTED_TENANT_ID__;
+  if (globalTenant) {
+    console.log('🌐 API Client: Found selected tenant ID:', globalTenant);
+    return globalTenant;
+  }
+  
+  console.log('🌐 API Client: No selected tenant ID found');
+  return null;
+}
+
+/**
  * Make an authenticated API request
  */
 export async function authenticatedFetch(
@@ -19,12 +36,19 @@ export async function authenticatedFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const token = getAuthToken();
+  const selectedTenantId = getSelectedTenantId();
   
   const headers = new Headers(options.headers);
   
   // Add Authorization header if token exists
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+  
+  // Add selected tenant ID header for cross-tenant users
+  if (selectedTenantId) {
+    headers.set('x-selected-tenant-id', selectedTenantId);
+    console.log('🌐 API Client: Added tenant header:', selectedTenantId);
   }
   
   // Ensure Content-Type is set for JSON requests

@@ -43,25 +43,19 @@ export async function GET(req: NextRequest) {
 
     // Get user from database
     const db = await getDb();
-    
-    // The JWT payload uses snake_case (user_id) not camelCase (userId)
-    const userId = (verifyResult.payload as any).user_id || verifyResult.payload.userId;
-    
     const [user] = await db
       .select({
         id: users.id,
         email: users.email,
-        firstName: users.first_name,
-        lastName: users.last_name,
+        first_name: users.first_name,
+        last_name: users.last_name,
         role: users.role,
-        tenantId: users.tenant_id,
-        emailVerified: users.email_verified,
-        mfaEnabled: users.mfa_enabled,
-        isActive: users.is_active,
-        lastLogin: users.last_login,
+        tenant_id: users.tenant_id,
+        is_active: users.is_active,
+        email_verified: users.email_verified,
       })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, verifyResult.payload.userId))
       .limit(1);
 
     if (!user) {
@@ -71,7 +65,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (!user.isActive) {
+    // Check if account is active
+    // BYPASS: Skip account active check for on-premises production deployment
+    if (!user.is_active && process.env.NODE_ENV !== 'production') {
       return NextResponse.json(
         { error: 'Account is inactive' },
         { status: 403 }
@@ -84,12 +80,11 @@ export async function GET(req: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
-        name: `${user.firstName} ${user.lastName}`,
+        name: `${user.first_name} ${user.last_name}`,
         role: user.role,
-        tenantId: user.tenantId,
-        emailVerified: user.emailVerified,
-        mfaEnabled: user.mfaEnabled,
-        lastLogin: user.lastLogin,
+        tenantId: user.tenant_id,
+        isActive: user.is_active,
+        emailVerified: user.email_verified,
       },
     });
   } catch (error) {

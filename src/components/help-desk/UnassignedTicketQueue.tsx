@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Loader2, User, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
-import { useTenant } from '@/contexts/TenantContext';
+import { useDemoContext } from '@/contexts/DemoContext';
 
 interface UnassignedTicketQueueProps {
     userRole: UserRole;
@@ -30,7 +30,8 @@ export function UnassignedTicketQueue({
     tenantId,
     onTicketAssigned
 }: UnassignedTicketQueueProps) {
-    const { selectedTenant } = useTenant();
+    const { currentTenant } = useDemoContext();
+    const selectedTenant = currentTenant; // Use currentTenant from DemoContext
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [assigningTickets, setAssigningTickets] = useState<Set<string>>(new Set());
@@ -67,7 +68,7 @@ export function UnassignedTicketQueue({
             
             // For cross-tenant users, send selected tenant in headers
             if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(userRole) && selectedTenant) {
-                headers['x-selected-tenant'] = selectedTenant.id;
+                headers['x-selected-tenant-id'] = selectedTenant.id;
             }
 
             console.log('=== UNASSIGNED QUEUE FETCH ===');
@@ -82,7 +83,8 @@ export function UnassignedTicketQueue({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch unassigned tickets');
+                const errorMessage = typeof errorData.error === 'string' ? errorData.error : 'Failed to fetch unassigned tickets';
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
@@ -107,7 +109,8 @@ export function UnassignedTicketQueue({
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to assign ticket');
+                const errorMessage = typeof errorData.error === 'string' ? errorData.error : 'Failed to assign ticket';
+                throw new Error(errorMessage);
             }
 
             // Refresh the queue to show updated positioning

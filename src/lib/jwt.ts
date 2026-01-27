@@ -146,11 +146,20 @@ export function verifyToken(token: string): VerifyResult {
         const decoded = jwt.verify(token, JWT_SECRET, {
             issuer: JWT_ISSUER,
             audience: JWT_AUDIENCE,
-        }) as TokenPayload;
+        }) as any;
+
+        // Convert snake_case back to camelCase for consistency
+        const payload: TokenPayload = {
+            userId: decoded.user_id,
+            tenantId: decoded.tenant_id,
+            role: decoded.role,
+            email: decoded.email,
+            sessionId: decoded.sessionId,
+        };
 
         return {
             valid: true,
-            payload: decoded,
+            payload: payload,
         };
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {

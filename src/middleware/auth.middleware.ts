@@ -147,7 +147,33 @@ export async function authMiddleware(request: NextRequest): Promise<{ success: b
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
     // Verify token (this checks signature and expiration)
-    const payload = AuthService.verifyAccessToken(token);
+    let payload: JWTPayload;
+    try {
+      payload = AuthService.verifyAccessToken(token);
+    } catch (error) {
+      monitoring.tagSpan(span.spanId, {
+        success: false,
+        error: 'token_verification_failed'
+      });
+
+      logger.warn('Token verification failed', {
+        path: request.nextUrl.pathname,
+        method: request.method,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+
+      monitoring.counter('auth.failures', MetricCategory.AUTH, 1, {
+        reason: 'invalid_token',
+        path: request.nextUrl.pathname,
+      });
+
+      monitoring.finishSpan(span, 'auth.middleware', MetricCategory.AUTH);
+
+      return {
+        success: false,
+        error: 'Invalid or expired access token'
+      };
+    }
 
     // Token verification is sufficient - if the token is valid and not expired,
     // we can trust it. Database session validation is optional for performance.

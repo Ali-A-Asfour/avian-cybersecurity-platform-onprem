@@ -7,6 +7,8 @@ import { DEMO_USERS, type DemoUser } from '@/components/demo/RoleSwitcher';
 interface DemoContextType {
   currentUser: DemoUser;
   setCurrentUser: (user: DemoUser) => void;
+  currentTenant: { id: string; name: string; key: string } | null;
+  setCurrentTenant: (tenant: { id: string; name: string; key: string } | null) => void;
   isDemo: boolean;
   setIsDemo: (isDemo: boolean) => void;
 }
@@ -18,6 +20,9 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<DemoUser>(
     DEMO_USERS.find(user => user.role === UserRole.SECURITY_ANALYST) || DEMO_USERS[2]
   );
+  
+  // Current tenant state
+  const [currentTenant, setCurrentTenant] = useState<{ id: string; name: string; key: string } | null>(null);
   
   // Demo mode state
   const [isDemo, setIsDemo] = useState(false);
@@ -68,6 +73,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       value={{
         currentUser,
         setCurrentUser: handleSetCurrentUser,
+        currentTenant,
+        setCurrentTenant: handleSetCurrentTenant,
         isDemo,
         setIsDemo,
       }}
@@ -75,6 +82,21 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
       {children}
     </DemoContext.Provider>
   );
+
+  function handleSetCurrentTenant(tenant: { id: string; name: string; key: string } | null) {
+    setCurrentTenant(tenant);
+    
+    // Set global variable for API client to use
+    if (typeof window !== 'undefined') {
+      if (tenant) {
+        (window as any).__SELECTED_TENANT_ID__ = tenant.id;
+        console.log('DemoContext: Set global tenant ID:', tenant.id);
+      } else {
+        delete (window as any).__SELECTED_TENANT_ID__;
+        console.log('DemoContext: Cleared global tenant ID');
+      }
+    }
+  }
 }
 
 export function useDemoContext() {

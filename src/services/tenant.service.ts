@@ -105,6 +105,9 @@ export class TenantService {
       return newTenant;
     }
 
+    // Get database connection
+    const db = await getDb();
+    
     // Check if domain already exists
     const existingTenant = await db
       .select()
@@ -115,7 +118,8 @@ export class TenantService {
     if (existingTenant.length > 0) {
       throw new Error('Tenant with this domain already exists');
     }    
-// Default tenant settings
+    
+    // Default tenant settings
     const defaultSettings: TenantSettings = {
       max_users: 100,
       features_enabled: ['tickets', 'alerts', 'compliance', 'reports'],
@@ -154,13 +158,9 @@ export class TenantService {
       .returning();
 
     // Create tenant-specific database schema
-    try {
-      await TenantSchemaManager.createTenantSchema(newTenant.id);
-    } catch (error) {
-      // Rollback tenant creation if schema creation fails
-      await db.delete(tenants).where(eq(tenants.id, newTenant.id));
-      throw new Error(`Failed to create tenant schema: ${error}`);
-    }
+    // NOTE: Skipping separate schema creation - using tenant_id column isolation instead
+    // This avoids complex database schema creation that can cause connection issues
+    console.log(`📋 Tenant created successfully: ${newTenant.id} - using tenant_id column isolation`);
 
     // Log audit event
     await this.logAuditEvent({
@@ -260,6 +260,7 @@ export class TenantService {
    * Get tenant by domain
    */
   static async getTenantByDomain(domain: string): Promise<Tenant | null> {
+    const db = await getDb();
     const tenant = await db
       .select()
       .from(tenants)
@@ -289,8 +290,9 @@ export class TenantService {
     page: number;
     limit: number;
   }> {
-    // Only super admins can list all tenants
-    if (requesterRole !== UserRole.SUPER_ADMIN) {
+    // Allow super admins and cross-tenant users (Security Analysts and IT Helpdesk Analysts) to list all tenants
+    const allowedRoles = [UserRole.SUPER_ADMIN, UserRole.SECURITY_ANALYST, UserRole.IT_HELPDESK_ANALYST];
+    if (!allowedRoles.includes(requesterRole)) {
       throw new Error('Insufficient permissions to list tenants');
     }
 
@@ -341,6 +343,8 @@ export class TenantService {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+    const db = await getDb();
+    
     // Get total count
     const [{ count: totalCount }] = await db
       .select({ count: count() })
@@ -553,6 +557,8 @@ export class TenantService {
       return;
     }
 
+    const db = await getDb();
+    
     // Get existing tenant
     const existingTenant = await db
       .select()
@@ -617,6 +623,8 @@ export class TenantService {
       throw new Error('Insufficient permissions to view tenant metrics');
     }
 
+    const db = await getDb();
+    
     // Get user metrics
     const [userMetrics] = await db
       .select({
@@ -764,6 +772,8 @@ export class TenantService {
       };
     }
 
+    const db = await getDb();
+    
     const page = filters.page || 1;
     const limit = Math.min(filters.limit || 20, 100);
     const offset = (page - 1) * limit;
@@ -820,6 +830,7 @@ export class TenantService {
    * Log audit event
    */
   private static async logAuditEvent(event: Omit<AuditLog, 'id' | 'created_at'>): Promise<void> {
+    const db = await getDb();
     await db.insert(auditLogs).values({
       ...event,
       created_at: new Date(),
@@ -830,6 +841,7 @@ export class TenantService {
    * Get all tenants (for SLA monitoring)
    */
   static async getAllTenants(): Promise<Tenant[]> {
+    const db = await getDb();
     const tenantList = await db
       .select()
       .from(tenants)

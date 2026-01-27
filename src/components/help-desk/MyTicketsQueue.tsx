@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Loader2, User, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
-import { useTenant } from '@/contexts/TenantContext';
+import { useDemoContext } from '@/contexts/DemoContext';
 
 interface MyTicketsQueueProps {
     userRole: UserRole;
@@ -24,7 +24,8 @@ interface QueueFilters {
 }
 
 export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueueProps) {
-    const { selectedTenant } = useTenant();
+    const { currentTenant } = useDemoContext();
+    const selectedTenant = currentTenant; // Use currentTenant from DemoContext
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -60,7 +61,7 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
             
             // For cross-tenant users, send selected tenant in headers
             if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(userRole) && selectedTenant) {
-                headers['x-selected-tenant'] = selectedTenant.id;
+                headers['x-selected-tenant-id'] = selectedTenant.id;
             }
 
             const response = await api.get(`/api/help-desk/queue/my-tickets?${params}`, {
@@ -69,7 +70,8 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to fetch my tickets');
+                const errorMessage = typeof errorData.error === 'string' ? errorData.error : 'Failed to fetch my tickets';
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
@@ -77,7 +79,7 @@ export function MyTicketsQueue({ userRole, userId, tenantId }: MyTicketsQueuePro
             setPagination(data.data.pagination);
         } catch (err) {
             console.error('Error fetching my tickets:', err);
-            setError(err instanceof Error ? err.message : String(err));
+            setError(err instanceof Error ? err.message : 'Failed to fetch tickets');
         } finally {
             setLoading(false);
         }

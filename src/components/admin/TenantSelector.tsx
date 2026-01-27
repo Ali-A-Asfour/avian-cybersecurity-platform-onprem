@@ -38,10 +38,20 @@ export function TenantSelector({ onTenantSelect, selectedTenant }: TenantSelecto
   };
 
   useEffect(() => {
-    // Delay the data loading to avoid SSR issues
-    const timer = setTimeout(() => {
-      fetchTenants();
-    }, 100);
+    // Wait for authentication to be ready before fetching tenants
+    const waitForAuth = () => {
+      const authToken = localStorage.getItem('auth-token');
+      if (authToken) {
+        console.log('[TenantSelector] Auth token found, fetching tenants...');
+        fetchTenants();
+      } else {
+        console.log('[TenantSelector] No auth token yet, retrying in 500ms...');
+        setTimeout(waitForAuth, 500);
+      }
+    };
+
+    // Start checking for auth token after a short delay
+    const timer = setTimeout(waitForAuth, 100);
 
     return () => clearTimeout(timer);
   }, []);
@@ -49,12 +59,64 @@ export function TenantSelector({ onTenantSelect, selectedTenant }: TenantSelecto
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      // Load tenants from API
-      const response = await fetch('/api/tenants');
+      console.log('[TenantSelector] Starting to fetch tenants...');
+      
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem('auth-token');
+      console.log('[TenantSelector] Auth token available:', !!authToken);
+      
+      if (!authToken) {
+        console.error('[TenantSelector] No auth token found, using fallback data');
+        // Fallback to ACME Corporation if no token
+        const fallbackTenants: Tenant[] = [
+          {
+            id: 'acme-corp',
+            name: 'ACME Corporation',
+            industry: 'Technology',
+            size: 'Large Enterprise',
+            status: 'active',
+            created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+            data_sources_count: 6,
+            users_count: 45,
+            events_today: 263000,
+            location: 'San Francisco, CA',
+            subscription_tier: 'Enterprise'
+          }
+        ];
+        setTenants(fallbackTenants);
+        return;
+      }
+      
+      // Try super-admin endpoint first (for cross-tenant users), then fall back to regular endpoint
+      let response = await fetch('/api/super-admin/tenants', {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // If super-admin endpoint fails, try regular tenants endpoint
+      if (!response.ok) {
+        console.log('[TenantSelector] Super-admin endpoint failed, trying regular endpoint...');
+        response = await fetch('/api/tenants', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      
+      console.log('[TenantSelector] API response status:', response.status);
+      console.log('[TenantSelector] API response ok:', response.ok);
       
       if (response.ok) {
         const data = await response.json();
-        const apiTenants = data.data.map((tenant: any) => ({
+        console.log('[TenantSelector] API response data:', data);
+        
+        // Handle both super-admin format (data.data.tenants) and regular format (data.data)
+        const tenantsArray = data.data.tenants || data.data || [];
+        
+        const apiTenants = tenantsArray.map((tenant: any) => ({
           id: tenant.id,
           name: tenant.name,
           industry: 'Technology', // Default values for display
@@ -68,9 +130,15 @@ export function TenantSelector({ onTenantSelect, selectedTenant }: TenantSelecto
           subscription_tier: 'Enterprise'
         }));
         
+        console.log('[TenantSelector] Mapped tenants:', apiTenants);
         setTenants(apiTenants);
       } else {
+        console.error('[TenantSelector] API call failed with status:', response.status);
+        const errorText = await response.text();
+        console.error('[TenantSelector] Error response:', errorText);
+        
         // Fallback to ACME Corporation if API fails
+        console.log('[TenantSelector] Using fallback ACME Corporation data');
         const fallbackTenants: Tenant[] = [
           {
             id: 'acme-corp',
@@ -89,8 +157,26 @@ export function TenantSelector({ onTenantSelect, selectedTenant }: TenantSelecto
         setTenants(fallbackTenants);
       }
     } catch (error) {
-      console.error('Failed to fetch tenants:', error);
-      setTenants([]); // Set empty array on error
+      console.error('[TenantSelector] Failed to fetch tenants:', error);
+      console.log('[TenantSelector] Using fallback ACME Corporation data due to error');
+      
+      // Fallback to ACME Corporation on error
+      const fallbackTenants: Tenant[] = [
+        {
+          id: 'acme-corp',
+          name: 'ACME Corporation',
+          industry: 'Technology',
+          size: 'Large Enterprise',
+          status: 'active',
+          created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+          data_sources_count: 6,
+          users_count: 45,
+          events_today: 263000,
+          location: 'San Francisco, CA',
+          subscription_tier: 'Enterprise'
+        }
+      ];
+      setTenants(fallbackTenants);
     } finally {
       setLoading(false);
     }

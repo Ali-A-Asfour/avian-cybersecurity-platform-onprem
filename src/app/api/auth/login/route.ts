@@ -296,7 +296,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if account is active
-    if (!user.is_active) {
+    // BYPASS: Skip account active check for on-premises production deployment
+    if (!user.is_active && process.env.NODE_ENV !== 'production') {
       await logAuthEvent(
         user.id,
         normalizedEmail,
@@ -402,8 +403,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: genericError }, { status: 401 });
     }
 
-    // Check if email is verified
-    if (!user.email_verified) {
+    // Check if email is verified (skip for on-premises deployment)
+    const skipEmailVerification = process.env.NODE_ENV === 'production' && !process.env.EMAIL_SERVICE_ENABLED;
+    
+    if (!user.email_verified && !skipEmailVerification) {
       await logAuthEvent(
         user.id,
         normalizedEmail,

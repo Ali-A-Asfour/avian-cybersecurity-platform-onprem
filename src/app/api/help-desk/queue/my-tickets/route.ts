@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { QueueManagementService } from '@/services/help-desk/QueueManagementService';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { UserRole } from '@/types';
+import { ticketStore } from '@/lib/ticket-store';
 
 /**
  * GET /api/help-desk/queue/my-tickets
  * Get personal "My Tickets" queue for help desk analysts
+ * Returns empty results since mock tickets have been removed
  */
 export async function GET(request: NextRequest) {
     try {
@@ -24,20 +25,14 @@ export async function GET(request: NextRequest) {
         const user = authResult.user!;
 
         // Validate user role - only analysts and users can access personal queue
-        const { RoleBasedAccessService } = await import('@/services/help-desk/RoleBasedAccessService');
-        const accessValidation = RoleBasedAccessService.validateHelpDeskAccess('view_queue', {
-            userId: user.user_id,
-            userRole: user.role,
-            tenantId: user.tenant_id,
-        });
-
-        if (!accessValidation.allowed) {
+        const allowedRoles = [UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.USER, UserRole.SUPER_ADMIN];
+        if (!allowedRoles.includes(user.role)) {
             return NextResponse.json({
                 success: false,
                 error: {
                     code: 'FORBIDDEN',
-                    message: accessValidation.reason || 'Access denied',
-                    requiredRole: accessValidation.requiredRole
+                    message: 'Access denied - insufficient permissions',
+                    requiredRole: 'IT_HELPDESK_ANALYST, SECURITY_ANALYST, or USER'
                 }
             }, { status: 403 });
         }
@@ -46,72 +41,53 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '20');
-        const status = searchParams.getAll('status');
-        const severity = searchParams.getAll('severity');
-        const priority = searchParams.getAll('priority');
-        const category = searchParams.getAll('category');
-        const createdAfter = searchParams.get('created_after');
-        const createdBefore = searchParams.get('created_before');
 
-        // Build filters
-        const filters = {
-            page,
-            limit,
-            ...(status.length > 0 && { status: status as any }),
-            ...(severity.length > 0 && { severity: severity as any }),
-            ...(priority.length > 0 && { priority: priority as any }),
-            ...(category.length > 0 && { category: category as any }),
-            ...(createdAfter && { created_after: new Date(createdAfter) }),
-            ...(createdBefore && { created_before: new Date(createdBefore) }),
-        };
+        // Get tenant filter - for cross-tenant users, use selected tenant from header
+        let tenantFilter: string | undefined;
+        
+        if ([UserRole.SECURITY_ANALYST, UserRole.IT_HELPDESK_ANALYST].includes(user.role)) {
+            // Cross-tenant users: use selected tenant from header
+            const selectedTenantId = request.headers.get('x-selected-tenant-id');
+            tenantFilter = selectedTenantId || undefined;
+            console.log('My tickets - Cross-tenant user, selected tenant:', selectedTenantId);
+        } else {
+            // Regular users: use their own tenant
+            tenantFilter = user.tenant_id;
+            console.log('My tickets - Regular user, using own tenant:', user.tenant_id);
+        }
 
-        // Get personal tickets queue
-        // For cross-tenant users (helpdesk/security analysts), check for selected tenant in headers
-        let effectiveTenantId = user.tenant_id;
+        // Get tickets for this user
+        let tickets = [];
         
-        if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role)) {
-            // Check for selected tenant in request headers (sent by frontend)
-            const selectedTenantHeader = request.headers.get('x-selected-tenant');
-            if (selectedTenantHeader) {
-                effectiveTenantId = selectedTenantHeader;
-            } else {
-                // If no tenant selected, return empty results
-                return NextResponse.json({
-                    success: true,
-                    data: {
-                        tickets: [],
-                        pagination: {
-                            page: 1,
-                            limit: 20,
-                            total: 0,
-                            pages: 0,
-                        },
-                    },
-                });
-            }
+        console.log('My tickets - User ID:', user.user_id);
+        console.log('My tickets - User role:', user.role);
+        console.log('My tickets - Final tenant filter:', tenantFilter);
+        console.log('My tickets - Total tickets in store:', ticketStore.getCount());
+        
+        if (user.role === UserRole.USER || user.role === UserRole.SUPER_ADMIN) {
+            // Regular users and super admins see tickets they created
+            tickets = ticketStore.getTicketsByUser(user.user_id, tenantFilter);
+            console.log('My tickets - Found tickets by user:', tickets.length);
+        } else {
+            // Analysts see tickets assigned to them
+            tickets = ticketStore.getAssignedTickets(user.user_id, tenantFilter);
+            console.log('My tickets - Found assigned tickets:', tickets.length);
         }
-        
-        // For super admins, use null to indicate cross-tenant access
-        if (user.role === UserRole.SUPER_ADMIN) {
-            effectiveTenantId = null;
-        }
-        
-        const result = await QueueManagementService.getMyTicketsQueue(
-            effectiveTenantId,
-            user.user_id,
-            user.role,
-            filters
-        );
+
+        // Apply pagination
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedTickets = tickets.slice(startIndex, endIndex);
 
         return NextResponse.json({
             success: true,
             data: {
-                tickets: result.tickets,
+                tickets: paginatedTickets,
                 pagination: {
                     page,
                     limit,
-                    total: result.total,
-                    pages: Math.ceil(result.total / limit),
+                    total: tickets.length,
+                    pages: Math.ceil(tickets.length / limit),
                 },
             },
         });

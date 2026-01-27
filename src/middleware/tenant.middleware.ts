@@ -228,6 +228,31 @@ export async function tenantMiddleware(
 
     const context = TenantMiddleware.createTenantContext(user);
 
+    // For cross-tenant users (helpdesk and security analysts), check if they have a selected tenant
+    if (user.role === UserRole.IT_HELPDESK_ANALYST || user.role === UserRole.SECURITY_ANALYST) {
+      // Try to get selected tenant from request headers (set by frontend)
+      const selectedTenantId = request.headers.get('x-selected-tenant-id');
+      
+      console.log(`🏢 Tenant middleware: User role: ${user.role}`);
+      console.log(`🏢 Tenant middleware: Selected tenant header: ${selectedTenantId}`);
+      console.log(`🏢 Tenant middleware: Default tenant: ${context.tenant_id}`);
+      
+      if (selectedTenantId) {
+        console.log(`🏢 Tenant middleware: Using selected tenant ${selectedTenantId} for ${user.role}`);
+        return {
+          success: true,
+          tenant: { id: selectedTenantId },
+        };
+      } else {
+        console.log(`🏢 Tenant middleware: No selected tenant for ${user.role}, using default`);
+        // If no tenant selected, use their default tenant
+        return {
+          success: true,
+          tenant: { id: context.tenant_id },
+        };
+      }
+    }
+
     return {
       success: true,
       tenant: { id: context.tenant_id },
