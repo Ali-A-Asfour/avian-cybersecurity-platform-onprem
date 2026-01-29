@@ -10,14 +10,14 @@ import { Badge } from '@/components/ui/Badge';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { UnassignedTicketQueue } from '@/components/help-desk/UnassignedTicketQueue';
 import { MyTicketsQueue } from '@/components/help-desk/MyTicketsQueue';
+import { ClosedTicketsQueue } from '@/components/help-desk/ClosedTicketsQueue';
 import { TenantAdminQueue } from '@/components/help-desk/TenantAdminQueue';
 import { GeneralTicketQueue } from '@/components/help-desk/GeneralTicketQueue';
 import { KnowledgeBaseSearch } from '@/components/help-desk/KnowledgeBaseSearch';
-import { TenantSelector } from '@/components/admin/TenantSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { initializeDemoUser } from '@/lib/demo-auth';
 import { api } from '@/lib/api-client';
-import { useTenant } from '@/contexts/TenantContext';
+import { useDemoContext } from '@/contexts/DemoContext';
 import {
     Users,
     User,
@@ -27,7 +27,8 @@ import {
     AlertTriangle,
     Loader2,
     BookOpen,
-    List
+    List,
+    CheckCircle
 } from 'lucide-react';
 
 interface QueueMetrics {
@@ -55,12 +56,11 @@ export default function HelpDeskPage() {
     const router = useRouter();
     const { isAuthenticated, loading: authContextLoading } = useAuthContext();
     const { user: authUser, loading: authLoading } = useAuth();
-    const { selectedTenant, setSelectedTenant } = useTenant();
+    const { currentTenant } = useDemoContext();
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<QueueMetrics | null>(null);
     const [metricsLoading, setMetricsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('unassigned');
-    const [showTenantSelector, setShowTenantSelector] = useState(false);
 
     useEffect(() => {
         if (!authContextLoading && !isAuthenticated) {
@@ -100,12 +100,12 @@ export default function HelpDeskPage() {
     const tenant = useMemo(() => {
         if (!authUser) return null;
 
-        // For cross-tenant users, use selected tenant from context
-        if (isCrossTenantUser && selectedTenant) {
+        // For cross-tenant users, use selected tenant from global context
+        if (isCrossTenantUser && currentTenant) {
             return {
-                id: selectedTenant.id,
-                name: selectedTenant.name,
-                domain: selectedTenant.name.toLowerCase().replace(/\s+/g, '-') + '.example.com',
+                id: currentTenant.id,
+                name: currentTenant.name,
+                domain: currentTenant.name.toLowerCase().replace(/\s+/g, '-') + '.example.com',
             };
         }
 
@@ -115,17 +115,17 @@ export default function HelpDeskPage() {
             name: 'Demo Tenant',
             domain: 'demo.example.com',
         };
-    }, [authUser?.tenantId, isCrossTenantUser, selectedTenant]);
+    }, [authUser?.tenantId, isCrossTenantUser, currentTenant]);
 
     // Handle tenant selection for cross-tenant users
     const handleTenantSelect = (tenant: any) => {
-        setSelectedTenant(tenant);
-        setShowTenantSelector(false);
+        // This is no longer needed since we use global tenant selection
+        console.log('Tenant selection handled globally');
     };
 
     const handleSwitchTenant = () => {
-        setSelectedTenant(null);
-        setShowTenantSelector(true);
+        // This is no longer needed since we use global tenant selection
+        console.log('Tenant switching handled globally');
     };
 
     // Fetch tenant context and set default tab
@@ -134,9 +134,9 @@ export default function HelpDeskPage() {
             if (!authUser || authLoading) return;
 
             try {
-                // For cross-tenant users, check if they need to select a tenant
-                if (isCrossTenantUser && !selectedTenant) {
-                    setShowTenantSelector(true);
+                // For cross-tenant users, check if they have a tenant selected
+                if (isCrossTenantUser && !currentTenant) {
+                    console.log('Cross-tenant user needs to select tenant via global selector');
                     setLoading(false);
                     return;
                 }
@@ -157,7 +157,7 @@ export default function HelpDeskPage() {
         };
 
         initializePage();
-    }, [authUser?.role, authLoading, isCrossTenantUser, selectedTenant]);
+    }, [authUser?.role, authLoading, isCrossTenantUser, currentTenant]);
 
     // Fetch queue metrics
     useEffect(() => {
@@ -190,10 +190,10 @@ export default function HelpDeskPage() {
         };
 
         // Only fetch metrics if we have a tenant (either assigned or selected)
-        if (!isCrossTenantUser || selectedTenant) {
+        if (!isCrossTenantUser || currentTenant) {
             fetchMetrics();
         }
-    }, [user?.id, tenant?.id, isCrossTenantUser, selectedTenant]); // Use stable IDs instead of full objects
+    }, [user?.id, tenant?.id, isCrossTenantUser, currentTenant]); // Use stable IDs instead of full objects
 
     // Handle ticket assignment (refresh metrics)
     const handleTicketAssigned = useMemo(() => {
@@ -237,15 +237,18 @@ export default function HelpDeskPage() {
         );
     }
 
-    // Show tenant selector for cross-tenant users who haven't selected a tenant
-    if (isCrossTenantUser && showTenantSelector) {
+    // Show message for cross-tenant users who haven't selected a tenant
+    if (isCrossTenantUser && !currentTenant) {
         return (
             <ClientLayout>
                 <div className="container mx-auto p-6">
-                    <TenantSelector
-                        onTenantSelect={handleTenantSelect}
-                        selectedTenant={selectedTenant}
-                    />
+                    <div className="text-center py-12">
+                        <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
+                        <h1 className="text-xl font-semibold mb-2">Select a Client</h1>
+                        <p className="text-gray-600">
+                            Please select a client from the tenant selector in the header to access the help desk.
+                        </p>
+                    </div>
                 </div>
             </ClientLayout>
         );
@@ -290,14 +293,6 @@ export default function HelpDeskPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {isCrossTenantUser && tenant && (
-                            <button
-                                onClick={handleSwitchTenant}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                            >
-                                Switch Tenant
-                            </button>
-                        )}
                         <a
                             href="/help-desk/tickets/new"
                             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -370,7 +365,7 @@ export default function HelpDeskPage() {
 
                 {/* Queue Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                    <TabsList className="grid w-full grid-cols-5">
+                    <TabsList className="grid w-full grid-cols-6">
                         {/* Unassigned Queue - only for help desk staff */}
                         {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role) && (
                             <TabsTrigger value="unassigned" className="flex items-center gap-2">
@@ -392,6 +387,19 @@ export default function HelpDeskPage() {
                                 {metrics && (
                                     <Badge variant="secondary" className="ml-1">
                                         {user.role === UserRole.USER ? metrics.total_tickets : metrics.assigned_tickets}
+                                    </Badge>
+                                )}
+                            </TabsTrigger>
+                        )}
+
+                        {/* Closed Tickets - for help desk staff and regular users */}
+                        {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.USER].includes(user.role) && (
+                            <TabsTrigger value="closed-tickets" className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4" />
+                                Closed Tickets
+                                {metrics && (
+                                    <Badge variant="secondary" className="ml-1">
+                                        {metrics.resolved_tickets || 0}
                                     </Badge>
                                 )}
                             </TabsTrigger>
@@ -446,6 +454,17 @@ export default function HelpDeskPage() {
                     {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.USER].includes(user.role) && (
                         <TabsContent value="my-tickets">
                             <MyTicketsQueue
+                                userRole={user.role}
+                                userId={user.id}
+                                tenantId={tenant.id}
+                            />
+                        </TabsContent>
+                    )}
+
+                    {/* Closed Tickets Tab Content */}
+                    {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.USER].includes(user.role) && (
+                        <TabsContent value="closed-tickets">
+                            <ClosedTicketsQueue
                                 userRole={user.role}
                                 userId={user.id}
                                 tenantId={tenant.id}

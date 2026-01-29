@@ -66,6 +66,7 @@ export async function authMiddleware(request: NextRequest): Promise<{ success: b
                 user_id: decoded.userId,
                 tenant_id: decoded.tenantId,
                 role: decoded.role as UserRole,
+                email: decoded.email,
                 iat: Math.floor(Date.now() / 1000),
                 exp: decoded.exp || Math.floor(Date.now() / 1000) + 3600,
               }

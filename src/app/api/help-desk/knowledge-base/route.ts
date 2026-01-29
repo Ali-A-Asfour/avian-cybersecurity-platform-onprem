@@ -1,40 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { KnowledgeBaseService } from '../../../../services/help-desk/KnowledgeBaseService';
-import { getCurrentUser } from '../../../../lib/auth';
+import { authMiddleware } from '@/middleware/auth.middleware';
+import { UserRole } from '@/types';
+import { knowledgeBaseStore } from '@/lib/knowledge-base-store';
 
 /**
  * GET /api/help-desk/knowledge-base
- * Search knowledge base articles
+ * Search and retrieve knowledge base articles
  */
 export async function GET(request: NextRequest) {
     try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        console.log('📚 Knowledge base search API called');
+        
+        // Apply authentication middleware
+        const authResult = await authMiddleware(request);
+        if (!authResult.success) {
+            console.log('❌ Auth failed:', authResult.error);
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication failed'
+            }, { status: 401 });
         }
 
-        const { searchParams } = new URL(request.url);
-        const query = searchParams.get('query') || undefined;
-        const approvedOnly = searchParams.get('approved_only') === 'true';
-        const createdBy = searchParams.get('created_by') || undefined;
-        const page = parseInt(searchParams.get('page') || '1');
-        const limit = parseInt(searchParams.get('limit') || '20');
+        const user = authResult.user!;
+        console.log('✅ User authenticated:', user.email, user.role);
 
-        const result = await KnowledgeBaseService.searchArticles(user.tenant_id, {
-            query,
-            approved_only: approvedOnly,
-            created_by: createdBy,
-            page,
-            limit,
+        // Get query parameters
+        const url = new URL(request.url);
+        const searchQuery = url.searchParams.get('q') || '';
+        const status = url.searchParams.get('status') as 'draft' | 'approved' | 'archived' | null;
+        const limit = parseInt(url.searchParams.get('limit') || '50');
+        const offset = parseInt(url.searchParams.get('offset') || '0');
+
+        // Get tenant filter
+        let tenantFilter: string | undefined;
+        if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role)) {
+            tenantFilter = request.headers.get('x-selected-tenant-id') || undefined;
+        } else if (user.role !== UserRole.SUPER_ADMIN) {
+            tenantFilter = user.tenant_id;
+        }
+
+        console.log('🔍 Search parameters:', { searchQuery, status, tenantFilter, limit, offset });
+
+        // Search or get all articles
+        let articles;
+        if (searchQuery) {
+            articles = knowledgeBaseStore.searchArticles(searchQuery, tenantFilter, status || undefined);
+        } else {
+            articles = knowledgeBaseStore.getAllArticles(tenantFilter, status || undefined);
+        }
+
+        // Apply pagination
+        const total = articles.length;
+        const paginatedArticles = articles.slice(offset, offset + limit);
+
+        console.log(`📚 Found ${total} articles, returning ${paginatedArticles.length}`);
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                articles: paginatedArticles,
+                total: total,
+                limit: limit,
+                offset: offset
+            }
         });
 
-        return NextResponse.json(result);
     } catch (error) {
-        console.error('Error searching knowledge base:', error);
-        return NextResponse.json(
-            { error: 'Failed to search knowledge base' },
-            { status: 500 }
-        );
+        console.error('❌ Error searching knowledge base:', error);
+        return NextResponse.json({
+            success: false,
+            error: 'Internal server error: ' + error.message
+        }, { status: 500 });
     }
 }
 
@@ -44,43 +80,78 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        console.log('📚 Knowledge base create API called');
+        
+        // Apply authentication middleware
+        const authResult = await authMiddleware(request);
+        if (!authResult.success) {
+            console.log('❌ Auth failed:', authResult.error);
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication failed'
+            }, { status: 401 });
         }
 
-        // Check if user has help desk analyst role or higher
-        if (!['help_desk_analyst', 'tenant_admin', 'super_admin'].includes(user.role)) {
-            return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+        const user = authResult.user!;
+        console.log('✅ User authenticated:', user.email, user.role);
+
+        // Validate user role - only analysts and admins can create articles
+        const allowedRoles = [UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN];
+        if (!allowedRoles.includes(user.role)) {
+            return NextResponse.json({
+                success: false,
+                error: 'Access denied - insufficient permissions to create knowledge base articles'
+            }, { status: 403 });
         }
 
+        // Parse request body
         const body = await request.json();
-        const { title, problemDescription, resolution, sourceTicketId } = body;
+        const { title, content, category, tags, status } = body;
 
-        if (!title || !problemDescription || !resolution) {
-            return NextResponse.json(
-                { error: 'Title, problem description, and resolution are required' },
-                { status: 400 }
-            );
+        // Validate required fields
+        if (!title || !content) {
+            return NextResponse.json({
+                success: false,
+                error: 'Title and content are required'
+            }, { status: 400 });
         }
 
-        const article = await KnowledgeBaseService.createArticle(
-            user.tenant_id,
-            user.id,
-            {
-                title,
-                problemDescription,
-                resolution,
-                sourceTicketId,
-            }
-        );
+        // Get tenant ID
+        let tenantId: string;
+        if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role)) {
+            tenantId = request.headers.get('x-selected-tenant-id') || user.tenant_id;
+        } else {
+            tenantId = user.tenant_id;
+        }
 
-        return NextResponse.json(article, { status: 201 });
+        // Create article
+        const articleId = `kb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const now = new Date().toISOString();
+
+        const article = knowledgeBaseStore.createArticle({
+            id: articleId,
+            title: title,
+            content: content,
+            category: category || 'general',
+            tags: tags || [],
+            status: status || 'draft',
+            created_at: now,
+            created_by: user.user_id,
+            tenant_id: tenantId
+        });
+
+        console.log('📚 Knowledge base article created:', article.id);
+
+        return NextResponse.json({
+            success: true,
+            data: article
+        });
+
     } catch (error) {
-        console.error('Error creating knowledge article:', error);
-        return NextResponse.json(
-            { error: 'Failed to create knowledge article' },
-            { status: 500 }
-        );
+        console.error('❌ Error creating knowledge base article:', error);
+        return NextResponse.json({
+            success: false,
+            error: 'Internal server error: ' + error.message
+        }, { status: 500 });
     }
 }

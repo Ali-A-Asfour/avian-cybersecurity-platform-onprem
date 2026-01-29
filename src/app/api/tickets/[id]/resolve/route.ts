@@ -1,18 +1,13 @@
 /**
  * Ticket Resolution API Route
  * 
- * Handles ticket resolution with validation, knowledge base creation,
- * and notification handling with comprehensive error recovery.
+ * Handles ticket resolution using file-based ticket store
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
-import { tenantMiddleware } from '@/middleware/tenant.middleware';
-import { TicketService } from '@/services/ticket.service';
-import { ErrorHandler, ApiErrors } from '@/lib/api-errors';
-import { HelpDeskValidator, HelpDeskErrors, HelpDeskBusinessRules } from '@/lib/help-desk/error-handling';
-import { NotificationService } from '@/lib/help-desk/notification-service';
-import { TicketStatus } from '@/types';
+import { UserRole } from '@/types';
+import { ticketStore } from '@/lib/ticket-store';
 
 interface RouteParams {
     params: Promise<{
@@ -28,262 +23,241 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { id: ticketId } = await params;
 
     try {
-        // Apply middleware
+        console.log('🎫 Ticket resolve API called (file-based)');
+        console.log('🔍 Resolving ticket ID:', ticketId);
+        
+        // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success) {
-            throw ApiErrors.unauthorized(authResult.error || 'Authentication failed');
-        }
-
-        const tenantResult = await tenantMiddleware(request, authResult.user!);
-        if (!tenantResult.success) {
-            throw ApiErrors.forbidden(tenantResult.error?.message || 'Access denied');
-        }
-
-        // Get current ticket
-        const currentTicket = await TicketService.getTicketById(tenantResult.tenant!.id, ticketId);
-        if (!currentTicket) {
-            throw HelpDeskErrors.ticketNotFound(ticketId);
-        }
-
-        // Validate role-based access for ticket resolution
-        const { RoleBasedAccessService } = await import('@/services/help-desk/RoleBasedAccessService');
-        const accessValidation = RoleBasedAccessService.validateHelpDeskAccess('resolve_ticket', {
-            userId: authResult.user!.user_id,
-            userRole: authResult.user!.role,
-            tenantId: tenantResult.tenant!.id,
-            ticketCategory: currentTicket.category,
-            ticketAssignee: currentTicket.assignee,
-        });
-
-        if (!accessValidation.allowed) {
+            console.log('❌ Auth failed:', authResult.error);
             return NextResponse.json({
                 success: false,
-                error: {
-                    code: 'FORBIDDEN',
-                    message: accessValidation.reason || 'Access denied',
-                    requiredRole: accessValidation.requiredRole
-                }
+                error: 'Authentication failed'
+            }, { status: 401 });
+        }
+
+        const user = authResult.user!;
+        console.log('✅ User authenticated:', user.email, user.role);
+
+        // Validate user role - only analysts and admins can resolve tickets
+        const allowedRoles = [UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN];
+        if (!allowedRoles.includes(user.role)) {
+            return NextResponse.json({
+                success: false,
+                error: 'Access denied - insufficient permissions to resolve tickets'
             }, { status: 403 });
         }
 
-        // Parse and validate request body
-        const body = await request.json();
-        const validation = HelpDeskValidator.validateTicketResolution(body);
-
-        if (!validation.valid) {
-            throw ApiErrors.validation('Invalid resolution data', { errors: validation.errors });
+        // Get current ticket from file-based store
+        console.log('📊 Looking up ticket in store...');
+        const currentTicket = ticketStore.getTicket(ticketId);
+        
+        if (!currentTicket) {
+            console.log('❌ Ticket not found:', ticketId);
+            console.log('📊 Available ticket IDs:', ticketStore.getAllTickets().map(t => t.id));
+            return NextResponse.json({
+                success: false,
+                error: 'Ticket not found'
+            }, { status: 404 });
         }
 
-        const validatedData = validation.data!;
+        console.log('✅ Ticket found:', currentTicket.title);
 
-        // Validate state transition
-        const stateValidation = HelpDeskBusinessRules.validateStateTransition(
-            currentTicket.status,
-            TicketStatus.RESOLVED,
-            authResult.user!.role,
-            true // has resolution
-        );
-
-        if (!stateValidation.valid) {
-            throw HelpDeskErrors.invalidStateTransition(
-                currentTicket.status,
-                TicketStatus.RESOLVED
-            );
+        // Check tenant access for cross-tenant users
+        if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(user.role)) {
+            const selectedTenantId = request.headers.get('x-selected-tenant-id');
+            if (selectedTenantId && currentTicket.tenant_id !== selectedTenantId) {
+                console.log('❌ Tenant access denied for resolve');
+                return NextResponse.json({
+                    success: false,
+                    error: 'Cannot resolve ticket from different tenant'
+                }, { status: 403 });
+            }
+        } else if (user.role !== UserRole.SUPER_ADMIN && currentTicket.tenant_id !== user.tenant_id) {
+            console.log('❌ User tenant access denied for resolve');
+            return NextResponse.json({
+                success: false,
+                error: 'Cannot resolve ticket from different tenant'
+            }, { status: 403 });
         }
 
         // Check if user can resolve this ticket (must be assigned to them or they must be admin)
-        if (currentTicket.assignee !== authResult.user!.user_id &&
-            !['tenant_admin', 'super_admin'].includes(authResult.user!.role)) {
-            throw ApiErrors.forbidden('You can only resolve tickets assigned to you');
+        if (currentTicket.assigned_to !== user.user_id &&
+            ![UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN].includes(user.role)) {
+            console.log('❌ User not assigned to ticket:', { assigned_to: currentTicket.assigned_to, user_id: user.user_id });
+            return NextResponse.json({
+                success: false,
+                error: 'You can only resolve tickets assigned to you'
+            }, { status: 403 });
         }
 
-        // Update ticket status to resolved using mock database directly
-        const { mockDb } = await import('@/lib/mock-database');
-        const updatedTicket = await mockDb.updateTicket(
-            tenantResult.tenant!.id,
-            ticketId,
-            {
-                status: TicketStatus.RESOLVED,
-                updated_at: new Date(),
-            }
-        );
+        // Parse request body for resolution details
+        const body = await request.json();
+        const { resolution, createKnowledgeArticle } = body;
+
+        if (!resolution || typeof resolution !== 'string') {
+            return NextResponse.json({
+                success: false,
+                error: 'Resolution description is required'
+            }, { status: 400 });
+        }
+
+        console.log('📝 Resolution provided:', resolution.substring(0, 100) + '...');
+        console.log('📚 Create knowledge article:', createKnowledgeArticle);
+
+        // Update ticket status to resolved using file-based store
+        console.log('📝 Resolving ticket...');
+        const updatedTicket = ticketStore.updateTicket(ticketId, {
+            status: 'resolved',
+            updated_at: new Date().toISOString()
+        });
 
         if (!updatedTicket) {
-            throw new Error('Failed to update ticket status');
+            console.log('❌ Failed to resolve ticket');
+            return NextResponse.json({
+                success: false,
+                error: 'Failed to resolve ticket'
+            }, { status: 500 });
         }
 
-        // Add resolution comment using mock database
-        await mockDb.addComment(
-            tenantResult.tenant!.id,
-            ticketId,
-            authResult.user!.user_id,
-            {
-                content: `**Resolution:** ${validatedData.resolution}`,
-                is_internal: false,
-            }
-        );
+        console.log('✅ Ticket resolved successfully');
 
         // Create knowledge base article if requested
         let knowledgeArticle = null;
-        if (validatedData.createKnowledgeArticle) {
+        if (createKnowledgeArticle) {
             try {
-                const { KnowledgeBaseService } = await import('@/services/help-desk/KnowledgeBaseService');
-
-                // Use the ticket title as the KB article title if not provided
-                const articleTitle = validatedData.knowledgeArticleTitle || currentTicket.title;
-
-                knowledgeArticle = await KnowledgeBaseService.createArticleFromTicketResolution(
-                    tenantResult.tenant!.id,
+                const { knowledgeBaseStore } = await import('@/lib/knowledge-base-store');
+                
+                knowledgeArticle = knowledgeBaseStore.createArticleFromTicket(
                     ticketId,
-                    authResult.user!.user_id,
-                    articleTitle,
+                    currentTicket.title,
                     currentTicket.description,
-                    validatedData.resolution
+                    resolution,
+                    user.user_id,
+                    currentTicket.tenant_id
                 );
-
-                console.log(`Knowledge base article created: ${knowledgeArticle.id}`);
+                
+                console.log('📚 Knowledge base article created:', knowledgeArticle.id);
             } catch (kbError) {
-                // Don't fail the resolution if KB creation fails
                 console.error('Failed to create knowledge base article:', kbError);
-                // Log the error but continue with successful resolution
+                // Don't fail the resolution if KB creation fails
             }
         }
 
-        // Send resolution notification (don't fail if notification fails)
-        try {
-            await NotificationService.sendTicketResolvedNotification({
-                ticketId: updatedTicket.id,
-                ticketTitle: updatedTicket.title,
-                ticketStatus: updatedTicket.status,
-                assignee: authResult.user!.user_id,
-                requester: updatedTicket.requester,
-                requesterEmail: updatedTicket.requester, // TODO: Get actual email
-                tenantName: tenantResult.tenant!.id || 'Help Desk',
-                resolution: validatedData.resolution,
-                deviceId: updatedTicket.device_name || undefined,
-            });
-        } catch (notificationError) {
-            console.warn('Failed to send resolution notification:', notificationError);
-            // Continue with success response even if notification fails
-        }
-
-        const response = {
-            ticket: updatedTicket,
-            resolution: validatedData.resolution,
-            knowledgeArticle,
-            message: 'Ticket resolved successfully',
-        };
-
-        return ErrorHandler.success(response);
+        return NextResponse.json({
+            success: true,
+            data: {
+                ticket: updatedTicket,
+                resolution: resolution,
+                knowledgeArticle: knowledgeArticle,
+                message: 'Ticket resolved successfully'
+            }
+        });
 
     } catch (error) {
-        const url = new URL(request.url);
-        return ErrorHandler.handleError(error, url.pathname);
+        console.error('❌ Error resolving ticket:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        return NextResponse.json({
+            success: false,
+            error: 'Internal server error: ' + error.message
+        }, { status: 500 });
     }
 }
 
 /**
  * Reopen a resolved ticket
- * POST /api/tickets/[id]/reopen
+ * PUT /api/tickets/[id]/resolve (reopen)
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id: ticketId } = await params;
 
     try {
-        // Apply middleware
+        console.log('🎫 Ticket reopen API called (file-based)');
+        console.log('🔍 Reopening ticket ID:', ticketId);
+        
+        // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success) {
-            throw ApiErrors.unauthorized(authResult.error || 'Authentication failed');
+            console.log('❌ Auth failed:', authResult.error);
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication failed'
+            }, { status: 401 });
         }
 
-        const tenantResult = await tenantMiddleware(request, authResult.user!);
-        if (!tenantResult.success) {
-            throw ApiErrors.forbidden(tenantResult.error?.message || 'Access denied');
-        }
+        const user = authResult.user!;
+        console.log('✅ User authenticated:', user.email, user.role);
 
-        // Get current ticket
-        const currentTicket = await TicketService.getTicketById(tenantResult.tenant!.id, ticketId);
+        // Get current ticket from file-based store
+        const currentTicket = ticketStore.getTicket(ticketId);
+        
         if (!currentTicket) {
-            throw HelpDeskErrors.ticketNotFound(ticketId);
+            console.log('❌ Ticket not found:', ticketId);
+            return NextResponse.json({
+                success: false,
+                error: 'Ticket not found'
+            }, { status: 404 });
         }
+
+        console.log('✅ Ticket found:', currentTicket.title);
 
         // Only allow reopening resolved tickets
-        if (currentTicket.status !== TicketStatus.RESOLVED) {
-            throw HelpDeskErrors.invalidStateTransition(
-                currentTicket.status,
-                TicketStatus.IN_PROGRESS
-            );
+        if (currentTicket.status !== 'resolved') {
+            console.log('❌ Invalid state transition:', { current: currentTicket.status, target: 'in_progress' });
+            return NextResponse.json({
+                success: false,
+                error: 'Can only reopen resolved tickets'
+            }, { status: 400 });
         }
 
         // Parse request body for optional reason
         const body = await request.json().catch(() => ({}));
         const reason = body.reason || 'Ticket reopened by user';
 
-        // Validate reason if provided
-        if (reason && typeof reason !== 'string') {
-            throw ApiErrors.validation('Reason must be a string');
-        }
-
-        if (reason && reason.length > 500) {
-            throw ApiErrors.validation('Reason must be less than 500 characters');
-        }
+        console.log('📝 Reopen reason:', reason);
 
         // Determine new status based on whether ticket was previously assigned
-        const newStatus = currentTicket.assignee && currentTicket.assignee !== 'Unassigned'
-            ? TicketStatus.IN_PROGRESS
-            : TicketStatus.NEW;
+        const newStatus = currentTicket.assigned_to ? 'in_progress' : 'new';
 
-        // Update ticket status
-        const updatedTicket = await TicketService.updateTicket(
-            tenantResult.tenant!.id,
-            ticketId,
-            {
-                status: newStatus,
-            },
-            authResult.user!.user_id,
-            authResult.user!.role
-        );
+        // Update ticket status using file-based store
+        console.log('📝 Reopening ticket...');
+        const updatedTicket = ticketStore.updateTicket(ticketId, {
+            status: newStatus,
+            updated_at: new Date().toISOString()
+        });
 
         if (!updatedTicket) {
-            throw new Error('Failed to reopen ticket');
+            console.log('❌ Failed to reopen ticket');
+            return NextResponse.json({
+                success: false,
+                error: 'Failed to reopen ticket'
+            }, { status: 500 });
         }
 
-        // Add reopening comment
-        await TicketService.addComment(
-            tenantResult.tenant!.id,
-            ticketId,
-            authResult.user!.user_id,
-            {
-                content: `**Ticket Reopened:** ${reason}`,
-                is_internal: false,
-            }
-        );
+        console.log('✅ Ticket reopened successfully');
 
-        // Send notification to assignee if ticket was assigned
-        if (currentTicket.assignee && currentTicket.assignee !== 'Unassigned') {
-            try {
-                await NotificationService.sendTicketAssignedNotification({
-                    ticketId: updatedTicket.id,
-                    ticketTitle: updatedTicket.title,
-                    ticketStatus: updatedTicket.status,
-                    assignee: currentTicket.assignee,
-                    requester: updatedTicket.requester,
-                    requesterEmail: updatedTicket.requester, // TODO: Get actual email
-                    tenantName: tenantResult.tenant!.id || 'Help Desk',
-                    deviceId: updatedTicket.device_name || undefined,
-                });
-            } catch (notificationError) {
-                console.warn('Failed to send reopening notification:', notificationError);
+        return NextResponse.json({
+            success: true,
+            data: {
+                ticket: updatedTicket,
+                message: 'Ticket reopened successfully'
             }
-        }
-
-        return ErrorHandler.success({
-            ticket: updatedTicket,
-            message: 'Ticket reopened successfully',
         });
 
     } catch (error) {
-        const url = new URL(request.url);
-        return ErrorHandler.handleError(error, url.pathname);
+        console.error('❌ Error reopening ticket:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        return NextResponse.json({
+            success: false,
+            error: 'Internal server error: ' + error.message
+        }, { status: 500 });
     }
 }
