@@ -1,98 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TicketService } from '@/services/ticket.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
-import { tenantMiddleware } from '@/middleware/tenant.middleware';
-import { ApiResponse } from '@/types';
-import { ErrorHandler, ApiErrors } from '@/lib/api-errors';
-import { HelpDeskErrors, HelpDeskBusinessRules } from '@/lib/help-desk/error-handling';
-
-interface RouteParams {
-    params: Promise<{
-        id: string;
-    }>;
-}
+import { UserRole } from '@/types';
+import { ticketStore } from '@/lib/ticket-store';
 
 /**
- * Self-assign a ticket to the current user
  * POST /api/tickets/[id]/assign
+ * Assign a ticket to a user
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
-    const { id: ticketId } = await params;
-
+export async function POST(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+) {
     try {
-        // Apply middleware
+        // Apply authentication middleware
         const authResult = await authMiddleware(request);
         if (!authResult.success) {
-            throw ApiErrors.unauthorized(authResult.error || 'Authentication failed');
+            return NextResponse.json({
+                success: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: authResult.error || 'Authentication failed'
+                }
+            }, { status: 401 });
         }
 
-        const tenantResult = await tenantMiddleware(request, authResult.user!);
-        if (!tenantResult.success) {
-            throw ApiErrors.forbidden(tenantResult.error?.message || 'Access denied');
-        }
+        const user = authResult.user!;
+        const ticketId = params.id;
 
-        // Get current ticket to validate it exists
-        const currentTicket = await TicketService.getTicketById(tenantResult.tenant!.id, ticketId);
-        if (!currentTicket) {
-            throw HelpDeskErrors.ticketNotFound(ticketId);
-        }
-
-        // Validate role-based access for ticket assignment
-        const { RoleBasedAccessService } = await import('@/services/help-desk/RoleBasedAccessService');
-        const accessValidation = RoleBasedAccessService.validateHelpDeskAccess('assign_ticket', {
-            userId: authResult.user!.user_id,
-            userRole: authResult.user!.role,
-            tenantId: tenantResult.tenant!.id,
-            ticketCategory: currentTicket.category,
-            ticketAssignee: currentTicket.assignee,
-        });
-
-        if (!accessValidation.allowed) {
+        // Validate user role - only analysts and admins can assign tickets
+        const allowedRoles = [UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST, UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN];
+        if (!allowedRoles.includes(user.role)) {
             return NextResponse.json({
                 success: false,
                 error: {
                     code: 'FORBIDDEN',
-                    message: accessValidation.reason || 'Access denied',
-                    requiredRole: accessValidation.requiredRole
+                    message: 'Access denied - insufficient permissions to assign tickets'
                 }
             }, { status: 403 });
         }
 
-        // Validate ticket assignment using business rules
-        const assignmentValidation = HelpDeskBusinessRules.validateTicketAssignment(
-            currentTicket,
-            authResult.user!.user_id,
-            authResult.user!.role
-        );
+        // Parse request body
+        const body = await request.json();
+        const { assignee } = body;
 
-        if (!assignmentValidation.valid) {
-            if (assignmentValidation.error?.includes('already assigned')) {
-                throw HelpDeskErrors.ticketAlreadyAssigned(currentTicket.assignee || 'unknown');
-            } else {
-                throw HelpDeskErrors.queueAccessDenied(
-                    authResult.user!.role,
-                    currentTicket.category
-                );
+        if (!assignee) {
+            return NextResponse.json({
+                success: false,
+                error: {
+                    code: 'VALIDATION_ERROR',
+                    message: 'Assignee is required'
+                }
+            }, { status: 400 });
+        }
+
+        console.log(`🎫 Assigning ticket ${ticketId} to user ${assignee}`);
+
+        // Get the ticket first to verify it exists
+        const ticket = ticketStore.getTicket(ticketId);
+        if (!ticket) {
+            return NextResponse.json({
+                success: false,
+                error: {
+                    code: 'NOT_FOUND',
+                    message: 'Ticket not found'
+                }
+            }, { status: 404 });
+        }
+
+        // For cross-tenant users, check if they can access this ticket's tenant
+        if ([UserRole.SECURITY_ANALYST, UserRole.IT_HELPDESK_ANALYST].includes(user.role)) {
+            const selectedTenantId = request.headers.get('x-selected-tenant-id');
+            if (selectedTenantId && ticket.tenant_id !== selectedTenantId) {
+                return NextResponse.json({
+                    success: false,
+                    error: {
+                        code: 'FORBIDDEN',
+                        message: 'Cannot assign ticket from different tenant'
+                    }
+                }, { status: 403 });
             }
+        } else if (user.role !== UserRole.SUPER_ADMIN && ticket.tenant_id !== user.tenant_id) {
+            // Regular users can only assign tickets from their own tenant
+            return NextResponse.json({
+                success: false,
+                error: {
+                    code: 'FORBIDDEN',
+                    message: 'Cannot assign ticket from different tenant'
+                }
+            }, { status: 403 });
         }
 
-        // Self-assign the ticket
-        const updatedTicket = await TicketService.selfAssignTicket(
-            tenantResult.tenant!.id,
-            ticketId,
-            authResult.user!.user_id,
-            authResult.user!.role
-        );
-
+        // Assign the ticket
+        const updatedTicket = ticketStore.assignTicket(ticketId, assignee);
+        
         if (!updatedTicket) {
-            throw new Error('Failed to assign ticket');
+            return NextResponse.json({
+                success: false,
+                error: {
+                    code: 'INTERNAL_ERROR',
+                    message: 'Failed to assign ticket'
+                }
+            }, { status: 500 });
         }
 
-        return ErrorHandler.success(updatedTicket, {
-            message: 'Ticket successfully assigned to you'
+        console.log(`✅ Ticket ${ticketId} successfully assigned to ${assignee}`);
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                ticket: updatedTicket,
+                message: 'Ticket assigned successfully'
+            }
         });
+
     } catch (error) {
-        const url = new URL(request.url);
-        return ErrorHandler.handleError(error, url.pathname);
+        console.error('Error assigning ticket:', error);
+        return NextResponse.json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Failed to assign ticket'
+            }
+        }, { status: 500 });
     }
 }

@@ -103,8 +103,21 @@ export function UnassignedTicketQueue({
         try {
             setAssigningTickets(prev => new Set(prev).add(ticketId));
 
-            const response = await api.post(`/api/tickets/${ticketId}/assign`, {
+            // Prepare headers for cross-tenant users
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json'
+            };
+            
+            // For cross-tenant users, send selected tenant in headers
+            if ([UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(userRole) && selectedTenant) {
+                headers['x-selected-tenant-id'] = selectedTenant.id;
+            }
+
+            const response = await api.post(`/api/tickets/assign-direct`, {
+                ticketId: ticketId,
                 assignee: userId,
+            }, {
+                headers
             });
 
             if (!response.ok) {

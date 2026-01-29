@@ -6,7 +6,7 @@ import { ticketStore } from '@/lib/ticket-store';
 /**
  * GET /api/help-desk/queue/my-tickets
  * Get personal "My Tickets" queue for help desk analysts
- * Returns empty results since mock tickets have been removed
+ * Uses file-based ticket store for persistence
  */
 export async function GET(request: NextRequest) {
     try {
@@ -46,23 +46,23 @@ export async function GET(request: NextRequest) {
         let tenantFilter: string | undefined;
         
         if ([UserRole.SECURITY_ANALYST, UserRole.IT_HELPDESK_ANALYST].includes(user.role)) {
-            // Cross-tenant users: use selected tenant from header
+            // Cross-tenant users: use selected tenant from header, or undefined to see all tenants
             const selectedTenantId = request.headers.get('x-selected-tenant-id');
             tenantFilter = selectedTenantId || undefined;
-            console.log('My tickets - Cross-tenant user, selected tenant:', selectedTenantId);
+            console.log('My tickets - Cross-tenant user, selected tenant:', selectedTenantId || 'ALL TENANTS');
         } else {
             // Regular users: use their own tenant
             tenantFilter = user.tenant_id;
             console.log('My tickets - Regular user, using own tenant:', user.tenant_id);
         }
 
-        // Get tickets for this user
+        // Get tickets for this user using file-based ticket store
         let tickets = [];
         
         console.log('My tickets - User ID:', user.user_id);
         console.log('My tickets - User role:', user.role);
         console.log('My tickets - Final tenant filter:', tenantFilter);
-        console.log('My tickets - Total tickets in store:', ticketStore.getCount());
+        console.log('My tickets - Total tickets in store:', ticketStore.getAllTickets().length);
         
         if (user.role === UserRole.USER || user.role === UserRole.SUPER_ADMIN) {
             // Regular users and super admins see tickets they created
