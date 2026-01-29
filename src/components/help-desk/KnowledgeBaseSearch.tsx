@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { KnowledgeArticle } from '../../services/help-desk/KnowledgeBaseService';
+import { Search, BookOpen, Clock, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { KnowledgeArticle as BaseKnowledgeArticle } from '../../services/help-desk/KnowledgeBaseService';
 import { api } from '@/lib/api-client';
+
+// Extended interface to support both field names for compatibility
+interface KnowledgeArticle extends BaseKnowledgeArticle {
+    ticket_id?: string; // For compatibility with knowledge base store
+}
 
 interface KnowledgeBaseSearchProps {
     onArticleSelect?: (article: KnowledgeArticle) => void;
@@ -51,8 +56,17 @@ export function KnowledgeBaseSearch({
                 throw new Error('Failed to search knowledge base');
             }
 
-            const result: SearchResult = await response.json();
-            setSearchResults(result);
+            const apiResult = await response.json();
+            
+            // Handle API response structure
+            if (apiResult.success && apiResult.data) {
+                setSearchResults({
+                    articles: apiResult.data.articles || [],
+                    total: apiResult.data.total || 0
+                });
+            } else {
+                throw new Error(apiResult.error || 'Failed to search knowledge base');
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Search failed');
             setSearchResults({ articles: [], total: 0 });
@@ -81,6 +95,11 @@ export function KnowledgeBaseSearch({
             month: 'short',
             day: 'numeric',
         });
+    };
+
+    const handleViewTicket = (ticketId: string, event: React.MouseEvent) => {
+        event.stopPropagation(); // Prevent article selection
+        window.location.href = `/help-desk/tickets/${ticketId}`;
     };
 
     const totalPages = Math.ceil(searchResults.total / 10);
@@ -157,11 +176,18 @@ export function KnowledgeBaseSearch({
                                             <Clock className="h-3 w-3" />
                                             <span>Created {formatDate(article.created_at)}</span>
                                         </div>
-                                        {article.source_ticket_id && (
-                                            <span className="bg-gray-100 px-2 py-1 rounded text-xs">
-                                                From Ticket
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {(article.source_ticket_id || article.ticket_id) && (
+                                                <button
+                                                    onClick={(e) => handleViewTicket((article.source_ticket_id || article.ticket_id)!, e)}
+                                                    className="flex items-center gap-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded text-xs transition-colors"
+                                                    title="View original ticket"
+                                                >
+                                                    <Eye className="h-3 w-3" />
+                                                    View Ticket
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}

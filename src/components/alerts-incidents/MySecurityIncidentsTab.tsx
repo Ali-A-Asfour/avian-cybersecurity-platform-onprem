@@ -272,7 +272,12 @@ export function MySecurityIncidentsTab({ tenantId, className, demoMode = false }
                 ? { summary: input.summary }
                 : { justification: input.justification };
 
-            const response = await api.post(`/api/alerts-incidents/incidents/${input.incidentId}/${endpoint}`, body);
+            // Use demo endpoint if in demo mode
+            const apiEndpoint = demoMode
+                ? `/api/alerts-incidents/demo/incidents/${input.incidentId}/${endpoint}`
+                : `/api/alerts-incidents/incidents/${input.incidentId}/${endpoint}`;
+
+            const response = await api.post(apiEndpoint, body);
 
             const result = await response.json();
 

@@ -1,0 +1,100 @@
+[
+  [
+    "comment-test-001-1",
+    {
+      "id": "comment-test-001-1",
+      "ticket_id": "ticket-closed-test-001",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "I've checked the user's Outlook configuration and found the issue with the IMAP settings.",
+      "is_internal": false,
+      "created_at": "2026-01-27T16:00:00.000Z",
+      "updated_at": "2026-01-27T16:00:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ],
+  [
+    "comment-test-001-2",
+    {
+      "id": "comment-test-001-2",
+      "ticket_id": "ticket-closed-test-001",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "**Ticket Resolved**\n\nUpdated the Outlook IMAP settings to use the correct server configuration. User can now access email successfully.",
+      "is_internal": false,
+      "created_at": "2026-01-28T14:30:00.000Z",
+      "updated_at": "2026-01-28T14:30:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ],
+  [
+    "comment-test-002-1",
+    {
+      "id": "comment-test-002-1",
+      "ticket_id": "ticket-closed-test-002",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "Verified user identity via phone call. Proceeding with password reset.",
+      "is_internal": true,
+      "created_at": "2026-01-27T17:00:00.000Z",
+      "updated_at": "2026-01-27T17:00:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ],
+  [
+    "comment-test-002-2",
+    {
+      "id": "comment-test-002-2",
+      "ticket_id": "ticket-closed-test-002",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "**Ticket Resolved**\n\nPassword has been reset successfully. User confirmed they can log in with the new temporary password.",
+      "is_internal": false,
+      "created_at": "2026-01-29T14:45:00.000Z",
+      "updated_at": "2026-01-29T14:45:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ],
+  [
+    "comment-test-003-1",
+    {
+      "id": "comment-test-003-1",
+      "ticket_id": "ticket-closed-test-003",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "Checked the printer status remotely. Print spooler service appears to be stuck.",
+      "is_internal": false,
+      "created_at": "2026-01-28T10:00:00.000Z",
+      "updated_at": "2026-01-28T10:00:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ],
+  [
+    "comment-test-003-2",
+    {
+      "id": "comment-test-003-2",
+      "ticket_id": "ticket-closed-test-003",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "Restarted the print spooler service on the server. Testing print functionality now.",
+      "is_internal": false,
+      "created_at": "2026-01-28T10:15:00.000Z",
+      "updated_at": "2026-01-28T10:15:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ],
+  [
+    "comment-test-003-3",
+    {
+      "id": "comment-test-003-3",
+      "ticket_id": "ticket-closed-test-003",
+      "user_id": "679f8c1c-9493-4ba2-8314-7262f06243c5",
+      "content": "**Ticket Resolved**\n\nPrint spooler service restart resolved the issue. Printer is now responding normally and test pages print successfully.",
+      "is_internal": false,
+      "created_at": "2026-01-29T14:50:00.000Z",
+      "updated_at": "2026-01-29T14:50:00.000Z",
+      "author_name": "h@tcc.com",
+      "author_email": "h@tcc.com"
+    }
+  ]
+]
