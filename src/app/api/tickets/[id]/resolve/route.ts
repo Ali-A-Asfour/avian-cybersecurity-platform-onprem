@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { UserRole } from '@/types';
 import { ticketStore } from '@/lib/ticket-store';
+import { commentStore } from '@/lib/comment-store';
 
 interface RouteParams {
     params: Promise<{
@@ -121,6 +122,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
 
         console.log('✅ Ticket resolved successfully');
+
+        // Create a resolution comment
+        try {
+            const resolutionComment = commentStore.createComment({
+                id: `comment-resolution-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                ticket_id: ticketId,
+                user_id: user.user_id,
+                content: `**Ticket Resolved**\n\n${resolution}`,
+                is_internal: false,
+                created_at: new Date().toISOString(),
+                author_name: user.email,
+                author_email: user.email
+            });
+            console.log('💬 Resolution comment created:', resolutionComment.id);
+        } catch (commentError) {
+            console.error('Failed to create resolution comment:', commentError);
+            // Don't fail the resolution if comment creation fails
+        }
 
         // Create knowledge base article if requested
         let knowledgeArticle = null;

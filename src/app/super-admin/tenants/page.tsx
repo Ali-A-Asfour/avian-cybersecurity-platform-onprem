@@ -47,7 +47,8 @@ export default function TenantsPage() {
   const loadTenants = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/super-admin/tenants', {
+      // Only show active tenants by default
+      const response = await fetch('/api/super-admin/tenants?is_active=true', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         },
@@ -91,8 +92,8 @@ export default function TenantsPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          // Remove tenant from the list
-          setTenants(prev => prev.filter(t => t.id !== tenantId));
+          // Reload the tenant list to reflect the deletion (soft delete)
+          await loadTenants();
           setSuccessMessage(`Tenant "${tenantName}" has been deleted successfully.`);
           
           // Clear success message after 5 seconds

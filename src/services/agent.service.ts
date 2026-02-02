@@ -21,7 +21,7 @@ import {
   ComplianceStatus
 } from '@/types';
 // import { db } from '@/lib/database';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { assetService } from './asset.service';
 import { AlertService } from './alert.service';
 

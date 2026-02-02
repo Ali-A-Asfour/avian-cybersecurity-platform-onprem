@@ -1,0 +1,68 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: Security Alert: Suspicious Activity Detected
+Date: Mon, 08 Dec 2025 08:30:15 -0500
+Message-ID: <security-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Security Alert
+=========================
+
+Alert Type: Suspicious Network Activity
+Severity: INFO
+Timestamp: 2025-12-08 08:30:15 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Activity Details:
+-----------------
+Event Type: Port Scan Detected
+Detection Method: Traffic Pattern Analysis
+
+Connection Details:
+-------------------
+Source IP: 203.0.113.78 (External)
+Source Country: Unknown
+Destination IP: 198.51.100.10 (Public WAN IP)
+Scan Type: TCP SYN Scan
+Ports Scanned: 22, 23, 80, 443, 3389, 8080
+Duration: 45 seconds
+Packets: 156
+
+Action Taken:
+-------------
+- Scan detected and logged
+- No services exposed on scanned ports
+- Source IP monitored for additional activity
+- Rate limiting applied to source
+
+Analysis:
+---------
+This appears to be an automated port scan, likely from a bot or
+scanning tool. No services were exposed, and no vulnerabilities
+were exploited. This is routine internet background noise.
+
+Risk Assessment:
+----------------
+Risk Level: LOW
+Impact: None (no services exposed)
+Likelihood of Attack: Low
+Recommended Action: Monitor only
+
+Recommendations:
+----------------
+1. Continue monitoring for repeated scans
+2. Verify no unnecessary services are exposed
+3. Ensure firewall rules are properly configured
+4. Consider geo-blocking if scans persist
+5. Review WAN access policies
+
+No immediate action required. This is informational only.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

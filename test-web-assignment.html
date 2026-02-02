@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Ticket Assignment</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .ticket { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .button { background: #007cba; color: white; padding: 10px 15px; border: none; border-radius: 3px; cursor: pointer; }
+        .button:hover { background: #005a87; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>🎫 Ticket Assignment Test</h1>
+    
+    <div id="status"></div>
+    
+    <div id="tickets"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        
+        async function loadTickets() {
+            try {
+                document.getElementById('status').innerHTML = '<div class="loading">Loading tickets...</div>';
+                
+                const response = await fetch(`${API_BASE}/test-db`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTickets(data.data.tickets);
+                    document.getElementById('status').innerHTML = '<div class="success">✅ Tickets loaded successfully</div>';
+                } else {
+                    document.getElementById('status').innerHTML = `<div class="error">❌ Failed to load tickets: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function displayTickets(tickets) {
+            const container = document.getElementById('tickets');
+            container.innerHTML = '';
+            
+            tickets.forEach(ticket => {
+                const ticketDiv = document.createElement('div');
+                ticketDiv.className = 'ticket';
+                ticketDiv.innerHTML = `
+                    <h3>${ticket.title}</h3>
+                    <p><strong>ID:</strong> ${ticket.id}</p>
+                    <p><strong>Status:</strong> ${ticket.status}</p>
+                    <p><strong>Assigned to:</strong> ${ticket.assigned_to || 'Unassigned'}</p>
+                    ${!ticket.assigned_to ? `
+                        <button class="button" onclick="assignTicket('${ticket.id}')">
+                            Assign to me
+                        </button>
+                    ` : `
+                        <span class="success">✅ Already assigned</span>
+                    `}
+                `;
+                container.appendChild(ticketDiv);
+            });
+        }
+        
+        async function assignTicket(ticketId) {
+            try {
+                document.getElementById('status').innerHTML = '<div class="loading">Assigning ticket...</div>';
+                
+                const response = await fetch(`${API_BASE}/tickets/assign-simple`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ticketId: ticketId,
+                        assignee: '4' // Helpdesk user ID
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('status').innerHTML = '<div class="success">✅ Ticket assigned successfully!</div>';
+                    loadTickets(); // Reload to show updated status
+                } else {
+                    document.getElementById('status').innerHTML = `<div class="error">❌ Assignment failed: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Load tickets on page load
+        loadTickets();
+    </script>
+</body>
+</html>

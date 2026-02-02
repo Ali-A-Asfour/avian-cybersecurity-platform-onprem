@@ -1,197 +1,140 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TicketService, CreateCommentRequest } from '@/services/ticket.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
-import { tenantMiddleware } from '@/middleware/tenant.middleware';
-import { ApiResponse, TicketStatus, UserRole } from '@/types';
-import { NotificationService } from '@/lib/help-desk/notification-service';
+import { UserRole } from '@/types';
+import { commentStore } from '@/lib/comment-store';
+import { ticketStore } from '@/lib/ticket-store';
 
 interface RouteParams {
-  params: Promise<{
-    id: string;
-  }>;
+    params: Promise<{
+        id: string;
+    }>;
 }
 
+/**
+ * GET /api/tickets/[id]/comments
+ * Get comments for a ticket
+ */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params;
-  try {
-    // Apply middleware
-    const authResult = await authMiddleware(request);
-    if (!authResult.success) {
-      return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: authResult.error || "Authentication failed" } }, { status: 401 });
+    const { id: ticketId } = await params;
+
+    try {
+        console.log('💬 Get ticket comments API called (file-based)');
+        console.log('🔍 Ticket ID:', ticketId);
+        
+        // Apply authentication middleware
+        const authResult = await authMiddleware(request);
+        if (!authResult.success) {
+            console.log('❌ Auth failed:', authResult.error);
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication failed'
+            }, { status: 401 });
+        }
+
+        const user = authResult.user!;
+        console.log('✅ User authenticated:', user.email, user.role);
+
+        // Verify ticket exists
+        const ticket = ticketStore.getTicket(ticketId);
+        if (!ticket) {
+            console.log('❌ Ticket not found:', ticketId);
+            return NextResponse.json({
+                success: false,
+                error: 'Ticket not found'
+            }, { status: 404 });
+        }
+
+        // Get comments from comment store
+        const comments = commentStore.getCommentsByTicket(ticketId);
+        console.log(`📋 Found ${comments.length} comments for ticket ${ticketId}`);
+
+        return NextResponse.json({
+            success: true,
+            data: comments
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching ticket comments:', error);
+        return NextResponse.json({
+            success: false,
+            error: 'Internal server error: ' + error.message
+        }, { status: 500 });
     }
-
-    const tenantResult = await tenantMiddleware(request, authResult.user!);
-    if (!tenantResult.success) {
-      return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: tenantResult.error?.message || "Access denied" } }, { status: 403 });
-    }
-
-    // Verify ticket exists
-    const ticket = await TicketService.getTicketById(tenantResult.tenant!.id, id);
-    if (!ticket) {
-      const response: ApiResponse = {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Ticket not found',
-        },
-      };
-      return NextResponse.json(response, { status: 404 });
-    }
-
-    const comments = await TicketService.getComments(tenantResult.tenant!.id, id);
-
-    const response: ApiResponse = {
-      success: true,
-      data: comments,
-    };
-
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error('Error fetching ticket comments:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to fetch ticket comments',
-      },
-    };
-    return NextResponse.json(response, { status: 500 });
-  }
 }
 
+/**
+ * POST /api/tickets/[id]/comments
+ * Add a comment to a ticket
+ */
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params;
-  try {
-    // Apply middleware
-    const authResult = await authMiddleware(request);
-    if (!authResult.success) {
-      return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: authResult.error || "Authentication failed" } }, { status: 401 });
-    }
+    const { id: ticketId } = await params;
 
-    const tenantResult = await tenantMiddleware(request, authResult.user!);
-    if (!tenantResult.success) {
-      return NextResponse.json({ success: false, error: { code: "FORBIDDEN", message: tenantResult.error?.message || "Access denied" } }, { status: 403 });
-    }
-
-    // Verify ticket exists
-    const ticket = await TicketService.getTicketById(tenantResult.tenant!.id, id);
-    if (!ticket) {
-      const response: ApiResponse = {
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Ticket not found',
-        },
-      };
-      return NextResponse.json(response, { status: 404 });
-    }
-
-    const body: CreateCommentRequest = await request.json();
-
-    // Validate required fields
-    if (!body.content) {
-      const response: ApiResponse = {
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Comment content is required',
-        },
-      };
-      return NextResponse.json(response, { status: 400 });
-    }
-
-    // Add the comment
-    const comment = await TicketService.addComment(
-      tenantResult.tenant!.id,
-      id,
-      authResult.user!.user_id,
-      body
-    );
-
-    // Implement automatic reopening for resolved tickets
-    // Requirements 3.4: WHEN an end user or tenant admin replies to a resolved ticket, 
-    // THE Help_Desk_System SHALL automatically reopen the ticket
-    let updatedTicket = ticket;
-    if (ticket.status === TicketStatus.RESOLVED) {
-      // Check if the commenter is an end user or tenant admin (not a help desk analyst)
-      const isEndUserOrTenantAdmin = authResult.user!.role === UserRole.USER ||
-        authResult.user!.role === UserRole.TENANT_ADMIN ||
-        authResult.user!.user_id === ticket.requester;
-
-      if (isEndUserOrTenantAdmin) {
-        try {
-          // Determine new status based on whether ticket was previously assigned
-          const newStatus = ticket.assignee && ticket.assignee !== 'Unassigned'
-            ? TicketStatus.IN_PROGRESS
-            : TicketStatus.NEW;
-
-          // Reopen the ticket
-          updatedTicket = await TicketService.updateTicket(
-            tenantResult.tenant!.id,
-            id,
-            { status: newStatus },
-            authResult.user!.user_id,
-            authResult.user!.role
-          );
-
-          if (updatedTicket) {
-            // Add system comment about reopening
-            await TicketService.addComment(
-              tenantResult.tenant!.id,
-              id,
-              'system',
-              {
-                content: `**Ticket Automatically Reopened:** User replied to resolved ticket`,
-                is_internal: false,
-              }
-            );
-
-            // Send notification to assignee if ticket was assigned
-            if (ticket.assignee && ticket.assignee !== 'Unassigned') {
-              try {
-                await NotificationService.sendTicketAssignedNotification({
-                  ticketId: updatedTicket.id,
-                  ticketTitle: updatedTicket.title,
-                  ticketStatus: updatedTicket.status,
-                  assignee: ticket.assignee,
-                  requester: updatedTicket.requester,
-                  requesterEmail: updatedTicket.requester, // TODO: Get actual email
-                  tenantName: tenantResult.tenant!.name || 'Help Desk',
-                  deviceId: updatedTicket.device_id,
-                });
-              } catch (notificationError) {
-                console.warn('Failed to send reopening notification:', notificationError);
-              }
-            }
-
-            console.log(`Ticket ${id} automatically reopened due to user reply`);
-          }
-        } catch (reopenError) {
-          console.error('Failed to automatically reopen ticket:', reopenError);
-          // Don't fail the comment creation if reopening fails
+    try {
+        console.log('💬 Add ticket comment API called (file-based)');
+        console.log('🔍 Ticket ID:', ticketId);
+        
+        // Apply authentication middleware
+        const authResult = await authMiddleware(request);
+        if (!authResult.success) {
+            console.log('❌ Auth failed:', authResult.error);
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication failed'
+            }, { status: 401 });
         }
-      }
+
+        const user = authResult.user!;
+        console.log('✅ User authenticated:', user.email, user.role);
+
+        // Verify ticket exists
+        const ticket = ticketStore.getTicket(ticketId);
+        if (!ticket) {
+            console.log('❌ Ticket not found:', ticketId);
+            return NextResponse.json({
+                success: false,
+                error: 'Ticket not found'
+            }, { status: 404 });
+        }
+
+        // Parse request body
+        const body = await request.json();
+        const { content, is_internal } = body;
+
+        if (!content || typeof content !== 'string' || !content.trim()) {
+            return NextResponse.json({
+                success: false,
+                error: 'Comment content is required'
+            }, { status: 400 });
+        }
+
+        console.log('📝 Comment content:', content.substring(0, 100) + '...');
+        console.log('🔒 Is internal:', is_internal);
+
+        // Create comment using comment store
+        const comment = commentStore.createComment({
+            id: `comment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            ticket_id: ticketId,
+            user_id: user.user_id,
+            content: content.trim(),
+            is_internal: is_internal || false,
+            created_at: new Date().toISOString(),
+            author_name: user.email, // Use email as name for now
+            author_email: user.email
+        });
+
+        console.log('✅ Comment created:', comment.id);
+
+        return NextResponse.json({
+            success: true,
+            data: comment,
+            message: 'Comment added successfully'
+        });
+
+    } catch (error) {
+        console.error('❌ Error adding ticket comment:', error);
+        return NextResponse.json({
+            success: false,
+            error: 'Internal server error: ' + error.message
+        }, { status: 500 });
     }
-
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        comment,
-        ticket: updatedTicket, // Include updated ticket if it was reopened
-        automaticallyReopened: ticket.status === TicketStatus.RESOLVED && updatedTicket?.status !== TicketStatus.RESOLVED
-      },
-    };
-
-    return NextResponse.json(response, { status: 201 });
-  } catch (error) {
-    console.error('Error creating ticket comment:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to create ticket comment',
-      },
-    };
-    return NextResponse.json(response, { status: 500 });
-  }
 }

@@ -1,0 +1,394 @@
+import React, { lazy, ComponentType } from 'react';
+
+/**
+ * Code splitting utilities for lazy loading components
+ */
+export class CodeSplitting {
+  /**
+   * Create lazy-loaded component with loading fallback
+   */
+  static createLazyComponent<T extends ComponentType<any>>(
+    importFn: () => Promise<{ default: T }>,
+    _fallback?: ComponentType
+  ): ComponentType {
+    // Return lazy component - wrap with Suspense in consuming component
+    return lazy(importFn);
+  }
+
+  /**
+   * Preload component for better UX
+   */
+  static preloadComponent(importFn: () => Promise<unknown>): void {
+    // Preload on idle or after a delay
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => importFn());
+    } else {
+      setTimeout(() => importFn(), 100);
+    }
+  }
+
+  /**
+   * Route-based code splitting
+   */
+  static createRouteComponent(importFn: () => Promise<unknown>) {
+    return lazy(() => importFn());
+  }
+}
+
+/**
+ * Image optimization utilities
+ */
+export class ImageOptimizer {
+  /**
+   * Generate responsive image srcSet
+   */
+  static generateSrcSet(baseUrl: string, sizes: number[]): string {
+    return sizes
+      .map(size => `${baseUrl}?w=${size} ${size}w`)
+      .join(', ');
+  }
+
+  /**
+   * Lazy load images with intersection observer
+   */
+  static createLazyImageObserver(callback: (entries: IntersectionObserverEntry[]) => void): IntersectionObserver {
+    return new IntersectionObserver(callback, {
+      rootMargin: '50px 0px',
+      threshold: 0.01,
+    });
+  }
+
+  /**
+   * Preload critical images
+   */
+  static preloadImage(src: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+}
+
+/**
+ * Bundle optimization utilities
+ */
+export class BundleOptimizer {
+  /**
+   * Dynamic import with retry logic
+   */
+  static async dynamicImport<T,>(
+    importFn: () => Promise<T>,
+    retries: number = 3
+  ): Promise<T> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await importFn();
+      } catch (error) {
+        if (i === retries - 1) throw error;
+
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+    throw new Error('Dynamic import failed after retries');
+  }
+
+  /**
+   * Prefetch resources
+   */
+  static prefetchResource(href: string, as: string = 'script'): void {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    link.as = as;
+    document.head.appendChild(link);
+  }
+
+  /**
+   * Preload critical resources
+   */
+  static preloadResource(href: string, as: string = 'script'): void {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = href;
+    link.as = as;
+    document.head.appendChild(link);
+  }
+}
+
+/**
+ * Performance monitoring for frontend
+ */
+export class FrontendPerformanceMonitor {
+  private static metrics: Map<string, number[]> = new Map();
+
+  /**
+   * Measure component render time
+   */
+  static measureRender(componentName: string, renderFn: () => void): void {
+    const startTime = performance.now();
+    renderFn();
+    const endTime = performance.now();
+
+    this.recordMetric(`render.${componentName}`, endTime - startTime);
+  }
+
+  /**
+   * Measure API call performance
+   */
+  static async measureApiCall<T,>(
+    apiName: string,
+    apiCall: () => Promise<T>
+  ): Promise<T> {
+    const startTime = performance.now();
+
+    try {
+      const result = await apiCall();
+      const endTime = performance.now();
+
+      this.recordMetric(`api.${apiName}.success`, endTime - startTime);
+      return result;
+    } catch (error) {
+      const endTime = performance.now();
+
+      this.recordMetric(`api.${apiName}.error`, endTime - startTime);
+      throw error;
+    }
+  }
+
+  /**
+   * Record custom metric
+   */
+  static recordMetric(name: string, value: number): void {
+    if (!this.metrics.has(name)) {
+      this.metrics.set(name, []);
+    }
+
+    const values = this.metrics.get(name)!;
+    values.push(value);
+
+    // Keep only recent values
+    if (values.length > 100) {
+      values.shift();
+    }
+  }
+
+  /**
+   * Get performance metrics
+   */
+  static getMetrics(): Record<string, { avg: number; min: number; max: number; count: number }> {
+    const result: Record<string, { avg: number; min: number; max: number; count: number }> = {};
+
+    for (const [name, values] of this.metrics.entries()) {
+      if (values.length > 0) {
+        result[name] = {
+          avg: values.reduce((sum, val) => sum + val, 0) / values.length,
+          min: Math.min(...values),
+          max: Math.max(...values),
+          count: values.length,
+        };
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get Core Web Vitals
+   */
+  static getCoreWebVitals(): Promise<{
+    fcp?: number;
+    lcp?: number;
+    fid?: number;
+    cls?: number;
+  }> {
+    return new Promise((resolve) => {
+      const vitals: any = {};
+
+      // First Contentful Paint
+      new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        vitals.fcp = entries[0]?.startTime;
+      }).observe({ entryTypes: ['paint'] });
+
+      // Largest Contentful Paint
+      new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        vitals.lcp = entries[entries.length - 1]?.startTime;
+      }).observe({ entryTypes: ['largest-contentful-paint'] });
+
+      // First Input Delay
+      new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        vitals.fid = entries[0]?.processingStart - entries[0]?.startTime;
+      }).observe({ entryTypes: ['first-input'] });
+
+      // Cumulative Layout Shift
+      new PerformanceObserver((list) => {
+        let cls = 0;
+        for (const entry of list.getEntries()) {
+          if (!(entry as any).hadRecentInput) {
+            cls += (entry as any).value;
+          }
+        }
+        vitals.cls = cls;
+      }).observe({ entryTypes: ['layout-shift'] });
+
+      // Return after a delay to collect metrics
+      setTimeout(() => resolve(vitals), 3000);
+    });
+  }
+}
+
+/**
+ * Memory optimization utilities
+ */
+export class MemoryOptimizer {
+  private static observers: Set<IntersectionObserver> = new Set();
+  private static timers: Set<number> = new Set();
+
+  /**
+   * Create cleanup function for component unmount
+   */
+  static createCleanup(): () => void {
+    const localObservers = new Set<IntersectionObserver>();
+    const localTimers = new Set<number>();
+
+    return () => {
+      // Cleanup observers
+      localObservers.forEach(observer => {
+        observer.disconnect();
+        this.observers.delete(observer);
+      });
+
+      // Cleanup timers
+      localTimers.forEach(timer => {
+        clearTimeout(timer);
+        clearInterval(timer);
+        this.timers.delete(timer);
+      });
+
+      localObservers.clear();
+      localTimers.clear();
+    };
+  }
+
+  /**
+   * Register observer for cleanup
+   */
+  static registerObserver(observer: IntersectionObserver): void {
+    this.observers.add(observer);
+  }
+
+  /**
+   * Register timer for cleanup
+   */
+  static registerTimer(timer: number): void {
+    this.timers.add(timer);
+  }
+
+  /**
+   * Force garbage collection (development only)
+   */
+  static forceGC(): void {
+    if (process.env.NODE_ENV === 'development' && 'gc' in window) {
+      (window as any).gc();
+    }
+  }
+
+  /**
+   * Get memory usage info
+   */
+  static getMemoryInfo(): {
+    used: number;
+    total: number;
+    percentage: number;
+  } | null {
+    if ('memory' in performance) {
+      const memory = (performance as any).memory;
+      return {
+        used: memory.usedJSHeapSize,
+        total: memory.totalJSHeapSize,
+        percentage: (memory.usedJSHeapSize / memory.totalJSHeapSize) * 100,
+      };
+    }
+    return null;
+  }
+}
+
+/**
+ * React performance hooks
+ */
+export const usePerformanceMonitor = (componentName: string) => {
+  const startTime = performance.now();
+
+  React.useEffect(() => {
+    const endTime = performance.now();
+    FrontendPerformanceMonitor.recordMetric(
+      `component.${componentName}.mount`,
+      endTime - startTime
+    );
+  }, [componentName, startTime]);
+
+  React.useEffect(() => {
+    return () => {
+      FrontendPerformanceMonitor.recordMetric(
+        `component.${componentName}.unmount`,
+        performance.now()
+      );
+    };
+  }, [componentName]);
+};
+
+/**
+ * Debounced state hook for performance
+ */
+export const useDebouncedState = <T,>(initialValue: T, delay: number = 300) => {
+  const [value, setValue] = React.useState<T>(initialValue);
+  const [debouncedValue, setDebouncedValue] = React.useState<T>(initialValue);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    MemoryOptimizer.registerTimer(timer);
+
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return [debouncedValue, setValue] as const;
+};
+
+/**
+ * Virtualized list hook for large datasets
+ */
+export const useVirtualizedList = <T,>(
+  items: T[],
+  itemHeight: number,
+  containerHeight: number
+) => {
+  const [scrollTop, setScrollTop] = React.useState(0);
+
+  const startIndex = Math.floor(scrollTop / itemHeight);
+  const endIndex = Math.min(
+    startIndex + Math.ceil(containerHeight / itemHeight) + 1,
+    items.length
+  );
+
+  const visibleItems = items.slice(startIndex, endIndex);
+  const totalHeight = items.length * itemHeight;
+  const offsetY = startIndex * itemHeight;
+
+  return {
+    visibleItems,
+    totalHeight,
+    offsetY,
+    onScroll: (e: React.UIEvent<HTMLElement>) => {
+      setScrollTop(e.currentTarget.scrollTop);
+    },
+  };
+};
+

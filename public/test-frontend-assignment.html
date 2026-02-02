@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Ticket Assignment</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>Test Ticket Assignment Frontend</h1>
+    
+    <button onclick="testAssignment()">Test Assign Ticket</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        let authToken = null;
+        
+        async function login() {
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@avian.local',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    authToken = data.token;
+                    addResult('✅ Login successful', 'success');
+                    return true;
+                } else {
+                    addResult('❌ Login failed: ' + data.error, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addResult('❌ Login error: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        async function testAssignment() {
+            addResult('🧪 Starting ticket assignment test...', '');
+            
+            // First login
+            if (!authToken) {
+                const loginSuccess = await login();
+                if (!loginSuccess) return;
+            }
+            
+            // Then assign ticket
+            try {
+                const response = await fetch('/api/tickets/assign', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        ticketId: 'ticket-1769537116736-z2jn4c84v',
+                        assignee: 'c8dc5000-5240-41be-b0d0-d1ae6d71f852'
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addResult('✅ Ticket assigned successfully!', 'success');
+                    addResult('📋 Ticket status: ' + data.data.ticket.status, 'success');
+                    addResult('👤 Assigned to: ' + data.data.ticket.assigned_to, 'success');
+                } else {
+                    addResult('❌ Assignment failed: ' + JSON.stringify(data.error), 'error');
+                }
+            } catch (error) {
+                addResult('❌ Assignment error: ' + error.message, 'error');
+            }
+        }
+        
+        function addResult(message, type) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'result ' + type;
+            div.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            authToken = null;
+        }
+    </script>
+</body>
+</html>

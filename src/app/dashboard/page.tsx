@@ -221,20 +221,7 @@ export default function DashboardPage() {
         );
 
       case UserRole.USER:
-        return (
-          <div className="flex space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push('/tickets')}
-              className="text-sm"
-            >
-              My Tickets
-            </Button>
-            <Button onClick={() => router.push('/tickets/new')}>
-              Create Ticket
-            </Button>
-          </div>
-        );
+        return null; // Removed My Tickets and Create Ticket buttons
 
       default:
         return (

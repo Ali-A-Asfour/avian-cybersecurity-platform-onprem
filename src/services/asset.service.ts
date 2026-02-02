@@ -107,11 +107,10 @@ export class AssetService {
   /**
    * Get assets for tenant
    */
-  async getAssetsByTenant(_tenantId: string): Promise<Asset[]> {
+  async getAssetsByTenant(tenantId: string): Promise<Asset[]> {
     try {
       // Generate tenant-specific mock data
       const mockAssets: Asset[] = this.generateTenantSpecificAssets(tenantId);
-
 
       logger.info('Assets retrieved for tenant', {
         tenantId,
@@ -128,7 +127,7 @@ export class AssetService {
   /**
    * Generate tenant-specific mock assets
    */
-  private generateTenantSpecificAssets(_tenantId: string): Asset[] {
+  private generateTenantSpecificAssets(tenantId: string): Asset[] {
     // Return simplified mock assets for each tenant
     const baseAssets = {
       'dev-tenant-123': [
@@ -674,7 +673,7 @@ export class AssetService {
   /**
    * Generate asset inventory report
    */
-  async generateInventoryReport(_tenantId: string): Promise<any> {
+  async generateInventoryReport(tenantId: string): Promise<any> {
     try {
       const assets = await this.getAssetsByTenant(tenantId);
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dataIngestionService, DataSourceType, EventSeverity } from '@/services/data-ingestion.service';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { validateRequest } from '@/lib/validation';
 import { z } from 'zod';
 

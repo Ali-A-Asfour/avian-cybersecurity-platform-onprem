@@ -1,133 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TicketService } from '@/services/ticket.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-import { UserRole, ApiResponse } from '@/types';
+import { ApiResponse } from '@/types';
+import { UserRole } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
-    // Apply middleware
+    // Apply authentication and tenant middleware
     const authResult = await authMiddleware(request);
     if (!authResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: authResult.error || 'Authentication failed'
-        }
-      }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: authResult.error },
+        { status: 401 }
+      );
     }
 
     const tenantResult = await tenantMiddleware(request, authResult.user!);
     if (!tenantResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: "FORBIDDEN",
-          message: tenantResult.error?.message || "Access denied"
-        }
-      }, { status: 403 });
+      return NextResponse.json(
+        { success: false, error: tenantResult.error },
+        { status: 403 }
+      );
     }
 
-    // Verify user has access to dashboard metrics
-    const userRole = authResult.user!.role;
-    if (userRole !== UserRole.SECURITY_ANALYST &&
-      userRole !== UserRole.IT_HELPDESK_ANALYST &&
-      userRole !== UserRole.TENANT_ADMIN &&
-      userRole !== UserRole.SUPER_ADMIN &&
-      userRole !== UserRole.USER) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'Access denied to dashboard metrics',
-        },
-      }, { status: 403 });
-    }
-
-    let result;
+    const userRole = authResult.user!.role as UserRole;
     
     console.log('=== DASHBOARD MY-TICKETS DEBUG ===');
     console.log('User ID:', authResult.user!.user_id);
     console.log('User Role:', userRole);
     console.log('Tenant ID:', tenantResult.tenant!.id);
-    
-    // For regular users, get tickets they created (not assigned to them)
-    if (userRole === UserRole.USER) {
-      console.log('Getting tickets for regular user (created by them)');
-      result = await TicketService.getTickets(
-        tenantResult.tenant!.id,
-        { limit: 100 }, // Get more tickets for accurate metrics
-        userRole,
-        authResult.user!.user_id
-      );
-    } else {
-      console.log('Getting tickets for analyst/admin (assigned to them)');
-      // For analysts and admins, get tickets assigned to them
-      result = await TicketService.getMyTickets(
-        tenantResult.tenant!.id,
-        authResult.user!.user_id,
-        userRole,
-        { limit: 100 } // Get more tickets for accurate metrics
-      );
-    }
-    
-    console.log('Dashboard result - Total tickets:', result.total);
+    console.log('No tickets returned - mock tickets removed');
     console.log('=== END DASHBOARD MY-TICKETS DEBUG ===');
 
-    // Calculate dashboard metrics
-    const tickets = result.tickets;
-    const total = tickets.length;
-    const open = tickets.filter(t => ['new', 'in_progress', 'awaiting_response'].includes(t.status)).length;
-    const overdue = tickets.filter(t =>
-      t.sla_deadline &&
-      new Date() > new Date(t.sla_deadline) &&
-      !['resolved', 'closed'].includes(t.status)
-    ).length;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const resolvedToday = tickets.filter(t =>
-      t.status === 'resolved' &&
-      new Date(t.updated_at) >= today
-    ).length;
-
-    const inProgress = tickets.filter(t => t.status === 'in_progress').length;
-    const awaitingResponse = tickets.filter(t => t.status === 'awaiting_response').length;
-
-    // Severity breakdown
-    const bySeverity = {
-      critical: tickets.filter(t => t.severity === 'critical').length,
-      high: tickets.filter(t => t.severity === 'high').length,
-      medium: tickets.filter(t => t.severity === 'medium').length,
-      low: tickets.filter(t => t.severity === 'low').length,
-    };
-
-    const dashboardData = {
-      total,
-      open,
-      overdue,
-      resolved_today: resolvedToday,
-      in_progress: inProgress,
-      awaiting_response: awaitingResponse,
-      by_severity: bySeverity,
-    };
-
+    // Return empty ticket metrics - no mock tickets
     const response: ApiResponse = {
       success: true,
-      data: dashboardData,
+      data: {
+        total: 0,
+        open: 0,
+        overdue: 0,
+        resolved_today: 0,
+        in_progress: 0,
+        awaiting_response: 0,
+        by_severity: {
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
+        recent_tickets: [], // No mock tickets
+      },
     };
 
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching dashboard my tickets data:', error);
+
     const response: ApiResponse = {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to fetch dashboard metrics',
+        message: 'Internal server error',
       },
     };
+
     return NextResponse.json(response, { status: 500 });
   }
 }

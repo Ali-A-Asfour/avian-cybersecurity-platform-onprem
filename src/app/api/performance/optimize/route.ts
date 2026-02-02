@@ -3,7 +3,7 @@ import { authMiddleware } from '../../../../middleware/auth.middleware';
 import { cache } from '../../../../lib/cache';
 import { dbOptimizer } from '../../../../lib/database-optimizer';
 import { performanceMonitor } from '../../../../lib/performance-monitor';
-// import { logger } from '../../../../lib/logger';
+import { logger } from '../../../../lib/logger';
 import { UserRole } from '../../../../types';
 
 export async function POST(request: NextRequest) {

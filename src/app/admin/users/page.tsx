@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRequireRole } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
 import { ClientLayout } from '@/components/layout/ClientLayout';
 import { api } from '@/lib/api-client';
 
@@ -26,20 +25,59 @@ interface User {
 }
 
 export default function AdminUsersPage() {
-  return (
-    <ProtectedRoute allowedRoles={['super_admin', 'tenant_admin']}>
-      <UsersContent />
-    </ProtectedRoute>
-  );
+  const { user, loading, isAuthenticated } = useAuth();
+
+  // Show loading while auth is being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    return null;
+  }
+
+  // Check role authorization
+  if (!user || !['super_admin', 'tenant_admin'].includes(user.role)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-400">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <UsersContent />;
 }
 
 function UsersContent() {
-  const { user: currentUser } = useRequireRole(['super_admin', 'tenant_admin']);
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Safety check - ensure user has proper role
+  if (!currentUser || !['super_admin', 'tenant_admin'].includes(currentUser.role)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-400">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Get allowed roles for filtering based on current user's role
   const getAllowedFilterRoles = () => {
@@ -71,7 +109,20 @@ function UsersContent() {
       
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.data || []);
+        // Map API response (snake_case) to frontend format (camelCase)
+        const mappedUsers = (data.data || []).map((user: any) => ({
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name || '',
+          lastName: user.last_name || '',
+          role: user.role,
+          tenantId: user.tenant_id,
+          isActive: user.is_active,
+          emailVerified: user.email_verified,
+          createdAt: user.created_at,
+          lastLogin: user.last_login,
+        }));
+        setUsers(mappedUsers);
       } else {
         console.error('Failed to load users');
       }
@@ -89,7 +140,7 @@ function UsersContent() {
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
+      `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -347,12 +398,12 @@ function UserRow({ user, currentUser, onUserUpdated }: { user: User; currentUser
           <div className="flex items-center">
             <div className="flex-shrink-0 h-10 w-10">
               <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                {(user.firstName || '').charAt(0)}{(user.lastName || '').charAt(0)}
               </div>
             </div>
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-900 dark:text-white">
-                {user.firstName} {user.lastName}
+                {(user.firstName || '')} {(user.lastName || '')}
               </div>
               <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
             </div>
@@ -460,7 +511,7 @@ function UserRow({ user, currentUser, onUserUpdated }: { user: User; currentUser
                 Delete User
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Are you sure you want to delete {user.firstName} {user.lastName}? This action cannot be undone.
+                Are you sure you want to delete {(user.firstName || '')} {(user.lastName || '')}? This action cannot be undone.
               </p>
               <div className="flex space-x-3">
                 <button
@@ -487,7 +538,7 @@ function UserRow({ user, currentUser, onUserUpdated }: { user: User; currentUser
 }
 
 function EditUserModal({ user, onClose, onUserUpdated }: { user: User; onClose: () => void; onUserUpdated?: () => void }) {
-  const { user: currentUser } = useRequireRole(['super_admin', 'tenant_admin']);
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     email: user.email,
     firstName: user.firstName,
@@ -496,6 +547,11 @@ function EditUserModal({ user, onClose, onUserUpdated }: { user: User; onClose: 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Safety check
+  if (!currentUser || !['super_admin', 'tenant_admin'].includes(currentUser.role)) {
+    return null;
+  }
 
   // Get allowed roles based on current user's role
   const getAllowedRoles = () => {
@@ -652,7 +708,7 @@ function EditUserModal({ user, onClose, onUserUpdated }: { user: User; onClose: 
 }
 
 function CreateUserModal({ onClose, onUserCreated }: { onClose: () => void; onUserCreated?: () => void }) {
-  const { user: currentUser } = useRequireRole(['super_admin', 'tenant_admin']);
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -662,6 +718,11 @@ function CreateUserModal({ onClose, onUserCreated }: { onClose: () => void; onUs
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Safety check
+  if (!currentUser || !['super_admin', 'tenant_admin'].includes(currentUser.role)) {
+    return null;
+  }
 
   // Get allowed roles based on current user's role
   const getAllowedRoles = () => {

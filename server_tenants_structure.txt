@@ -1,0 +1,23 @@
+                                Table "public.tenants"
+   Column    |            Type             | Collation | Nullable |      Default      
+-------------+-----------------------------+-----------+----------+-------------------
+ id          | uuid                        |           | not null | gen_random_uuid()
+ name        | character varying(255)      |           | not null | 
+ domain      | character varying(255)      |           | not null | 
+ logo_url    | text                        |           |          | 
+ theme_color | character varying(7)        |           |          | 
+ settings    | jsonb                       |           | not null | '{}'::jsonb
+ is_active   | boolean                     |           | not null | true
+ created_at  | timestamp without time zone |           | not null | now()
+ updated_at  | timestamp without time zone |           | not null | now()
+Indexes:
+    "tenants_pkey" PRIMARY KEY, btree (id)
+    "tenants_active_idx" btree (is_active)
+    "tenants_domain_idx" btree (domain)
+    "tenants_domain_unique" UNIQUE CONSTRAINT, btree (domain)
+Referenced by:
+    TABLE "audit_logs" CONSTRAINT "audit_logs_tenant_id_tenants_id_fk" FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    TABLE "security_alerts" CONSTRAINT "security_alerts_tenant_id_fkey" FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    TABLE "security_incidents" CONSTRAINT "security_incidents_tenant_id_fkey" FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+    TABLE "users" CONSTRAINT "users_tenant_id_tenants_id_fk" FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+

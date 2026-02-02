@@ -1,0 +1,19 @@
+# Static IP configuration for AVIAN Cybersecurity Platform
+# This file should be placed at /etc/netplan/01-netcfg.yaml
+
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    # Replace 'ens33' with your actual network interface name
+    # Common names: eth0, ens33, enp0s3, etc.
+    ens33:
+      dhcp4: false
+      addresses:
+        - 192.168.1.116/24
+      gateway4: 192.168.1.1
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 8.8.4.4
+          - 192.168.1.1

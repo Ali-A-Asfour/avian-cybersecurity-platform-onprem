@@ -4,7 +4,7 @@ import { SessionService } from '../lib/session-service-compat';
 import { AuthAuditLogger } from '../lib/auth-audit';
 import { JWTPayload, UserRole } from '../types';
 import { monitoring } from '../lib/monitoring';
-// import { logger } from '../lib/logger';
+import { logger } from '../lib/logger';
 
 export interface EnhancedAuthRequest extends NextRequest {
   user?: JWTPayload & {

@@ -261,6 +261,7 @@ export default function TicketDetailPage() {
                         attachments={attachments}
                         userRole={user?.role}
                         onCommentAdded={handleCommentAdded}
+                        readOnly={ticket.status === 'resolved' || ticket.status === 'closed'}
                     />
                 </div>
 
@@ -292,13 +293,32 @@ export default function TicketDetailPage() {
                         </Card>
                     )}
 
-                    {/* Ticket Actions */}
-                    <TicketActions
-                        ticket={ticket}
-                        userRole={user?.role}
-                        userId={user?.id}
-                        onTicketUpdated={handleTicketUpdated}
-                    />
+                    {/* Ticket Actions - Hide for closed/resolved tickets */}
+                    {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                        <TicketActions
+                            ticket={ticket}
+                            userRole={user?.role}
+                            userId={user?.id}
+                            onTicketUpdated={handleTicketUpdated}
+                        />
+                    )}
+
+                    {/* Read-only notice for closed tickets */}
+                    {(ticket.status === 'resolved' || ticket.status === 'closed') && (
+                        <Card className="border-l-4 border-l-gray-500">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-2 text-gray-600">
+                                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                        <span className="text-white text-xs">✓</span>
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">Ticket {ticket.status === 'resolved' ? 'Resolved' : 'Closed'}</div>
+                                        <div className="text-sm">This ticket is read-only and cannot be modified.</div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Ticket Metadata */}
                     <Card>

@@ -11,7 +11,7 @@
  * Requirements: 1.1, 1.4, 2.1, 2.2, 2.3, 12.1, 12.2
  */
 
-import { db } from '../../lib/database';
+import { getDb } from '../../lib/database';
 import { securityAlerts } from '../../../database/schemas/alerts-incidents';
 import { eq, and, desc, gte, lte, inArray, isNull, sql } from 'drizzle-orm';
 import { connectRedis } from '../../lib/redis';
@@ -174,6 +174,7 @@ export class AlertManager {
         normalizedAlert: NormalizedAlert
     ): Promise<string | null> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }
@@ -296,6 +297,7 @@ export class AlertManager {
         normalizedAlert: NormalizedAlert
     ): Promise<SecurityAlert | null> {
         try {
+            const db = await getDb();
             if (!db) {
                 return null;
             }
@@ -359,6 +361,7 @@ export class AlertManager {
      * Update seenCount for deduplicated alert
      */
     private static async updateSeenCount(alertId: string): Promise<void> {
+        const db = await getDb();
         if (!db) {
             throw new Error('Database connection not available');
         }
@@ -414,6 +417,7 @@ export class AlertManager {
      */
     static async assignAlert(input: AssignAlertInput, context?: AuditContext): Promise<void> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }
@@ -529,6 +533,7 @@ export class AlertManager {
      */
     static async startInvestigation(alertId: string, tenantId: string, userId: string, context?: AuditContext): Promise<void> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }
@@ -628,6 +633,7 @@ export class AlertManager {
      */
     static async resolveAlert(input: ResolveAlertInput, context?: AuditContext): Promise<void> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }
@@ -755,6 +761,7 @@ export class AlertManager {
      */
     static async getAlerts(filters: AlertFilters): Promise<SecurityAlert[]> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }
@@ -833,6 +840,7 @@ export class AlertManager {
      */
     static async getTriageQueue(tenantId: string, limit?: number, offset?: number): Promise<SecurityAlert[]> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }
@@ -891,6 +899,7 @@ export class AlertManager {
         offset?: number
     ): Promise<SecurityAlert[]> {
         try {
+            const db = await getDb();
             if (!db) {
                 throw new Error('Database connection not available');
             }

@@ -49,9 +49,28 @@ export async function GET(request: NextRequest) {
             articles = knowledgeBaseStore.getAllArticles(tenantFilter, status || undefined);
         }
 
+        // Transform articles to match UI expectations
+        const transformedArticles = articles.map(article => ({
+            id: article.id,
+            title: article.title,
+            problem_description: article.content, // Map content to problem_description
+            resolution: article.resolution || 'See article content for resolution',
+            is_approved: article.status === 'approved', // Map status to is_approved
+            created_at: new Date(article.created_at),
+            updated_at: new Date(article.updated_at),
+            created_by: article.created_by,
+            tenant_id: article.tenant_id,
+            source_ticket_id: article.ticket_id,
+            category: article.category,
+            tags: article.tags,
+            views: article.views,
+            helpful_votes: article.helpful_votes,
+            not_helpful_votes: article.not_helpful_votes
+        }));
+
         // Apply pagination
-        const total = articles.length;
-        const paginatedArticles = articles.slice(offset, offset + limit);
+        const total = transformedArticles.length;
+        const paginatedArticles = transformedArticles.slice(offset, offset + limit);
 
         console.log(`📚 Found ${total} articles, returning ${paginatedArticles.length}`);
 

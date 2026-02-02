@@ -1,0 +1,60 @@
+                                                                                      Table "public.users"
+        Column         |            Type             | Collation | Nullable |                                                      Default                                                      
+-----------------------+-----------------------------+-----------+----------+-------------------------------------------------------------------------------------------------------------------
+ id                    | uuid                        |           | not null | gen_random_uuid()
+ tenant_id             | uuid                        |           | not null | 
+ email                 | character varying(255)      |           | not null | 
+ first_name            | character varying(100)      |           | not null | 
+ last_name             | character varying(100)      |           | not null | 
+ role                  | user_role                   |           | not null | 'user'::user_role
+ mfa_enabled           | boolean                     |           | not null | false
+ mfa_secret            | text                        |           |          | 
+ password_hash         | text                        |           | not null | 
+ last_login            | timestamp without time zone |           |          | 
+ is_active             | boolean                     |           | not null | true
+ created_at            | timestamp without time zone |           | not null | now()
+ updated_at            | timestamp without time zone |           | not null | now()
+ mfa_backup_codes      | jsonb                       |           |          | '[]'::jsonb
+ mfa_setup_completed   | boolean                     |           | not null | false
+ account_locked        | boolean                     |           | not null | false
+ failed_login_attempts | integer                     |           | not null | 0
+ last_failed_login     | timestamp without time zone |           |          | 
+ locked_until          | timestamp without time zone |           |          | 
+ name                  | character varying(255)      |           |          | generated always as (                                                                                            +
+                       |                             |           |          | CASE                                                                                                             +
+                       |                             |           |          |     WHEN first_name IS NOT NULL AND last_name IS NOT NULL THEN (first_name::text || ' '::text) || last_name::text+
+                       |                             |           |          |     WHEN first_name IS NOT NULL THEN first_name::text                                                            +
+                       |                             |           |          |     WHEN last_name IS NOT NULL THEN last_name::text                                                              +
+                       |                             |           |          |     ELSE ''::text                                                                                                +
+                       |                             |           |          | END) stored
+ email_verified        | boolean                     |           |          | false
+ password_changed_at   | timestamp without time zone |           |          | now()
+ password_expires_at   | timestamp without time zone |           |          | 
+Indexes:
+    "users_pkey" PRIMARY KEY, btree (id)
+    "users_account_locked_idx" btree (account_locked)
+    "users_active_idx" btree (is_active)
+    "users_email_tenant_idx" btree (email, tenant_id)
+    "users_failed_attempts_idx" btree (failed_login_attempts)
+    "users_last_failed_login_idx" btree (last_failed_login)
+    "users_locked_until_idx" btree (locked_until) WHERE locked_until IS NOT NULL
+    "users_mfa_setup_idx" btree (mfa_setup_completed)
+    "users_role_idx" btree (role)
+    "users_tenant_idx" btree (tenant_id)
+Check constraints:
+    "users_email_format_check" CHECK (email::text ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text)
+    "users_password_hash_not_null_when_active" CHECK (NOT is_active OR password_hash IS NOT NULL)
+Foreign-key constraints:
+    "users_tenant_id_tenants_id_fk" FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "audit_logs" CONSTRAINT "audit_logs_user_id_users_id_fk" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "auth_audit_logs" CONSTRAINT "auth_audit_logs_user_id_users_id_fk" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "investigation_playbooks" CONSTRAINT "investigation_playbooks_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT
+    TABLE "password_history" CONSTRAINT "password_history_user_id_users_id_fk" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    TABLE "security_alerts" CONSTRAINT "security_alerts_assigned_to_fkey" FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
+    TABLE "security_incidents" CONSTRAINT "security_incidents_owner_id_fkey" FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT
+    TABLE "sessions" CONSTRAINT "sessions_user_id_fkey" FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+Triggers:
+    trigger_check_failed_login_attempts BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION check_failed_login_attempts()
+    trigger_track_password_history AFTER UPDATE ON users FOR EACH ROW WHEN (new.password_hash IS DISTINCT FROM old.password_hash) EXECUTE FUNCTION trigger_add_password_to_history()
+

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { monitoring } from '../../../../lib/monitoring';
 import { performanceMonitor } from '../../../../lib/performance-monitor';
-// import { logger } from '../../../../lib/logger';
+import { logger } from '../../../../lib/logger';
 
 export async function GET(request: NextRequest) {
   try {

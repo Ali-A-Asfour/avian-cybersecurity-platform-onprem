@@ -1,0 +1,69 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: High Memory: Memory Usage at 92%
+Date: Mon, 08 Dec 2025 14:05:47 -0500
+Message-ID: <memory-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Resource Alert
+=========================
+
+Alert Type: High Memory Usage
+Severity: MEDIUM
+Timestamp: 2025-12-08 14:05:47 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Resource Metrics:
+-----------------
+Current Memory Usage: 92%
+Total Memory: 4 GB
+Used Memory: 3.68 GB
+Free Memory: 327 MB
+Threshold: 90%
+Duration Above Threshold: 15 minutes
+
+Memory Breakdown:
+-----------------
+Connection Table: 1.2 GB
+Security Services: 1.8 GB
+System: 680 MB
+
+System Status:
+--------------
+CPU Usage: 65%
+Active Connections: 15,230
+Connection Rate: 920/sec
+Uptime: 45 days, 12 hours
+
+Possible Causes:
+----------------
+- High connection count
+- Large connection table
+- Security service memory usage
+- DPI-SSL session cache
+- Long-lived connections
+
+Impact:
+-------
+- Risk of connection drops
+- Potential service degradation
+- New connections may be rejected
+
+Recommended Actions:
+--------------------
+1. Review connection timeout settings
+2. Check for connection leaks
+3. Monitor connection table size
+4. Consider reducing connection limits
+5. Plan for device reboot if persistent
+
+Critical threshold (95%) will trigger automatic connection cleanup.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

@@ -4,7 +4,7 @@ import { createEDRConnector } from '@/lib/connectors/edr-connector';
 import { createFirewallConnector } from '@/lib/connectors/firewall-connector';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,

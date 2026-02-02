@@ -316,7 +316,7 @@ export class DashboardService {
   /**
    * Get alert summary and metrics
    */
-  static async getAlertSummary(_tenantId: string): Promise<AlertSummary> {
+  static async getAlertSummary(tenantId: string): Promise<AlertSummary> {
     // Skip caching in development mode
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
       return {
@@ -394,7 +394,7 @@ export class DashboardService {
   /**
    * Get compliance summary and metrics
    */
-  static async getComplianceSummary(_tenantId: string): Promise<ComplianceSummary> {
+  static async getComplianceSummary(tenantId: string): Promise<ComplianceSummary> {
     // Skip caching in development mode
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
       return {
@@ -476,7 +476,7 @@ export class DashboardService {
   /**
    * Get SLA summary and metrics
    */
-  static async getSLASummary(_tenantId: string): Promise<SLASummary> {
+  static async getSLASummary(tenantId: string): Promise<SLASummary> {
     // Skip caching in development mode
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
       return {
@@ -692,7 +692,7 @@ export class DashboardService {
   /**
    * Invalidate dashboard cache for tenant
    */
-  static async invalidateCache(_tenantId: string): Promise<void> {
+  static async invalidateCache(tenantId: string): Promise<void> {
     if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
       return; // Skip cache operations in development
     }

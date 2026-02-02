@@ -5,7 +5,7 @@ import { createFirewallConnector } from '@/lib/connectors/firewall-connector';
 import { syslogServerManager } from '@/lib/syslog-server';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { validateRequest } from '@/lib/validation';
 import { z } from 'zod';
 

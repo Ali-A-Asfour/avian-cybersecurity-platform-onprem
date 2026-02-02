@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# Deploy Assigned Tickets Fix to Server (Simple Version)
+# This script applies the fix for tickets not appearing in "My Tickets" after assignment
+
+set -e
+
+SERVER_IP="192.168.1.116"
+SERVER_USER="avian"
+
+echo "🚀 Deploying assigned tickets fix to server..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo_info() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+echo_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
+
+echo_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+# Check if we can connect to the server
+echo "🔍 Checking server connection..."
+if ! ssh -o ConnectTimeout=10 $SERVER_USER@$SERVER_IP "echo 'Connection successful'" > /dev/null 2>&1; then
+    echo_error "Cannot connect to server $SERVER_IP"
+    echo "Please ensure:"
+    echo "  1. Server is running and accessible"
+    echo "  2. SSH key is configured"
+    echo "  3. User $SERVER_USER exists on server"
+    exit 1
+fi
+
+echo_info "Server connection successful"
+
+# Step 1: Backup and apply the simple fix
+echo "🔧 Step 1: Applying fix to my-tickets API..."
+ssh $SERVER_USER@$SERVER_IP "
+    cd /home/avian/avian-cybersecurity-platform-onprem
+    
+    # Backup the file
+    cp src/app/api/help-desk/queue/my-tickets/route.ts src/app/api/help-desk/queue/my-tickets/route.ts.backup.\$(date +%Y%m%d_%H%M%S)
+    
+    # Apply the fix using sed
+    sed -i 's/tickets = await TicketService.getAssignedTickets(user.email, tenantFilter);/tickets = await TicketService.getAssignedTickets(user.user_id, tenantFilter);/' src/app/api/help-desk/queue/my-tickets/route.ts
+    
+    # Update the comment
+    sed -i 's/\/\/ Analysts see tickets assigned to them (use email for assignment lookup)/\/\/ Analysts see tickets assigned to them (use user ID for assignment lookup)/' src/app/api/help-desk/queue/my-tickets/route.ts
+    
+    echo 'Fix applied successfully'
+"
+
+echo_info "My Tickets API fix applied"
+
+# Step 2: Check if the fix was applied correctly
+echo "🔍 Step 2: Verifying fix was applied..."
+VERIFICATION=$(ssh $SERVER_USER@$SERVER_IP "
+    cd /home/avian/avian-cybersecurity-platform-onprem
+    grep -n 'user.user_id' src/app/api/help-desk/queue/my-tickets/route.ts || echo 'NOT_FOUND'
+")
+
+if echo "$VERIFICATION" | grep -q "user.user_id"; then
+    echo_info "Fix verification: SUCCESS"
+    echo "Found: $VERIFICATION"
+else
+    echo_error "Fix verification: FAILED"
+    echo "The fix may not have been applied correctly"
+    exit 1
+fi
+
+# Step 3: Manual restart instruction
+echo ""
+echo_warning "⚠️  Manual restart required"
+echo ""
+echo "Please run the following commands on the server to restart the application:"
+echo ""
+echo "ssh $SERVER_USER@$SERVER_IP"
+echo "cd /home/avian/avian-cybersecurity-platform-onprem"
+echo "sudo docker-compose down"
+echo "sudo docker-compose up -d --build"
+echo ""
+echo "After restart, test the fix by:"
+echo "1. Go to http://$SERVER_IP:3000"
+echo "2. Login with h@tcc.com / 12345678"
+echo "3. Assign a ticket from Help Desk → Unassigned Queue"
+echo "4. Check Help Desk → My Tickets to see if it appears"
+echo ""
+
+read -p "Press Enter after you've restarted the application to continue with testing..."
+
+# Step 4: Test the fix
+echo "🧪 Step 3: Testing the fix..."
+
+# Test login
+echo "Testing login..."
+LOGIN_RESPONSE=$(ssh $SERVER_USER@$SERVER_IP "
+    curl -s -X POST http://localhost:3000/api/auth/login \
+      -H 'Content-Type: application/json' \
+      -d '{\"email\": \"h@tcc.com\", \"password\": \"12345678\"}'
+")
+
+if echo "$LOGIN_RESPONSE" | grep -q '"success":true'; then
+    echo_info "Login test: SUCCESS"
+    TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+else
+    echo_error "Login test: FAILED"
+    echo "Response: $LOGIN_RESPONSE"
+    exit 1
+fi
+
+# Test my tickets API
+echo "Testing My Tickets API..."
+MY_TICKETS_RESPONSE=$(ssh $SERVER_USER@$SERVER_IP "
+    curl -s -X GET 'http://localhost:3000/api/help-desk/queue/my-tickets' \
+      -H 'Authorization: Bearer $TOKEN'
+")
+
+if echo "$MY_TICKETS_RESPONSE" | grep -q '"success":true'; then
+    TICKET_COUNT=$(echo "$MY_TICKETS_RESPONSE" | grep -o '"total":[0-9]*' | cut -d':' -f2)
+    echo_info "My Tickets API test: SUCCESS (found $TICKET_COUNT assigned tickets)"
+else
+    echo_error "My Tickets API test: FAILED"
+    echo "Response: $MY_TICKETS_RESPONSE"
+    exit 1
+fi
+
+# Test unassigned queue
+echo "Testing Unassigned Queue API..."
+UNASSIGNED_RESPONSE=$(ssh $SERVER_USER@$SERVER_IP "
+    curl -s -X GET 'http://localhost:3000/api/help-desk/queue/unassigned' \
+      -H 'Authorization: Bearer $TOKEN'
+")
+
+if echo "$UNASSIGNED_RESPONSE" | grep -q '"success":true'; then
+    UNASSIGNED_COUNT=$(echo "$UNASSIGNED_RESPONSE" | grep -o '"total":[0-9]*' | cut -d':' -f2)
+    echo_info "Unassigned Queue API test: SUCCESS (found $UNASSIGNED_COUNT unassigned tickets)"
+else
+    echo_error "Unassigned Queue API test: FAILED"
+    echo "Response: $UNASSIGNED_RESPONSE"
+    exit 1
+fi
+
+echo ""
+echo_info "🎉 Fix Applied and Tested Successfully!"
+echo_info ""
+echo_info "📋 Summary:"
+echo_info "   ✅ Fixed My Tickets API to use user ID instead of email"
+echo_info "   ✅ Application restarted"
+echo_info "   ✅ Login test: Working"
+echo_info "   ✅ My Tickets API: Working ($TICKET_COUNT assigned tickets)"
+echo_info "   ✅ Unassigned Queue API: Working ($UNASSIGNED_COUNT unassigned tickets)"
+echo_info ""
+echo_info "🌐 Server is ready for testing!"
+echo_info "   URL: http://$SERVER_IP:3000"
+echo_info "   Login: h@tcc.com / 12345678"
+echo_info "   Test: Assign tickets and verify they appear in My Tickets"

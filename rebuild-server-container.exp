@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+
+# SSH into server
+spawn ssh avian@192.168.1.116
+
+# Wait for password prompt
+expect "password:"
+send "avian123\r"
+
+# Wait for shell prompt
+expect "$ "
+
+# Navigate to project directory
+send "cd /home/avian/avian-cybersecurity-platform-onprem\r"
+expect "$ "
+
+# Stop containers
+send "sudo docker-compose -f docker-compose.prod.yml down\r"
+expect "password"
+send "avian123\r"
+expect "$ "
+
+# Remove old image
+send "sudo docker rmi avian-cybersecurity-platform-onprem-app || true\r"
+expect "password"
+send "avian123\r"
+expect "$ "
+
+# Build new image
+send "sudo docker-compose -f docker-compose.prod.yml build --no-cache app\r"
+expect "password"
+send "avian123\r"
+
+# Wait for build to complete (this can take a while)
+set timeout 300
+expect "$ "
+
+# Start containers
+send "sudo docker-compose -f docker-compose.prod.yml up -d\r"
+expect "password"
+send "avian123\r"
+expect "$ "
+
+# Check status
+send "sudo docker-compose -f docker-compose.prod.yml ps\r"
+expect "password"
+send "avian123\r"
+expect "$ "
+
+# Exit
+send "exit\r"
+expect eof

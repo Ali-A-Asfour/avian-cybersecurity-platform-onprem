@@ -1,0 +1,123 @@
+#!/usr/bin/expect -f
+
+# Automated static IP configuration script
+# This handles SSH password prompts and sudo commands
+
+set timeout 30
+set server_ip "192.168.1.116"
+set username "avian"
+
+# You'll need to update this with the actual password
+puts "🔧 Starting automated static IP configuration..."
+puts "⚠️  Note: This script will prompt for the SSH password"
+
+# SSH to server and configure static IP
+spawn ssh $username@$server_ip
+
+expect {
+    "password:" {
+        puts "🔑 Please enter the SSH password for avian@192.168.1.116:"
+        interact -o -nobuffer -re "password:" return
+        exp_continue
+    }
+    "$ " {
+        puts "✅ Connected to server"
+    }
+    timeout {
+        puts "❌ SSH connection timeout"
+        exit 1
+    }
+}
+
+# Create the static IP configuration file
+puts "📝 Creating static IP configuration..."
+send "cat << 'EOF' | sudo tee /etc/netplan/01-static-ip.yaml\r"
+expect "password"
+interact -o -nobuffer -re "password:" return
+
+send "# Static IP configuration for AVIAN Cybersecurity Platform\r"
+send "network:\r"
+send "  version: 2\r"
+send "  renderer: networkd\r"
+send "  ethernets:\r"
+send "    enp3s0:\r"
+send "      dhcp4: false\r"
+send "      addresses:\r"
+send "        - 192.168.1.116/24\r"
+send "      routes:\r"
+send "        - to: default\r"
+send "          via: 192.168.1.1\r"
+send "      nameservers:\r"
+send "        addresses:\r"
+send "          - 8.8.8.8\r"
+send "          - 8.8.4.4\r"
+send "          - 192.168.1.1\r"
+send "EOF\r"
+
+expect "$ "
+puts "✅ Configuration file created"
+
+# Set proper permissions
+puts "🔒 Setting file permissions..."
+send "sudo chmod 600 /etc/netplan/01-static-ip.yaml\r"
+expect {
+    "password" {
+        interact -o -nobuffer -re "password:" return
+        exp_continue
+    }
+    "$ " {
+        puts "✅ Permissions set"
+    }
+}
+
+# Backup and disable cloud-init
+puts "💾 Backing up original configuration..."
+send "sudo cp /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.backup\r"
+expect {
+    "password" {
+        interact -o -nobuffer -re "password:" return
+        exp_continue
+    }
+    "$ " {
+        puts "✅ Backup created"
+    }
+}
+
+puts "🚫 Disabling cloud-init network configuration..."
+send "sudo mv /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.disabled\r"
+expect {
+    "password" {
+        interact -o -nobuffer -re "password:" return
+        exp_continue
+    }
+    "$ " {
+        puts "✅ Cloud-init disabled"
+    }
+}
+
+# Apply the configuration
+puts "🚀 Applying static IP configuration..."
+send "sudo netplan apply\r"
+expect {
+    "password" {
+        interact -o -nobuffer -re "password:" return
+        exp_continue
+    }
+    "$ " {
+        puts "✅ Configuration applied"
+    }
+}
+
+# Verify the configuration
+puts "🔍 Verifying configuration..."
+send "ip addr show enp3s0 | grep 'inet '\r"
+expect "$ "
+
+send "ip route show default\r"
+expect "$ "
+
+puts "✅ Static IP configuration completed!"
+puts "🎉 Server will now maintain IP 192.168.1.116 after reboots"
+
+send "exit\r"
+expect eof

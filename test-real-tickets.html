@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Real Ticket Assignment</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .ticket { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .ticket.urgent { border-left: 5px solid #ff0000; }
+        .ticket.high { border-left: 5px solid #ff8800; }
+        .ticket.medium { border-left: 5px solid #ffaa00; }
+        .ticket.low { border-left: 5px solid #00aa00; }
+        .button { background: #007cba; color: white; padding: 10px 15px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #005a87; }
+        .button:disabled { background: #ccc; cursor: not-allowed; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: orange; }
+        .priority { font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .priority.urgent { background: #ff0000; color: white; }
+        .priority.high { background: #ff8800; color: white; }
+        .priority.medium { background: #ffaa00; color: black; }
+        .priority.low { background: #00aa00; color: white; }
+        .login-section { background: #f0f8ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🎫 Real Ticket Assignment Test</h1>
+    
+    <div class="login-section">
+        <h3>🔐 Login First</h3>
+        <button class="button" onclick="login()">Login as Helpdesk</button>
+        <span id="login-status"></span>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div>
+        <button class="button" onclick="loadTickets()">🔄 Refresh Tickets</button>
+        <button class="button" onclick="loadAssignedTickets()">👤 My Assigned Tickets</button>
+    </div>
+    
+    <div id="tickets"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let authToken = null;
+        let currentUser = null;
+        
+        async function login() {
+            try {
+                document.getElementById('login-status').innerHTML = '<span class="loading">Logging in...</span>';
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: 'helpdesk@demo.com',
+                        password: 'helpdesk123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    currentUser = data.user;
+                    document.getElementById('login-status').innerHTML = 
+                        `<span class="success">✅ Logged in as ${data.user.name} (${data.user.role})</span>`;
+                    loadTickets();
+                } else {
+                    document.getElementById('login-status').innerHTML = 
+                        `<span class="error">❌ Login failed: ${data.error}</span>`;
+                }
+            } catch (error) {
+                document.getElementById('login-status').innerHTML = 
+                    `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        async function loadTickets() {
+            try {
+                document.getElementById('status').innerHTML = '<div class="loading">Loading unassigned tickets...</div>';
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = 'Bearer ' + authToken;
+                }
+                
+                const response = await fetch(`${API_BASE}/tickets/unassigned`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayTickets(data.data.tickets, 'unassigned');
+                    document.getElementById('status').innerHTML = 
+                        `<div class="success">✅ Found ${data.data.count} unassigned tickets</div>`;
+                } else {
+                    document.getElementById('status').innerHTML = 
+                        `<div class="error">❌ Failed to load tickets: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadAssignedTickets() {
+            try {
+                document.getElementById('status').innerHTML = '<div class="loading">Loading assigned tickets...</div>';
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = 'Bearer ' + authToken;
+                }
+                
+                const response = await fetch(`${API_BASE}/test-db`, {
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const assignedTickets = data.data.tickets.filter(t => 
+                        t.assigned_to === currentUser?.id || t.assignee === currentUser?.id
+                    );
+                    displayTickets(assignedTickets, 'assigned');
+                    document.getElementById('status').innerHTML = 
+                        `<div class="success">✅ Found ${assignedTickets.length} assigned tickets</div>`;
+                } else {
+                    document.getElementById('status').innerHTML = 
+                        `<div class="error">❌ Failed to load tickets: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function displayTickets(tickets, type) {
+            const container = document.getElementById('tickets');
+            container.innerHTML = '';
+            
+            if (tickets.length === 0) {
+                container.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">
+                    No ${type} tickets found
+                </div>`;
+                return;
+            }
+            
+            tickets.forEach(ticket => {
+                const ticketDiv = document.createElement('div');
+                ticketDiv.className = `ticket ${ticket.priority}`;
+                
+                const isAssigned = ticket.assigned_to || ticket.assignee;
+                
+                ticketDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <h3>${ticket.title}</h3>
+                            <p><strong>ID:</strong> ${ticket.id}</p>
+                            <p><strong>Description:</strong> ${ticket.description}</p>
+                            <p><strong>Requester:</strong> ${ticket.requester}</p>
+                            <p><strong>Category:</strong> ${ticket.category}</p>
+                            <p>
+                                <span class="priority ${ticket.priority}">
+                                    ${ticket.priority.toUpperCase()} PRIORITY
+                                </span>
+                                <span style="margin-left: 10px; color: #666;">
+                                    ${ticket.severity} severity
+                                </span>
+                            </p>
+                            <p><strong>Status:</strong> ${ticket.status}</p>
+                            ${isAssigned ? `<p><strong>Assigned to:</strong> ${ticket.assigned_to || ticket.assignee}</p>` : ''}
+                            <p style="color: #666; font-size: 12px;">
+                                Created: ${new Date(ticket.created_at).toLocaleString()}
+                            </p>
+                        </div>
+                        <div style="margin-left: 20px;">
+                            ${!isAssigned && currentUser ? `
+                                <button class="button" onclick="assignTicket('${ticket.id}')">
+                                    Assign to me
+                                </button>
+                            ` : isAssigned ? `
+                                <span class="success">✅ Assigned</span>
+                            ` : `
+                                <span style="color: #666;">Login to assign</span>
+                            `}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(ticketDiv);
+            });
+        }
+        
+        async function assignTicket(ticketId) {
+            if (!currentUser) {
+                alert('Please login first');
+                return;
+            }
+            
+            try {
+                document.getElementById('status').innerHTML = '<div class="loading">Assigning ticket...</div>';
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = 'Bearer ' + authToken;
+                }
+                
+                const response = await fetch(`${API_BASE}/tickets/assign-simple`, {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        ticketId: ticketId,
+                        assignee: currentUser.id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('status').innerHTML = 
+                        '<div class="success">✅ Ticket assigned successfully!</div>';
+                    loadTickets(); // Reload to show updated status
+                } else {
+                    document.getElementById('status').innerHTML = 
+                        `<div class="error">❌ Assignment failed: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Auto-load tickets on page load
+        window.onload = function() {
+            // Check if already logged in
+            fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentUser = data.user;
+                        document.getElementById('login-status').innerHTML = 
+                            `<span class="success">✅ Already logged in as ${data.user.name}</span>`;
+                        loadTickets();
+                    }
+                })
+                .catch(() => {
+                    // Not logged in, that's fine
+                });
+        };
+    </script>
+</body>
+</html>

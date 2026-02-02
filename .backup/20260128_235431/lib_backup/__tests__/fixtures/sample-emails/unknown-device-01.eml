@@ -1,0 +1,38 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: IPS Alert: Intrusion Detected on Unknown Device
+Date: Mon, 08 Dec 2025 17:22:10 -0500
+Message-ID: <unknown-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Security Alert
+=========================
+
+Alert Type: Intrusion Prevention System (IPS)
+Severity: HIGH
+Timestamp: 2025-12-08 17:22:10 EST
+
+Device Information:
+-------------------
+Serial Number: UNKNOWN-SERIAL-999
+Hostname: FW-BRANCH-UNKNOWN
+Management IP: 172.16.50.1
+Model: TZ370
+
+Alert Details:
+--------------
+An intrusion attempt has been detected and blocked.
+
+Attack Signature: Cross-Site Scripting (XSS) Attempt
+Source IP: 198.51.100.88
+Destination IP: 10.5.1.50
+Protocol: HTTP
+Port: 80
+
+Action Taken: Connection blocked
+
+Note: This device may not be registered in the management system.
+Please verify device configuration and registration.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

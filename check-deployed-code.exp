@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set server_password [lindex $argv 0]
+
+spawn ssh avian@192.168.1.115
+
+expect "password:"
+send "$server_password\r"
+
+expect "$ "
+send "head -15 /home/avian/avian-cybersecurity-platform-onprem/src/app/api/dashboard/route.ts\r"
+
+expect "$ "
+send "echo '--- Dashboard API Check Complete ---'\r"
+
+expect "$ "
+send "exit\r"
+expect eof

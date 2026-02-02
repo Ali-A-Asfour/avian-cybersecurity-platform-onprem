@@ -1,0 +1,102 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set server_password [lindex $argv 0]
+
+if {$argc != 1} {
+    puts "Usage: $argv0 <server_password>"
+    exit 1
+}
+
+spawn ssh avian@192.168.1.115
+
+expect {
+    "password:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Connected successfully
+    }
+    timeout {
+        puts "Connection timeout"
+        exit 1
+    }
+}
+
+send "cd /home/avian/avian-cybersecurity-platform-onprem\r"
+expect "$ "
+
+send "echo 'Step 1: Stopping containers...'\r"
+expect "$ "
+
+send "sudo docker-compose -f docker-compose.prod.yml down\r"
+expect {
+    "password for avian:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Command completed
+    }
+}
+
+send "echo 'Step 2: Rebuilding application (this may take a few minutes)...'\r"
+expect "$ "
+
+send "sudo docker-compose -f docker-compose.prod.yml build --no-cache app\r"
+expect {
+    "password for avian:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Build completed
+    }
+    timeout {
+        puts "Build timeout - this is normal for large builds"
+    }
+}
+
+send "echo 'Step 3: Starting containers...'\r"
+expect "$ "
+
+send "sudo docker-compose -f docker-compose.prod.yml up -d\r"
+expect {
+    "password for avian:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Containers started
+    }
+}
+
+send "echo 'Step 4: Checking container status...'\r"
+expect "$ "
+
+send "sudo docker-compose -f docker-compose.prod.yml ps\r"
+expect {
+    "password for avian:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Status shown
+    }
+}
+
+send "echo 'Deployment complete! Testing API...'\r"
+expect "$ "
+
+send "sleep 10\r"
+expect "$ "
+
+send "curl -k -s https://192.168.1.115/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@avian.local\",\"password\":\"admin123\"}' | head -c 100\r"
+expect "$ "
+
+send "echo '\nDeployment finished successfully!'\r"
+expect "$ "
+
+send "exit\r"
+expect eof

@@ -56,10 +56,90 @@
       "tenant_id": "85cfd918-8558-4baa-9534-25454aea76a8",
       "category": "it_support",
       "requester_email": "user@esr.com",
-      "tags": ["network", "urgent"],
+      "tags": [
+        "network",
+        "urgent"
+      ],
       "updated_at": "2026-01-27T20:15:00.000Z",
       "queue_position_updated_at": "2026-01-27T20:15:00.000Z",
       "requester": "user@esr.com"
+    }
+  ],
+  [
+    "ticket-closed-test-001",
+    {
+      "id": "ticket-closed-test-001",
+      "title": "Resolved - Email Configuration Issue",
+      "description": "User unable to access email. Issue was resolved by updating Outlook settings.",
+      "severity": "medium",
+      "contactMethod": "email",
+      "status": "resolved",
+      "priority": "medium",
+      "created_at": "2026-01-27T15:03:05.058Z",
+      "created_by": "user-test-001",
+      "assigned_to": "0a24b509-6e8f-4162-8687-f9a8ed71f9cc",
+      "tenant_id": "85cfd918-8558-4baa-9534-25454aea76a8",
+      "category": "it_support",
+      "requester_email": "user@esr.com",
+      "tags": [
+        "email",
+        "outlook"
+      ],
+      "updated_at": "2026-01-28T15:03:05.058Z",
+      "queue_position_updated_at": "2026-01-27T15:03:05.058Z",
+      "requester": "user@esr.com"
+    }
+  ],
+  [
+    "ticket-closed-test-002",
+    {
+      "id": "ticket-closed-test-002",
+      "title": "Closed - Password Reset Request",
+      "description": "User requested password reset for domain account. Reset completed successfully.",
+      "severity": "low",
+      "contactMethod": "phone",
+      "phoneNumber": "+1-555-0123",
+      "status": "closed",
+      "priority": "low",
+      "created_at": "2026-01-27T15:03:05.058Z",
+      "created_by": "user-test-002",
+      "assigned_to": "0a24b509-6e8f-4162-8687-f9a8ed71f9cc",
+      "tenant_id": "85cfd918-8558-4baa-9534-25454aea76a8",
+      "category": "it_support",
+      "requester_email": "user2@esr.com",
+      "tags": [
+        "password",
+        "reset"
+      ],
+      "updated_at": "2026-01-29T15:03:05.058Z",
+      "queue_position_updated_at": "2026-01-27T15:03:05.058Z",
+      "requester": "user2@esr.com"
+    }
+  ],
+  [
+    "ticket-closed-test-003",
+    {
+      "id": "ticket-closed-test-003",
+      "title": "Resolved - Printer Connection Problem",
+      "description": "Network printer not responding. Issue resolved by restarting print spooler service.",
+      "severity": "medium",
+      "contactMethod": "email",
+      "status": "resolved",
+      "priority": "medium",
+      "created_at": "2026-01-28T15:03:05.058Z",
+      "created_by": "user-test-003",
+      "assigned_to": "0a24b509-6e8f-4162-8687-f9a8ed71f9cc",
+      "tenant_id": "85cfd918-8558-4baa-9534-25454aea76a8",
+      "category": "it_support",
+      "requester_email": "user3@esr.com",
+      "tags": [
+        "printer",
+        "network"
+      ],
+      "updated_at": "2026-01-29T15:03:05.058Z",
+      "queue_position_updated_at": "2026-01-28T15:03:05.058Z",
+      "requester": "user3@esr.com",
+      "device_name": "PRINTER-LAB-01"
     }
   ]
 ]

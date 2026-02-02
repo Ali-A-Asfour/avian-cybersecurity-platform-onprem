@@ -82,7 +82,8 @@ export function ClosedTicketsQueue({ userRole, userId, tenantId }: ClosedTickets
     }, [userRole, userId, tenantId, selectedTenant]);
 
     const handleViewDetails = (ticketId: string) => {
-        window.open(`/tickets/${ticketId}`, '_blank');
+        // Open in same tab instead of new tab so back button works
+        window.location.href = `/help-desk/tickets/${ticketId}`;
     };
 
     const handleReopenTicket = async (ticketId: string) => {

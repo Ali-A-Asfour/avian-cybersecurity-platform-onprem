@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '../../../../middleware/auth.middleware';
 import { monitoring } from '../../../../lib/monitoring';
 import { performanceMonitor } from '../../../../lib/performance-monitor';
-// import { logger } from '../../../../lib/logger';
+import { logger } from '../../../../lib/logger';
 import { UserRole } from '../../../../types';
 
 export async function GET(request: NextRequest) {

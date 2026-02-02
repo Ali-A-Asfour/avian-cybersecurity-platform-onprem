@@ -1,0 +1,108 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: ATP: Advanced Threat Detected - Zero-Day Exploit
+Date: Mon, 08 Dec 2025 15:12:44 -0500
+Message-ID: <atp-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Advanced Threat Protection Alert
+===========================================
+
+Alert Type: Advanced Threat Protection (ATP)
+Severity: CRITICAL
+Timestamp: 2025-12-08 15:12:44 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Threat Details:
+---------------
+Threat Name: Suspicious Executable with Zero-Day Characteristics
+Threat Type: Potential Zero-Day Exploit
+Detection Method: Cloud Sandbox Analysis
+Analysis Time: 45 seconds
+Verdict: MALICIOUS
+
+File Information:
+-----------------
+Filename: invoice_december.pdf.exe
+File Size: 3.2 MB
+File Type: PE32 Executable (masquerading as PDF)
+MD5: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+SHA256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+
+Connection Details:
+-------------------
+Source IP: 198.51.100.234 (External)
+Source Country: Unknown
+Destination IP: 10.0.1.92 (Internal)
+Destination User: mwilson@company.local
+Protocol: SMTP
+Port: 25
+Direction: Inbound
+Delivery Method: Email Attachment
+
+Sandbox Analysis Results:
+--------------------------
+Behavior Score: 95/100 (CRITICAL)
+
+Malicious Behaviors Detected:
+- Creates hidden registry keys
+- Attempts to disable Windows Defender
+- Establishes persistence mechanism
+- Contacts external C2 server
+- Attempts privilege escalation
+- Modifies system files
+- Encrypts user documents (ransomware behavior)
+
+Network Activity:
+- Outbound connections to 203.0.113.45:8080
+- DNS queries to suspicious domains
+- Data exfiltration attempts
+
+Action Taken:
+-------------
+- File blocked and quarantined
+- Email delivery prevented
+- User notified of blocked attachment
+- Detailed analysis report generated
+- Threat intelligence updated
+
+CRITICAL SECURITY INCIDENT:
+---------------------------
+This appears to be a targeted attack using a zero-day exploit or
+previously unknown malware variant. The file was designed to evade
+traditional antivirus detection.
+
+Immediate Actions Required:
+---------------------------
+1. Alert security team immediately
+2. Review all recent email attachments
+3. Scan all endpoints for similar files
+4. Check for any successful deliveries of similar files
+5. Review email security policies
+6. Consider blocking sender domain
+7. Update security awareness training
+8. Document incident for compliance
+
+Additional Context:
+-------------------
+This attack appears to be part of a targeted phishing campaign.
+The filename and delivery method suggest social engineering tactics.
+User education is critical to prevent future incidents.
+
+Threat Intelligence:
+--------------------
+- Similar attacks detected across 15 organizations
+- Campaign active since 2025-12-05
+- Targets finance and accounting departments
+- Uses invoice-themed lures
+
+Full sandbox report available in MySonicWall portal.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

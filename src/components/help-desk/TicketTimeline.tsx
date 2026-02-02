@@ -25,6 +25,7 @@ interface TicketTimelineProps {
     attachments: TicketAttachment[];
     userRole?: UserRole;
     onCommentAdded: (comment: TicketComment) => void;
+    readOnly?: boolean;
 }
 
 interface TimelineItem {
@@ -43,7 +44,8 @@ export function TicketTimeline({
     comments,
     attachments,
     userRole,
-    onCommentAdded
+    onCommentAdded,
+    readOnly = false
 }: TicketTimelineProps) {
     const [newComment, setNewComment] = useState('');
     const [isInternal, setIsInternal] = useState(false);
@@ -233,65 +235,67 @@ export function TicketTimeline({
                     </div>
                 )}
 
-                {/* Add Comment/Note Section */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <div className="space-y-3">
-                        <Textarea
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Add a comment or update..."
-                            rows={3}
-                            className="resize-none"
-                        />
+                {/* Add Comment/Note Section - Hide if read-only */}
+                {!readOnly && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="space-y-3">
+                            <Textarea
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="Add a comment or update..."
+                                rows={3}
+                                className="resize-none"
+                            />
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                {canAddInternalNotes && (
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    {canAddInternalNotes && (
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isInternal}
+                                                onChange={(e) => setIsInternal(e.target.checked)}
+                                                className="rounded border-gray-300"
+                                            />
+                                            <span className="text-sm text-gray-600">
+                                                Internal note (hidden from end users)
+                                            </span>
+                                        </label>
+                                    )}
+
+                                    <div>
                                         <input
-                                            type="checkbox"
-                                            checked={isInternal}
-                                            onChange={(e) => setIsInternal(e.target.checked)}
-                                            className="rounded border-gray-300"
+                                            type="file"
+                                            id="file-upload"
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                            disabled={loading}
                                         />
-                                        <span className="text-sm text-gray-600">
-                                            Internal note (hidden from end users)
-                                        </span>
-                                    </label>
-                                )}
-
-                                <div>
-                                    <input
-                                        type="file"
-                                        id="file-upload"
-                                        className="hidden"
-                                        onChange={handleFileUpload}
-                                        disabled={loading}
-                                    />
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => document.getElementById('file-upload')?.click()}
-                                        disabled={loading}
-                                        className="flex items-center gap-2"
-                                    >
-                                        <Paperclip className="h-4 w-4" />
-                                        Attach File
-                                    </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => document.getElementById('file-upload')?.click()}
+                                            disabled={loading}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Paperclip className="h-4 w-4" />
+                                            Attach File
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <Button
-                                onClick={handleAddComment}
-                                disabled={loading || !newComment.trim()}
-                                className="flex items-center gap-2"
-                            >
-                                <Send className="h-4 w-4" />
-                                {isInternal ? 'Add Internal Note' : 'Add Comment'}
-                            </Button>
+                                <Button
+                                    onClick={handleAddComment}
+                                    disabled={loading || !newComment.trim()}
+                                    className="flex items-center gap-2"
+                                >
+                                    <Send className="h-4 w-4" />
+                                    {isInternal ? 'Add Internal Note' : 'Add Comment'}
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Timeline Items */}
                 <div className="space-y-4">

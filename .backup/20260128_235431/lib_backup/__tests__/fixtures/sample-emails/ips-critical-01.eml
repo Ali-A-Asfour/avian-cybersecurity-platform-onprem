@@ -1,0 +1,40 @@
+From: alerts@sonicwall.example.com
+To: security@avian.example.com
+Subject: IPS Alert: Critical Intrusion Attempt Detected
+Date: Mon, 08 Dec 2025 14:23:45 -0500
+Message-ID: <ips-001@sonicwall.example.com>
+Content-Type: text/plain; charset=UTF-8
+
+SonicWall Security Alert
+=========================
+
+Alert Type: Intrusion Prevention System (IPS)
+Severity: CRITICAL
+Timestamp: 2025-12-08 14:23:45 EST
+
+Device Information:
+-------------------
+Serial Number: C0EAE4B2C3F1
+Hostname: FW-HQ-PRIMARY
+Management IP: 192.168.1.1
+Model: TZ570
+
+Alert Details:
+--------------
+An intrusion attempt has been detected and blocked by the Intrusion Prevention System.
+
+Attack Signature: SQL Injection Attempt
+Source IP: 203.0.113.45
+Destination IP: 10.0.1.100
+Protocol: TCP
+Port: 443
+
+Action Taken: Connection blocked and logged
+
+Recommendation:
+---------------
+Review firewall logs for additional suspicious activity from this source IP.
+Consider adding the source IP to the blocked address list.
+
+This is an automated message from your SonicWall firewall.
+Do not reply to this email.

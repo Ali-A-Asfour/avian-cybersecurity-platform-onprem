@@ -65,13 +65,19 @@ export async function GET(request: NextRequest) {
         console.log('My tickets - Total tickets in store:', ticketStore.getAllTickets().length);
         
         if (user.role === UserRole.USER || user.role === UserRole.SUPER_ADMIN) {
-            // Regular users and super admins see tickets they created
-            tickets = ticketStore.getTicketsByUser(user.user_id, tenantFilter);
-            console.log('My tickets - Found tickets by user:', tickets.length);
+            // Regular users and super admins see tickets they created (excluding resolved/closed)
+            const allUserTickets = ticketStore.getTicketsByUser(user.user_id, tenantFilter);
+            tickets = allUserTickets.filter(ticket => 
+                ticket.status !== 'resolved' && ticket.status !== 'closed'
+            );
+            console.log('My tickets - Found active tickets by user:', tickets.length);
         } else {
-            // Analysts see tickets assigned to them
-            tickets = ticketStore.getAssignedTickets(user.user_id, tenantFilter);
-            console.log('My tickets - Found assigned tickets:', tickets.length);
+            // Analysts see tickets assigned to them (excluding resolved/closed)
+            const allAssignedTickets = ticketStore.getAssignedTickets(user.user_id, tenantFilter);
+            tickets = allAssignedTickets.filter(ticket => 
+                ticket.status !== 'resolved' && ticket.status !== 'closed'
+            );
+            console.log('My tickets - Found active assigned tickets:', tickets.length);
         }
 
         // Apply pagination

@@ -1,0 +1,61 @@
+# SonicWall Configuration Export - RISKY CONFIGURATION
+# This configuration contains multiple security risks for testing
+# DO NOT USE IN PRODUCTION
+
+# System Settings
+firmware version 6.5.0-1000
+hostname "Insecure-Firewall"
+timezone "UTC"
+
+# NO NTP CONFIGURED (LOW RISK)
+
+# DNS Configuration
+dns-server 8.8.8.8
+
+# Interface Configuration
+interface X0 zone WAN ip 203.0.113.1 dhcp server enable
+interface X1 zone LAN ip 192.168.1.1
+interface X2 zone GUEST ip 172.16.0.1
+
+# Security Features - MANY DISABLED (CRITICAL/HIGH RISKS)
+ips disable
+gateway-av disable
+dpi-ssl disable
+app-control disable
+content-filter disable
+botnet disable
+
+# Admin Settings - INSECURE (CRITICAL/HIGH/MEDIUM RISKS)
+admin username "admin"
+admin username "root"
+admin user "administrator"
+# MFA NOT ENABLED (HIGH RISK)
+wan management enable
+https admin port 443
+ssh enable
+
+# Address Objects
+address-object name "Server1" ip 192.168.1.100 zone LAN
+
+# Service Objects
+service-object name "HTTP" protocol tcp port 80
+
+# Firewall Access Rules - DANGEROUS RULES
+access-rule name "CRITICAL-WAN-TO-LAN" from WAN to LAN source any destination any service any action allow
+access-rule name "HIGH-ANY-TO-ANY" from any to any source any destination any service any action allow
+access-rule name "GUEST-TO-LAN" from GUEST to LAN source any destination any service any action allow
+access-rule from LAN to WAN source any destination any service any action allow
+access-rule from LAN to WAN source any destination any service SSH action allow
+
+# NAT Policies
+nat-policy original-source 192.168.1.0/24 translated-source 203.0.113.1 interface X0
+
+# VPN Configuration - WEAK ENCRYPTION (HIGH RISK)
+vpn policy "Weak-VPN-1" encryption des auth psk
+vpn policy "Weak-VPN-2" encryption 3des auth psk
+vpn policy "PSK-Only-VPN" encryption aes256 auth psk
+
+# SSH on WAN (HIGH RISK)
+ssh wan-interface X0 enable
+
+# End of Configuration

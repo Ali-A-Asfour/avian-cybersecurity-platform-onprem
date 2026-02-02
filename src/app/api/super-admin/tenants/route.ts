@@ -148,14 +148,15 @@ export async function GET(request: NextRequest) {
 
     const { user } = authResult;
 
-    // Check if user is super admin
-    if (user.role !== 'super_admin') {
+    // Check if user is super admin or cross-tenant user (Security Analyst, IT Helpdesk Analyst)
+    const allowedRoles = ['super_admin', 'security_analyst', 'it_helpdesk_analyst'];
+    if (!allowedRoles.includes(user.role)) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: 'FORBIDDEN',
-            message: 'Only super admins can list tenants',
+            message: 'Only super admins and cross-tenant users can list tenants',
           },
         },
         { status: 403 }
@@ -176,15 +177,37 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Production mode would use the TenantService
-    // const { TenantService } = await import('@/services/tenant.service');
-    // const tenants = await TenantService.listTenants(user.role, user.tenant_id);
+    // Production mode - use the TenantService
+    const { TenantService } = await import('@/services/tenant.service');
+    
+    // Parse query parameters for filtering
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const is_active = searchParams.get('is_active') === 'false' ? false : true; // Default to active only
+    const search = searchParams.get('search') || undefined;
+
+    const filters = {
+      page,
+      limit,
+      is_active,
+      search,
+    };
+
+    const result = await TenantService.listTenants(
+      filters,
+      user.user_id,
+      user.role,
+      user.tenant_id
+    );
 
     return NextResponse.json({
       success: true,
       data: {
-        tenants: [],
-        total: 0,
+        tenants: result.tenants,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
       },
     });
 

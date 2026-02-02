@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { threatLakeService } from '@/services/threat-lake.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const advancedSearchSchema = z.object({

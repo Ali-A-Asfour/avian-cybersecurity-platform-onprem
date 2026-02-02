@@ -1,0 +1,48 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set server_password [lindex $argv 0]
+
+if {$argc != 1} {
+    puts "Usage: $argv0 <server_password>"
+    exit 1
+}
+
+spawn ssh avian@192.168.1.115
+
+expect {
+    "password:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Connected successfully
+    }
+    timeout {
+        puts "Connection timeout"
+        exit 1
+    }
+}
+
+send "cd /home/avian/avian-cybersecurity-platform-onprem\r"
+expect "$ "
+
+send "echo 'Restarting application container...'\r"
+expect "$ "
+
+send "sudo docker-compose -f docker-compose.prod.yml restart app\r"
+expect {
+    "password for avian:" {
+        send "$server_password\r"
+        exp_continue
+    }
+    "$ " {
+        # Command completed
+    }
+}
+
+send "echo 'Container restarted successfully!'\r"
+expect "$ "
+
+send "exit\r"
+expect eof

@@ -24,6 +24,12 @@ export function Header({ sidebarCollapsed, onSidebarToggle, currentUser }: Heade
   const { setCurrentUser, isDemo } = useDemoContext();
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
 
+  // Debug logging
+  console.log('[Header] currentUser:', currentUser);
+  console.log('[Header] currentUser.role:', currentUser?.role);
+  console.log('[Header] UserRole.SUPER_ADMIN:', UserRole.SUPER_ADMIN);
+  console.log('[Header] Role check result:', currentUser?.role === UserRole.SUPER_ADMIN);
+
   return (
     <header
       className={cn(
@@ -77,8 +83,10 @@ export function Header({ sidebarCollapsed, onSidebarToggle, currentUser }: Heade
           {/* Tenant Switcher - Only show for super admin */}
           {currentUser.role === UserRole.SUPER_ADMIN && <TenantSwitcher />}
 
-          {/* Demo Tenant Switcher - Development mode only */}
-          <DemoTenantSwitcher userRole={currentUser.role} />
+          {/* Demo Tenant Switcher - Show for cross-tenant roles (helpdesk analyst, security analyst) and super admin */}
+          {[UserRole.SUPER_ADMIN, UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(currentUser.role) && (
+            <DemoTenantSwitcher userRole={currentUser.role} />
+          )}
 
           {/* Notifications */}
           <NotificationDropdown />

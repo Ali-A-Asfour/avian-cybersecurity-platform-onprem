@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dataIngestionService, DataSourceType, EventSeverity } from '@/services/data-ingestion.service';
 import { authMiddleware } from '@/middleware/auth.middleware';
 import { tenantMiddleware } from '@/middleware/tenant.middleware';
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {

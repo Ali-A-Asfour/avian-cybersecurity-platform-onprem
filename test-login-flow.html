@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .step { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .button { background: #007cba; color: white; padding: 10px 15px; border: none; border-radius: 3px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #005a87; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: orange; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login Flow Test</h1>
+    
+    <div class="step">
+        <h3>Step 1: Login</h3>
+        <button class="button" onclick="testLogin()">Login as Helpdesk</button>
+        <button class="button" onclick="testAdminLogin()">Login as Admin</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Check Auth Status</h3>
+        <button class="button" onclick="checkAuthStatus()">Check /api/auth/me</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Test Assignment</h3>
+        <button class="button" onclick="testAssignment()">Test Ticket Assignment</button>
+        <div id="assignment-result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Logout</h3>
+        <button class="button" onclick="testLogout()">Logout</button>
+        <div id="logout-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+        let authToken = null;
+        
+        async function testLogin() {
+            try {
+                document.getElementById('login-result').innerHTML = '<div class="loading">Logging in...</div>';
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Include cookies
+                    body: JSON.stringify({
+                        email: 'helpdesk@demo.com',
+                        password: 'helpdesk123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    document.getElementById('login-result').innerHTML = 
+                        '<div class="success">✅ Login successful!</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                } else {
+                    document.getElementById('login-result').innerHTML = 
+                        '<div class="error">❌ Login failed: ' + data.error + '</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('login-result').innerHTML = 
+                    '<div class="error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testAdminLogin() {
+            try {
+                document.getElementById('login-result').innerHTML = '<div class="loading">Logging in as admin...</div>';
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: 'admin@demo.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    document.getElementById('login-result').innerHTML = 
+                        '<div class="success">✅ Admin login successful!</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                } else {
+                    document.getElementById('login-result').innerHTML = 
+                        '<div class="error">❌ Login failed: ' + data.error + '</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('login-result').innerHTML = 
+                    '<div class="error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function checkAuthStatus() {
+            try {
+                document.getElementById('auth-result').innerHTML = '<div class="loading">Checking auth status...</div>';
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                // Add Authorization header if we have a token
+                if (authToken) {
+                    headers['Authorization'] = 'Bearer ' + authToken;
+                }
+                
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    method: 'GET',
+                    headers: headers,
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('auth-result').innerHTML = 
+                        '<div class="success">✅ Auth check successful!</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                } else {
+                    document.getElementById('auth-result').innerHTML = 
+                        '<div class="error">❌ Auth check failed: ' + data.error + '</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('auth-result').innerHTML = 
+                    '<div class="error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testAssignment() {
+            try {
+                document.getElementById('assignment-result').innerHTML = '<div class="loading">Testing assignment...</div>';
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (authToken) {
+                    headers['Authorization'] = 'Bearer ' + authToken;
+                }
+                
+                const response = await fetch(`${API_BASE}/tickets/assign-simple`, {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        ticketId: '3fcaabea-cccc-4382-b6af-f5d3667408cc',
+                        assignee: '4'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('assignment-result').innerHTML = 
+                        '<div class="success">✅ Assignment successful!</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                } else {
+                    document.getElementById('assignment-result').innerHTML = 
+                        '<div class="error">❌ Assignment failed: ' + data.error + '</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('assignment-result').innerHTML = 
+                    '<div class="error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testLogout() {
+            try {
+                document.getElementById('logout-result').innerHTML = '<div class="loading">Logging out...</div>';
+                
+                const response = await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = null;
+                    document.getElementById('logout-result').innerHTML = 
+                        '<div class="success">✅ Logout successful!</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                } else {
+                    document.getElementById('logout-result').innerHTML = 
+                        '<div class="error">❌ Logout failed: ' + data.error + '</div>' +
+                        '<div class="result">' + JSON.stringify(data, null, 2) + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('logout-result').innerHTML = 
+                    '<div class="error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+    </script>
+</body>
+</html>

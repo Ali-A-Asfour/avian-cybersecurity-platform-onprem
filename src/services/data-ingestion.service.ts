@@ -1,4 +1,4 @@
-// import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { getRedisClient } from '@/lib/redis';
 // import { db } from '@/lib/database';
 import { logAuditEvent, AuditAction } from '@/lib/audit-logger';

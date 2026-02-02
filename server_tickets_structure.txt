@@ -1,0 +1,38 @@
+                                  Table "public.tickets"
+    Column    |            Type             | Collation | Nullable |       Default        
+--------------+-----------------------------+-----------+----------+----------------------
+ id           | uuid                        |           | not null | gen_random_uuid()
+ tenant_id    | uuid                        |           | not null | 
+ requester    | character varying(255)      |           | not null | 
+ assignee     | character varying(255)      |           |          | 
+ title        | character varying(500)      |           | not null | 
+ description  | text                        |           | not null | 
+ severity     | ticket_severity             |           | not null | 
+ priority     | ticket_priority             |           | not null | 
+ status       | ticket_status               |           | not null | 'new'::ticket_status
+ tags         | jsonb                       |           | not null | '[]'::jsonb
+ sla_deadline | timestamp without time zone |           |          | 
+ created_at   | timestamp without time zone |           | not null | now()
+ updated_at   | timestamp without time zone |           | not null | now()
+ category     | ticket_category             |           | not null | 
+Indexes:
+    "tickets_pkey" PRIMARY KEY, btree (id)
+    "idx_tickets_created_at" btree (created_at)
+    "idx_tickets_status" btree (status)
+    "idx_tickets_tenant_id" btree (tenant_id)
+    "tickets_assignee_idx" btree (assignee)
+    "tickets_category_idx" btree (category)
+    "tickets_created_at_idx" btree (created_at)
+    "tickets_general_category_idx" btree (category) WHERE category = ANY (ARRAY['general_request'::ticket_category, 'other'::ticket_category])
+    "tickets_it_category_idx" btree (category) WHERE category = ANY (ARRAY['it_support'::ticket_category, 'hardware_issue'::ticket_category, 'software_issue'::ticket_category, 'network_issue'::ticket_category, 'access_request'::ticket_category, 'account_setup'::ticket_category])
+    "tickets_priority_idx" btree (priority)
+    "tickets_requester_idx" btree (requester)
+    "tickets_security_category_idx" btree (category) WHERE category = ANY (ARRAY['security_incident'::ticket_category, 'vulnerability'::ticket_category, 'malware_detection'::ticket_category, 'phishing_attempt'::ticket_category, 'data_breach'::ticket_category, 'policy_violation'::ticket_category, 'compliance'::ticket_category])
+    "tickets_severity_idx" btree (severity)
+    "tickets_sla_deadline_idx" btree (sla_deadline)
+    "tickets_status_idx" btree (status)
+    "tickets_tenant_idx" btree (tenant_id)
+Referenced by:
+    TABLE "ticket_attachments" CONSTRAINT "ticket_attachments_ticket_id_tickets_id_fk" FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+    TABLE "ticket_comments" CONSTRAINT "ticket_comments_ticket_id_tickets_id_fk" FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+
