@@ -17,11 +17,19 @@ function getAuthToken(): string | null {
 function getSelectedTenantId(): string | null {
   if (typeof window === 'undefined') return null;
   
-  // Try to get from window global (set by DemoContext)
+  // Try multiple sources in order of preference
+  // 1. Global variable (set by DemoContext)
   const globalTenant = (window as any).__SELECTED_TENANT_ID__;
   if (globalTenant) {
-    console.log('🌐 API Client: Found selected tenant ID:', globalTenant);
+    console.log('🌐 API Client: Found selected tenant ID from global:', globalTenant);
     return globalTenant;
+  }
+  
+  // 2. Session storage (fallback)
+  const sessionTenant = sessionStorage.getItem('selectedTenantId');
+  if (sessionTenant) {
+    console.log('🌐 API Client: Found selected tenant ID from session:', sessionTenant);
+    return sessionTenant;
   }
   
   console.log('🌐 API Client: No selected tenant ID found');

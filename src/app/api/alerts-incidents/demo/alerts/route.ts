@@ -8,8 +8,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SecurityAlert } from '@/types/alerts-incidents';
 import { DemoStateManager } from '@/lib/demo-state';
 
-// Mock alerts data
+// Mock alerts data for multiple tenants
 const mockAlerts: SecurityAlert[] = [
+    // ACME Corp alerts
     {
         id: 'alert-001',
         tenantId: 'acme-corp',
@@ -200,6 +201,199 @@ const mockAlerts: SecurityAlert[] = [
         detectedAt: new Date('2024-01-15T04:30:00Z'),
         createdAt: new Date('2024-01-15T04:30:00Z'),
         updatedAt: new Date('2024-01-15T08:45:00Z')
+    },
+    // TechStart Inc alerts
+    {
+        id: 'alert-007',
+        tenantId: 'techstart-789',
+        sourceSystem: 'edr',
+        sourceId: 'defender-alert-007',
+        alertType: 'malware_detection',
+        classification: 'malware',
+        severity: 'high',
+        title: 'Spyware detected on WORKSTATION-TS01',
+        description: 'Microsoft Defender detected spyware attempting to steal credentials.',
+        metadata: {
+            deviceName: 'WORKSTATION-TS01',
+            userName: 'sarah.tech@techstart.com',
+            filePath: 'C:\\Users\\sarah.tech\\AppData\\Local\\Temp\\keylogger.exe'
+        },
+        seenCount: 1,
+        firstSeenAt: new Date('2024-01-15T10:15:00Z'),
+        lastSeenAt: new Date('2024-01-15T10:15:00Z'),
+        defenderIncidentId: 'inc-007',
+        defenderAlertId: 'alert-def-007',
+        defenderSeverity: 'High',
+        threatName: 'Trojan:Win32/Spy.Agent',
+        affectedDevice: 'WORKSTATION-TS01',
+        affectedUser: 'sarah.tech@techstart.com',
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
+        detectedAt: new Date('2024-01-15T10:15:00Z'),
+        createdAt: new Date('2024-01-15T10:15:00Z'),
+        updatedAt: new Date('2024-01-15T10:15:00Z')
+    },
+    {
+        id: 'alert-008',
+        tenantId: 'techstart-789',
+        sourceSystem: 'firewall',
+        sourceId: 'fw-alert-008',
+        alertType: 'port_scan',
+        classification: 'reconnaissance',
+        severity: 'medium',
+        title: 'Port scanning activity detected from external source',
+        description: 'SonicWall detected systematic port scanning targeting multiple internal hosts.',
+        metadata: {
+            sourceIp: '198.51.100.42',
+            targetHosts: 12,
+            scannedPorts: '22,80,443,3389,8080',
+            duration: '15 minutes'
+        },
+        seenCount: 1,
+        firstSeenAt: new Date('2024-01-15T09:45:00Z'),
+        lastSeenAt: new Date('2024-01-15T09:45:00Z'),
+        defenderIncidentId: null,
+        defenderAlertId: null,
+        defenderSeverity: null,
+        threatName: null,
+        affectedDevice: null,
+        affectedUser: null,
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
+        detectedAt: new Date('2024-01-15T09:45:00Z'),
+        createdAt: new Date('2024-01-15T09:45:00Z'),
+        updatedAt: new Date('2024-01-15T09:45:00Z')
+    },
+    {
+        id: 'alert-009',
+        tenantId: 'techstart-789',
+        sourceSystem: 'email',
+        sourceId: 'email-alert-009',
+        alertType: 'business_email_compromise',
+        classification: 'phishing',
+        severity: 'critical',
+        title: 'CEO impersonation email detected',
+        description: 'Email security detected spoofed email claiming to be from CEO requesting wire transfer.',
+        metadata: {
+            sender: 'ceo@techstart-inc.com',
+            recipient: 'finance@techstart.com',
+            subject: 'URGENT: Wire Transfer Required',
+            amount: '$50,000'
+        },
+        seenCount: 1,
+        firstSeenAt: new Date('2024-01-15T08:30:00Z'),
+        lastSeenAt: new Date('2024-01-15T08:30:00Z'),
+        defenderIncidentId: null,
+        defenderAlertId: null,
+        defenderSeverity: null,
+        threatName: null,
+        affectedDevice: null,
+        affectedUser: null,
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
+        detectedAt: new Date('2024-01-15T08:30:00Z'),
+        createdAt: new Date('2024-01-15T08:30:00Z'),
+        updatedAt: new Date('2024-01-15T08:30:00Z')
+    },
+    // Global Finance Ltd alerts
+    {
+        id: 'alert-010',
+        tenantId: 'global-finance-101',
+        sourceSystem: 'edr',
+        sourceId: 'defender-alert-010',
+        alertType: 'credential_theft',
+        classification: 'credential_access',
+        severity: 'critical',
+        title: 'Credential dumping attempt detected on FINANCE-SRV01',
+        description: 'Microsoft Defender detected LSASS memory dumping attempt to steal credentials.',
+        metadata: {
+            deviceName: 'FINANCE-SRV01',
+            userName: 'SYSTEM',
+            processName: 'mimikatz.exe',
+            technique: 'LSASS Memory Dump'
+        },
+        seenCount: 1,
+        firstSeenAt: new Date('2024-01-15T11:00:00Z'),
+        lastSeenAt: new Date('2024-01-15T11:00:00Z'),
+        defenderIncidentId: 'inc-010',
+        defenderAlertId: 'alert-def-010',
+        defenderSeverity: 'High',
+        threatName: 'HackTool:Win32/Mimikatz',
+        affectedDevice: 'FINANCE-SRV01',
+        affectedUser: 'SYSTEM',
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
+        detectedAt: new Date('2024-01-15T11:00:00Z'),
+        createdAt: new Date('2024-01-15T11:00:00Z'),
+        updatedAt: new Date('2024-01-15T11:00:00Z')
+    },
+    {
+        id: 'alert-011',
+        tenantId: 'global-finance-101',
+        sourceSystem: 'firewall',
+        sourceId: 'fw-alert-011',
+        alertType: 'ddos_attempt',
+        classification: 'denial_of_service',
+        severity: 'high',
+        title: 'DDoS attack detected targeting web services',
+        description: 'SonicWall detected distributed denial of service attack with 10,000+ requests per second.',
+        metadata: {
+            attackType: 'SYN Flood',
+            requestRate: '10,500 req/sec',
+            sourceIPs: '247 unique IPs',
+            targetService: 'HTTPS (443)'
+        },
+        seenCount: 1,
+        firstSeenAt: new Date('2024-01-15T10:30:00Z'),
+        lastSeenAt: new Date('2024-01-15T10:30:00Z'),
+        defenderIncidentId: null,
+        defenderAlertId: null,
+        defenderSeverity: null,
+        threatName: null,
+        affectedDevice: null,
+        affectedUser: null,
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
+        detectedAt: new Date('2024-01-15T10:30:00Z'),
+        createdAt: new Date('2024-01-15T10:30:00Z'),
+        updatedAt: new Date('2024-01-15T10:30:00Z')
+    },
+    {
+        id: 'alert-012',
+        tenantId: 'global-finance-101',
+        sourceSystem: 'edr',
+        sourceId: 'defender-alert-012',
+        alertType: 'lateral_movement',
+        classification: 'lateral_movement',
+        severity: 'high',
+        title: 'Suspicious lateral movement detected',
+        description: 'Microsoft Defender detected unusual network authentication patterns indicating lateral movement.',
+        metadata: {
+            sourceDevice: 'FINANCE-WS05',
+            targetDevices: 'FINANCE-SRV01, FINANCE-SRV02, FINANCE-DC01',
+            userName: 'admin@globalfinance.com',
+            authMethod: 'NTLM'
+        },
+        seenCount: 1,
+        firstSeenAt: new Date('2024-01-15T09:15:00Z'),
+        lastSeenAt: new Date('2024-01-15T09:15:00Z'),
+        defenderIncidentId: 'inc-012',
+        defenderAlertId: 'alert-def-012',
+        defenderSeverity: 'Medium',
+        threatName: 'Suspicious Network Activity',
+        affectedDevice: 'FINANCE-WS05',
+        affectedUser: 'admin@globalfinance.com',
+        status: 'open',
+        assignedTo: null,
+        assignedAt: null,
+        detectedAt: new Date('2024-01-15T09:15:00Z'),
+        createdAt: new Date('2024-01-15T09:15:00Z'),
+        updatedAt: new Date('2024-01-15T09:15:00Z')
     }
 ];
 
@@ -208,14 +402,24 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const queue = searchParams.get('queue') || 'all';
         const assignedTo = searchParams.get('assignedTo');
-        console.log(`🔍 Demo Alerts API: queue=${queue}, assignedTo=${assignedTo}`);
+        
+        // Get selected tenant from header (for cross-tenant users like security analysts)
+        const selectedTenantId = request.headers.get('x-selected-tenant-id');
+        
+        console.log(`🔍 Demo Alerts API: queue=${queue}, assignedTo=${assignedTo}, selectedTenant=${selectedTenantId}`);
 
         let filteredAlerts = mockAlerts;
+        
+        // Filter by selected tenant if provided (for security analysts)
+        if (selectedTenantId) {
+            filteredAlerts = filteredAlerts.filter(alert => alert.tenantId === selectedTenantId);
+            console.log(`🔍 Filtered to tenant ${selectedTenantId}: ${filteredAlerts.length} alerts`);
+        }
 
         // Filter based on queue type and demo state
         if (queue === 'all') {
             // All Alerts tab - only unassigned alerts (not assigned or escalated in demo state)
-            filteredAlerts = mockAlerts.filter(alert =>
+            filteredAlerts = filteredAlerts.filter(alert =>
                 alert.status === 'open' && !DemoStateManager.isAlertAssigned(alert.id)
             );
             console.log(`🔍 All Alerts: Found ${filteredAlerts.length} unassigned alerts`);
@@ -228,7 +432,7 @@ export async function GET(request: NextRequest) {
             } else {
                 const assignedAlertIds = DemoStateManager.getAlertsAssignedTo(assignedTo);
                 console.log(`🔍 My Alerts: Found ${assignedAlertIds.length} alerts assigned to ${assignedTo}:`, assignedAlertIds);
-                filteredAlerts = mockAlerts.filter(alert =>
+                filteredAlerts = filteredAlerts.filter(alert =>
                     assignedAlertIds.includes(alert.id)
                 ).map(alert => {
                     // Update alert properties to reflect assignment
@@ -269,10 +473,14 @@ export async function GET(request: NextRequest) {
                     total: filteredAlerts.length
                 },
                 metadata: {
-                    unassignedCount: mockAlerts.filter(a =>
-                        a.status === 'open' && !DemoStateManager.isAlertAssigned(a.id)
-                    ).length,
-                    assignedCount: assignedTo ? DemoStateManager.getAlertsAssignedTo(assignedTo).length : 0,
+                    unassignedCount: mockAlerts.filter(a => {
+                        const matchesTenant = selectedTenantId ? a.tenantId === selectedTenantId : true;
+                        return matchesTenant && a.status === 'open' && !DemoStateManager.isAlertAssigned(a.id);
+                    }).length,
+                    assignedCount: assignedTo ? DemoStateManager.getAlertsAssignedTo(assignedTo).filter(id => {
+                        const alert = mockAlerts.find(a => a.id === id);
+                        return selectedTenantId ? alert?.tenantId === selectedTenantId : true;
+                    }).length : 0,
                     queue: queue
                 }
             }

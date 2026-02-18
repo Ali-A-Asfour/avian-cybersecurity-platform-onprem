@@ -52,6 +52,23 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Load persisted tenant from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTenant = sessionStorage.getItem('selectedTenant');
+      if (savedTenant) {
+        try {
+          const tenant = JSON.parse(savedTenant);
+          setCurrentTenant(tenant);
+          (window as any).__SELECTED_TENANT_ID__ = tenant.id;
+          console.log('DemoContext: Restored tenant from session:', tenant.id);
+        } catch (error) {
+          console.error('DemoContext: Failed to parse saved tenant:', error);
+        }
+      }
+    }
+  }, []);
+
   const handleSetCurrentUser = (user: DemoUser) => {
     setCurrentUser(user);
 
@@ -90,9 +107,13 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       if (tenant) {
         (window as any).__SELECTED_TENANT_ID__ = tenant.id;
+        sessionStorage.setItem('selectedTenantId', tenant.id);
+        sessionStorage.setItem('selectedTenant', JSON.stringify(tenant));
         console.log('DemoContext: Set global tenant ID:', tenant.id);
       } else {
         delete (window as any).__SELECTED_TENANT_ID__;
+        sessionStorage.removeItem('selectedTenantId');
+        sessionStorage.removeItem('selectedTenant');
         console.log('DemoContext: Cleared global tenant ID');
       }
     }
