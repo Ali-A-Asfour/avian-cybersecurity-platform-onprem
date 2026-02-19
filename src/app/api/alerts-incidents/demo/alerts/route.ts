@@ -8,12 +8,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SecurityAlert } from '@/types/alerts-incidents';
 import { DemoStateManager } from '@/lib/demo-state';
 
-// Mock alerts data for multiple tenants
+// Mock alerts data for multiple tenants (using actual tenant IDs from database)
 const mockAlerts: SecurityAlert[] = [
-    // ACME Corp alerts
+    // ESR tenant alerts
     {
         id: 'alert-001',
-        tenantId: 'acme-corp',
+        tenantId: '85cfd918-8558-4baa-9534-25454aea76a8', // ESR
         sourceSystem: 'edr',
         sourceId: 'defender-alert-001',
         alertType: 'malware_detection',
@@ -44,7 +44,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-002',
-        tenantId: 'acme-corp',
+        tenantId: '85cfd918-8558-4baa-9534-25454aea76a8', // ESR
         sourceSystem: 'firewall',
         sourceId: 'fw-alert-002',
         alertType: 'intrusion_attempt',
@@ -76,7 +76,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-003',
-        tenantId: 'acme-corp',
+        tenantId: '85cfd918-8558-4baa-9534-25454aea76a8', // ESR
         sourceSystem: 'email',
         sourceId: 'email-alert-003',
         alertType: 'phishing_attempt',
@@ -108,7 +108,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-004',
-        tenantId: 'acme-corp',
+        tenantId: '85cfd918-8558-4baa-9534-25454aea76a8', // ESR
         sourceSystem: 'edr',
         sourceId: 'defender-alert-004',
         alertType: 'suspicious_activity',
@@ -140,7 +140,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-005',
-        tenantId: 'acme-corp',
+        tenantId: '85cfd918-8558-4baa-9534-25454aea76a8', // ESR
         sourceSystem: 'edr',
         sourceId: 'defender-alert-005',
         alertType: 'malware_detection',
@@ -172,7 +172,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-006',
-        tenantId: 'acme-corp',
+        tenantId: '85cfd918-8558-4baa-9534-25454aea76a8', // ESR
         sourceSystem: 'firewall',
         sourceId: 'fw-alert-006',
         alertType: 'data_exfiltration',
@@ -202,10 +202,10 @@ const mockAlerts: SecurityAlert[] = [
         createdAt: new Date('2024-01-15T04:30:00Z'),
         updatedAt: new Date('2024-01-15T08:45:00Z')
     },
-    // TechStart Inc alerts
+    // Test tenant alerts (using Default Organization ID)
     {
         id: 'alert-007',
-        tenantId: 'techstart-789',
+        tenantId: '1f9656a9-1d4a-4ebf-94db-45427789ba24', // Test/Default Organization
         sourceSystem: 'edr',
         sourceId: 'defender-alert-007',
         alertType: 'malware_detection',
@@ -236,7 +236,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-008',
-        tenantId: 'techstart-789',
+        tenantId: '1f9656a9-1d4a-4ebf-94db-45427789ba24', // Test/Default Organization
         sourceSystem: 'firewall',
         sourceId: 'fw-alert-008',
         alertType: 'port_scan',
@@ -268,7 +268,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-009',
-        tenantId: 'techstart-789',
+        tenantId: '1f9656a9-1d4a-4ebf-94db-45427789ba24', // Test/Default Organization
         sourceSystem: 'email',
         sourceId: 'email-alert-009',
         alertType: 'business_email_compromise',
@@ -298,10 +298,10 @@ const mockAlerts: SecurityAlert[] = [
         createdAt: new Date('2024-01-15T08:30:00Z'),
         updatedAt: new Date('2024-01-15T08:30:00Z')
     },
-    // Global Finance Ltd alerts
+    // Third tenant alerts (ETX or other client)
     {
         id: 'alert-010',
-        tenantId: 'global-finance-101',
+        tenantId: 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', // Third tenant
         sourceSystem: 'edr',
         sourceId: 'defender-alert-010',
         alertType: 'credential_theft',
@@ -333,7 +333,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-011',
-        tenantId: 'global-finance-101',
+        tenantId: 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', // Third tenant
         sourceSystem: 'firewall',
         sourceId: 'fw-alert-011',
         alertType: 'ddos_attempt',
@@ -365,7 +365,7 @@ const mockAlerts: SecurityAlert[] = [
     },
     {
         id: 'alert-012',
-        tenantId: 'global-finance-101',
+        tenantId: 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d', // Third tenant
         sourceSystem: 'edr',
         sourceId: 'defender-alert-012',
         alertType: 'lateral_movement',

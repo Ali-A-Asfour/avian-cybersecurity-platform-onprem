@@ -1,31 +1,29 @@
 #!/bin/bash
+# Run this script ON THE SERVER after files are copied
 
-# Manual Docker Rebuild Script
-# Run this on the server to rebuild the container with the latest changes
+cd /home/avian/avian-cybersecurity-platform-onprem
 
-echo "🔄 Rebuilding Docker container with latest changes..."
-
-# Stop containers
-echo "⏹️ Stopping containers..."
+echo "Stopping containers..."
 sudo docker-compose -f docker-compose.prod.yml down
 
-# Rebuild with no cache to ensure changes are applied
-echo "🔨 Rebuilding app container (this may take a few minutes)..."
-sudo docker-compose -f docker-compose.prod.yml build --no-cache app
+echo ""
+echo "Rebuilding app container..."
+sudo docker-compose -f docker-compose.prod.yml build app
 
-# Start containers
-echo "▶️ Starting containers..."
+echo ""
+echo "Starting containers..."
 sudo docker-compose -f docker-compose.prod.yml up -d
 
-# Check container status
-echo "📊 Container status:"
+echo ""
+echo "Waiting for containers to start..."
+sleep 5
+
+echo ""
+echo "Checking container status..."
 sudo docker-compose -f docker-compose.prod.yml ps
 
 echo ""
-echo "✅ Rebuild complete!"
+echo "✅ Deployment complete!"
 echo ""
-echo "🔗 Test the changes:"
-echo "  1. Open https://192.168.1.116 in browser"
-echo "  2. Login as helpdesk analyst: helpdesk.analyst@company.com / admin123"
-echo "  3. Use tenant selector in header - should not refresh page"
-echo "  4. Switch between tenants and check ticket visibility"
+echo "📋 Recent app logs:"
+sudo docker-compose -f docker-compose.prod.yml logs --tail=30 app

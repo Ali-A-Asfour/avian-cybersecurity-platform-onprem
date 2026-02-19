@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { logger } from '@/lib/logger';
 import { api } from '@/lib/api-client';
+import { useDemoContext } from '@/contexts/DemoContext';
 
 interface AllAlertsTabProps {
     tenantId: string;
@@ -61,6 +62,9 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
         unassignedCount: 0,
         assignedCount: 0,
     });
+    
+    // Get current tenant from DemoContext to trigger refresh on tenant change
+    const { currentTenant } = useDemoContext();
 
     /**
      * Fetch alerts from API with tenant-scoped filtering
@@ -243,6 +247,14 @@ export function AllAlertsTab({ tenantId, className, demoMode = false }: AllAlert
             fetchAlerts();
         }
     }, [pagination.page, pagination.limit, filters]);
+    
+    // Refetch when tenant changes (for cross-tenant users)
+    useEffect(() => {
+        if (currentTenant) {
+            console.log('🔄 AllAlertsTab: Tenant changed to', currentTenant.id, '- refetching alerts');
+            fetchAlerts();
+        }
+    }, [currentTenant?.id]);
 
     if (loading && alerts.length === 0) {
         return (
