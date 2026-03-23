@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getRedisClient } from '@/lib/redis';
-// import { db } from '@/lib/database';
+import { getClient } from '@/lib/database';
 import { logAuditEvent, AuditAction } from '@/lib/audit-logger';
 
 export interface SecurityEvent {
@@ -36,9 +36,11 @@ export enum DataSourceType {
   EDR_CROWDSTRIKE = 'edr_crowdstrike',
   EDR_SENTINELONE = 'edr_sentinelone',
   EDR_GENERIC = 'edr_generic',
+  EDR_DEFENDER = 'edr_defender',
   FIREWALL_PFSENSE = 'firewall_pfsense',
   FIREWALL_FORTINET = 'firewall_fortinet',
   FIREWALL_CISCO = 'firewall_cisco',
+  FIREWALL_SONICWALL = 'firewall_sonicwall',
   SIEM_SPLUNK = 'siem_splunk',
   SIEM_QRADAR = 'siem_qradar',
   SYSLOG = 'syslog'
@@ -117,30 +119,13 @@ export class DataIngestionService {
         updated_at: now
       };
 
-      // Store in database (using tenant-specific schema)
-      await db.query(`
+      const sql = await getClient();
+      await sql`
         INSERT INTO data_sources (id, tenant_id, name, type, connection_config, status, last_heartbeat, events_processed, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [
-        newDataSource.id,
-        newDataSource.tenant_id,
-        newDataSource.name,
-        newDataSource.type,
-        JSON.stringify(newDataSource.connection_config),
-        newDataSource.status,
-        newDataSource.last_heartbeat,
-        newDataSource.events_processed,
-        newDataSource.created_at,
-        newDataSource.updated_at
-      ]);
-
-      await AuditLogger.logEvent({
-        event: AuditEventType.DATA_ACCESS,
-        resourceType: AuditResourceType.DATA_SOURCE,
-        resourceId: newDataSource.id,
-        tenantId: newDataSource.tenant_id,
-        details: { type: newDataSource.type, name: newDataSource.name }
-      });
+        VALUES (${newDataSource.id}, ${newDataSource.tenant_id}, ${newDataSource.name}, ${newDataSource.type},
+                ${JSON.stringify(newDataSource.connection_config)}, ${newDataSource.status}, ${newDataSource.last_heartbeat},
+                ${newDataSource.events_processed}, ${newDataSource.created_at}, ${newDataSource.updated_at})
+      `;
 
       logger.info('Data source created', {
         dataSourceId: newDataSource.id,
@@ -155,17 +140,17 @@ export class DataIngestionService {
     }
   }
 
-  async getDataSources(_tenantId: string): Promise<DataSource[]> {
+  async getDataSources(tenantId: string): Promise<DataSource[]> {
     try {
-      const _result = await db.query(`
+      const sql = await getClient();
+      const rows = await sql`
         SELECT * FROM data_sources 
-        WHERE tenant_id = $1 
+        WHERE tenant_id = ${tenantId}
         ORDER BY created_at DESC
-      `, [tenantId]);
-
-      return result.rows.map(row => ({
+      `;
+      return rows.map((row: any) => ({
         ...row,
-        connection_config: JSON.parse(row.connection_config)
+        connection_config: typeof row.connection_config === 'string' ? JSON.parse(row.connection_config) : row.connection_config
       }));
     } catch (error) {
       logger.error('Failed to get data sources', { error, tenantId });
@@ -175,18 +160,16 @@ export class DataIngestionService {
 
   async getDataSource(id: string, tenantId: string): Promise<DataSource | null> {
     try {
-      const _result = await db.query(`
+      const sql = await getClient();
+      const rows = await sql`
         SELECT * FROM data_sources 
-        WHERE id = $1 AND tenant_id = $2
-      `, [id, tenantId]);
-
-      if (result.rows.length === 0) {
-        return null;
-      }
-
+        WHERE id = ${id} AND tenant_id = ${tenantId}
+      `;
+      if (rows.length === 0) return null;
+      const row = rows[0];
       return {
-        ...result.rows[0],
-        connection_config: JSON.parse(result.rows[0].connection_config)
+        ...row,
+        connection_config: typeof row.connection_config === 'string' ? JSON.parse(row.connection_config) : row.connection_config
       };
     } catch (error) {
       logger.error('Failed to get data source', { error, id, tenantId });
@@ -197,37 +180,16 @@ export class DataIngestionService {
   async updateDataSource(id: string, tenantId: string, updates: Partial<DataSource>): Promise<DataSource | null> {
     try {
       const existing = await this.getDataSource(id, tenantId);
-      if (!existing) {
-        return null;
-      }
+      if (!existing) return null;
 
-      const updated = {
-        ...existing,
-        ...updates,
-        updated_at: new Date()
-      };
-
-      await db.query(`
+      const updated = { ...existing, ...updates, updated_at: new Date() };
+      const sql = await getClient();
+      await sql`
         UPDATE data_sources 
-        SET name = $1, connection_config = $2, status = $3, updated_at = $4
-        WHERE id = $5 AND tenant_id = $6
-      `, [
-        updated.name,
-        JSON.stringify(updated.connection_config),
-        updated.status,
-        updated.updated_at,
-        id,
-        tenantId
-      ]);
-
-      await AuditLogger.logEvent({
-        event: AuditEventType.DATA_ACCESS,
-        resourceType: AuditResourceType.DATA_SOURCE,
-        resourceId: id,
-        tenantId: tenantId,
-        details: updates
-      });
-
+        SET name = ${updated.name}, connection_config = ${JSON.stringify(updated.connection_config)},
+            status = ${updated.status}, updated_at = ${updated.updated_at}
+        WHERE id = ${id} AND tenant_id = ${tenantId}
+      `;
       return updated;
     } catch (error) {
       logger.error('Failed to update data source', { error, id, tenantId });
@@ -237,32 +199,16 @@ export class DataIngestionService {
 
   async deleteDataSource(id: string, tenantId: string): Promise<boolean> {
     try {
-      const _result = await db.query(`
-        DELETE FROM data_sources 
-        WHERE id = $1 AND tenant_id = $2
-      `, [id, tenantId]);
-
-      if (result.rowCount === 0) {
-        return false;
-      }
-
-      // Stop connector if running
+      const sql = await getClient();
+      const result = await sql`
+        DELETE FROM data_sources WHERE id = ${id} AND tenant_id = ${tenantId}
+      `;
       if (this.connectors.has(id)) {
         const connector = this.connectors.get(id);
-        if (connector.stop) {
-          await connector.stop();
-        }
+        if (connector.stop) await connector.stop();
         this.connectors.delete(id);
       }
-
-      await AuditLogger.logEvent({
-        event: AuditEventType.DATA_ACCESS,
-        resourceType: AuditResourceType.DATA_SOURCE,
-        resourceId: id,
-        tenantId: tenantId
-      });
-
-      return true;
+      return result.count > 0;
     } catch (error) {
       logger.error('Failed to delete data source', { error, id, tenantId });
       throw new Error('Failed to delete data source');
@@ -270,60 +216,48 @@ export class DataIngestionService {
   }
 
   async ingestSecurityEvent(event: Omit<SecurityEvent, 'id' | 'processed_at'>): Promise<SecurityEvent> {
-    try {
-      const id = crypto.randomUUID();
-      const processed_at = new Date();
+      try {
+        const id = crypto.randomUUID();
+        const processed_at = new Date();
 
-      const securityEvent: SecurityEvent = {
-        ...event,
-        id,
-        processed_at
-      };
+        const securityEvent: SecurityEvent = { ...event, id, processed_at };
 
-      // Store in database
-      await db.query(`
-        INSERT INTO security_events (id, source_type, source_id, tenant_id, asset_id, event_type, severity, timestamp, raw_data, normalized_data, tags, processed_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      `, [
-        securityEvent.id,
-        securityEvent.source_type,
-        securityEvent.source_id,
-        securityEvent.tenant_id,
-        securityEvent.asset_id,
-        securityEvent.event_type,
-        securityEvent.severity,
-        securityEvent.timestamp,
-        JSON.stringify(securityEvent.raw_data),
-        JSON.stringify(securityEvent.normalized_data),
-        JSON.stringify(securityEvent.tags),
-        securityEvent.processed_at
-      ]);
+        const sql = await getClient();
+        await sql`
+          INSERT INTO security_events (id, source_type, source_id, tenant_id, asset_id, event_type, severity, timestamp, raw_data, normalized_data, tags, processed_at)
+          VALUES (
+            ${securityEvent.id}, ${securityEvent.source_type}, ${securityEvent.source_id},
+            ${securityEvent.tenant_id}, ${securityEvent.asset_id ?? null}, ${securityEvent.event_type},
+            ${securityEvent.severity}, ${securityEvent.timestamp}, ${JSON.stringify(securityEvent.raw_data)},
+            ${JSON.stringify(securityEvent.normalized_data)}, ${JSON.stringify(securityEvent.tags)},
+            ${securityEvent.processed_at}
+          )
+        `;
 
-      // Forward to threat lake for enrichment and correlation
-      await this.forwardToThreatLake(securityEvent);
+        // Forward to threat lake for enrichment and correlation
+        await this.forwardToThreatLake(securityEvent);
 
-      // Cache recent events for quick access
-      const redisClient = await getRedisClient();
-      const cacheKey = `events:${securityEvent.tenant_id}:recent`;
-      await redisClient.lPush(cacheKey, JSON.stringify(securityEvent));
-      await redisClient.lTrim(cacheKey, 0, 999); // Keep last 1000 events
-      await redisClient.expire(cacheKey, 3600); // 1 hour TTL
+        // Cache recent events for quick access
+        const redisClient = await getRedisClient();
+        const cacheKey = `events:${securityEvent.tenant_id}:recent`;
+        await redisClient.lPush(cacheKey, JSON.stringify(securityEvent));
+        await redisClient.lTrim(cacheKey, 0, 999);
+        await redisClient.expire(cacheKey, 3600);
 
-      // Update data source metrics
-      await this.updateDataSourceMetrics(securityEvent.source_id);
+        await this.updateDataSourceMetrics(securityEvent.source_id);
 
-      logger.info('Security event ingested', {
-        eventId: securityEvent.id,
-        sourceType: securityEvent.source_type,
-        tenantId: securityEvent.tenant_id
-      });
+        logger.info('Security event ingested', {
+          eventId: securityEvent.id,
+          sourceType: securityEvent.source_type,
+          tenantId: securityEvent.tenant_id
+        });
 
-      return securityEvent;
-    } catch (error) {
-      logger.error('Failed to ingest security event', { error, event });
-      throw new Error('Failed to ingest security event');
+        return securityEvent;
+      } catch (error) {
+        logger.error('Failed to ingest security event', { error, event });
+        throw new Error('Failed to ingest security event');
+      }
     }
-  }
 
   private async forwardToThreatLake(securityEvent: SecurityEvent): Promise<void> {
     try {
@@ -470,71 +404,41 @@ export class DataIngestionService {
   }
 
   async getSecurityEvents(tenantId: string, filters?: {
-    source_type?: DataSourceType;
-    severity?: EventSeverity;
-    start_date?: Date;
-    end_date?: Date;
-    limit?: number;
-    offset?: number;
-  }): Promise<SecurityEvent[]> {
-    try {
-      let query = `
-        SELECT * FROM security_events 
-        WHERE tenant_id = $1
-      `;
-      const params: any[] = [tenantId];
-      let paramIndex = 2;
+      source_type?: DataSourceType;
+      severity?: EventSeverity;
+      start_date?: Date;
+      end_date?: Date;
+      limit?: number;
+      offset?: number;
+    }): Promise<SecurityEvent[]> {
+      try {
+        const db = await getClient();
+        const conditions: string[] = ['tenant_id = $1'];
+        const params: any[] = [tenantId];
+        let idx = 2;
 
-      if (filters?.source_type) {
-        query += ` AND source_type = $${paramIndex}`;
-        params.push(filters.source_type);
-        paramIndex++;
+        if (filters?.source_type) { conditions.push(`source_type = $${idx++}`); params.push(filters.source_type); }
+        if (filters?.severity) { conditions.push(`severity = $${idx++}`); params.push(filters.severity); }
+        if (filters?.start_date) { conditions.push(`timestamp >= $${idx++}`); params.push(filters.start_date); }
+        if (filters?.end_date) { conditions.push(`timestamp <= $${idx++}`); params.push(filters.end_date); }
+
+        let query = `SELECT * FROM security_events WHERE ${conditions.join(' AND ')} ORDER BY timestamp DESC`;
+
+        if (filters?.limit) { query += ` LIMIT $${idx++}`; params.push(filters.limit); }
+        if (filters?.offset) { query += ` OFFSET $${idx++}`; params.push(filters.offset); }
+
+        const rows = await db.unsafe(query, params);
+        return rows.map((row: any) => ({
+          ...row,
+          raw_data: typeof row.raw_data === 'string' ? JSON.parse(row.raw_data) : row.raw_data,
+          normalized_data: typeof row.normalized_data === 'string' ? JSON.parse(row.normalized_data) : row.normalized_data,
+          tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags,
+        }));
+      } catch (error) {
+        logger.error('Failed to get security events', { error, tenantId, filters });
+        throw new Error('Failed to get security events');
       }
-
-      if (filters?.severity) {
-        query += ` AND severity = $${paramIndex}`;
-        params.push(filters.severity);
-        paramIndex++;
-      }
-
-      if (filters?.start_date) {
-        query += ` AND timestamp >= $${paramIndex}`;
-        params.push(filters.start_date);
-        paramIndex++;
-      }
-
-      if (filters?.end_date) {
-        query += ` AND timestamp <= $${paramIndex}`;
-        params.push(filters.end_date);
-        paramIndex++;
-      }
-
-      query += ` ORDER BY timestamp DESC`;
-
-      if (filters?.limit) {
-        query += ` LIMIT $${paramIndex}`;
-        params.push(filters.limit);
-        paramIndex++;
-      }
-
-      if (filters?.offset) {
-        query += ` OFFSET $${paramIndex}`;
-        params.push(filters.offset);
-      }
-
-      const _result = await db.query(query, params);
-
-      return result.rows.map(row => ({
-        ...row,
-        raw_data: JSON.parse(row.raw_data),
-        normalized_data: JSON.parse(row.normalized_data),
-        tags: JSON.parse(row.tags)
-      }));
-    } catch (error) {
-      logger.error('Failed to get security events', { error, tenantId, filters });
-      throw new Error('Failed to get security events');
     }
-  }
 
   async testConnection(dataSource: DataSource): Promise<{ success: boolean; message: string }> {
     try {
@@ -555,11 +459,12 @@ export class DataIngestionService {
 
   private async updateDataSourceMetrics(sourceId: string): Promise<void> {
     try {
-      await db.query(`
+      const sql = await getClient();
+      await sql`
         UPDATE data_sources 
         SET events_processed = events_processed + 1, last_heartbeat = NOW()
-        WHERE id = $1
-      `, [sourceId]);
+        WHERE id = ${sourceId}
+      `;
     } catch (error) {
       logger.error('Failed to update data source metrics', { error, sourceId });
     }

@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { getRedisClient } from '@/lib/redis';
-// import { db } from '@/lib/database';
+import { getClient } from '@/lib/database';
 import { logAuditEvent, AuditAction } from '@/lib/audit-logger';
 
 export interface ThreatLakeEvent {
@@ -290,31 +290,22 @@ export class ThreatLakeService {
       };
 
       // Store in threat lake
-      await db.query(`
+      const sql = await getClient();
+      await sql`
         INSERT INTO threat_lake_events (
           id, tenant_id, asset_id, event_category, event_type, severity, confidence_score,
           threat_indicators, correlation_id, related_events, enrichment_data, raw_event_data,
           normalized_data, source_system, source_event_id, timestamp, ingested_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      `, [
-        threatLakeEvent.id,
-        threatLakeEvent.tenant_id,
-        threatLakeEvent.asset_id,
-        threatLakeEvent.event_category,
-        threatLakeEvent.event_type,
-        threatLakeEvent.severity,
-        threatLakeEvent.confidence_score,
-        JSON.stringify(threatLakeEvent.threat_indicators),
-        threatLakeEvent.correlation_id,
-        JSON.stringify(threatLakeEvent.related_events),
-        JSON.stringify(threatLakeEvent.enrichment_data),
-        JSON.stringify(threatLakeEvent.raw_event_data),
-        JSON.stringify(threatLakeEvent.normalized_data),
-        threatLakeEvent.source_system,
-        threatLakeEvent.source_event_id,
-        threatLakeEvent.timestamp,
-        threatLakeEvent.ingested_at
-      ]);
+        ) VALUES (
+          ${threatLakeEvent.id}, ${threatLakeEvent.tenant_id}, ${threatLakeEvent.asset_id},
+          ${threatLakeEvent.event_category}, ${threatLakeEvent.event_type}, ${threatLakeEvent.severity},
+          ${threatLakeEvent.confidence_score}, ${JSON.stringify(threatLakeEvent.threat_indicators)},
+          ${threatLakeEvent.correlation_id ?? null}, ${JSON.stringify(threatLakeEvent.related_events)},
+          ${JSON.stringify(threatLakeEvent.enrichment_data)}, ${JSON.stringify(threatLakeEvent.raw_event_data)},
+          ${JSON.stringify(threatLakeEvent.normalized_data)}, ${threatLakeEvent.source_system},
+          ${threatLakeEvent.source_event_id ?? null}, ${threatLakeEvent.timestamp}, ${threatLakeEvent.ingested_at}
+        )
+      `;
 
       // Run correlation analysis
       await this.correlationEngine.analyzeEvent(threatLakeEvent);
@@ -340,408 +331,312 @@ export class ThreatLakeService {
   }
 
   async searchEvents(tenantId: string, query: ThreatLakeQuery): Promise<ThreatLakeSearchResult> {
-    try {
-      let sql = `
-        SELECT * FROM threat_lake_events 
-        WHERE tenant_id = $1
-      `;
-      const params: any[] = [tenantId];
-      let paramIndex = 2;
+      try {
+        const db = await getClient();
+        const limit = query.limit || 100;
+        const offset = query.offset || 0;
 
-      // Build dynamic query based on search criteria
-      if (query.event_category) {
-        sql += ` AND event_category = $${paramIndex}`;
-        params.push(query.event_category);
-        paramIndex++;
+        const conditions: string[] = ['tenant_id = $1'];
+        const params: any[] = [tenantId];
+        let idx = 2;
+
+        if (query.event_category) { conditions.push(`event_category = $${idx++}`); params.push(query.event_category); }
+        if (query.event_type) { conditions.push(`event_type = $${idx++}`); params.push(query.event_type); }
+        if (query.severity) { conditions.push(`severity = $${idx++}`); params.push(query.severity); }
+        if (query.min_confidence_score) { conditions.push(`confidence_score >= $${idx++}`); params.push(query.min_confidence_score); }
+        if (query.start_time) { conditions.push(`timestamp >= $${idx++}`); params.push(query.start_time); }
+        if (query.end_time) { conditions.push(`timestamp <= $${idx++}`); params.push(query.end_time); }
+        if (query.asset_id) { conditions.push(`asset_id = $${idx++}`); params.push(query.asset_id); }
+        if (query.correlation_id) { conditions.push(`correlation_id = $${idx++}`); params.push(query.correlation_id); }
+        if (query.search_text) {
+          conditions.push(`(normalized_data::text ILIKE $${idx} OR enrichment_data::text ILIKE $${idx})`);
+          params.push(`%${query.search_text}%`);
+          idx++;
+        }
+        if (query.threat_indicators && query.threat_indicators.length > 0) {
+          conditions.push(`threat_indicators @> $${idx++}`);
+          params.push(JSON.stringify(query.threat_indicators));
+        }
+
+        const where = conditions.join(' AND ');
+        const countParams = [...params];
+        params.push(limit, offset);
+
+        const rows = await db.unsafe(
+          `SELECT * FROM threat_lake_events WHERE ${where} ORDER BY timestamp DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+          params
+        );
+        const countRows = await db.unsafe(
+          `SELECT COUNT(*) as count FROM threat_lake_events WHERE ${where}`,
+          countParams
+        );
+        const total = parseInt((countRows[0] as any)?.count ?? '0');
+
+        const events = rows.map((row: any) => ({
+          ...row,
+          threat_indicators: typeof row.threat_indicators === 'string' ? JSON.parse(row.threat_indicators) : row.threat_indicators,
+          related_events: typeof row.related_events === 'string' ? JSON.parse(row.related_events) : row.related_events,
+          enrichment_data: typeof row.enrichment_data === 'string' ? JSON.parse(row.enrichment_data) : row.enrichment_data,
+          raw_event_data: typeof row.raw_event_data === 'string' ? JSON.parse(row.raw_event_data) : row.raw_event_data,
+          normalized_data: typeof row.normalized_data === 'string' ? JSON.parse(row.normalized_data) : row.normalized_data,
+        }));
+
+        return { events, total, limit, offset, has_more: offset + limit < total };
+      } catch (error) {
+        logger.error('Failed to search threat lake events', { error, tenantId, query });
+        throw new Error('Failed to search threat lake events');
       }
-
-      if (query.event_type) {
-        sql += ` AND event_type = $${paramIndex}`;
-        params.push(query.event_type);
-        paramIndex++;
-      }
-
-      if (query.severity) {
-        sql += ` AND severity = $${paramIndex}`;
-        params.push(query.severity);
-        paramIndex++;
-      }
-
-      if (query.min_confidence_score) {
-        sql += ` AND confidence_score >= $${paramIndex}`;
-        params.push(query.min_confidence_score);
-        paramIndex++;
-      }
-
-      if (query.start_time) {
-        sql += ` AND timestamp >= $${paramIndex}`;
-        params.push(query.start_time);
-        paramIndex++;
-      }
-
-      if (query.end_time) {
-        sql += ` AND timestamp <= $${paramIndex}`;
-        params.push(query.end_time);
-        paramIndex++;
-      }
-
-      if (query.asset_id) {
-        sql += ` AND asset_id = $${paramIndex}`;
-        params.push(query.asset_id);
-        paramIndex++;
-      }
-
-      if (query.correlation_id) {
-        sql += ` AND correlation_id = $${paramIndex}`;
-        params.push(query.correlation_id);
-        paramIndex++;
-      }
-
-      // Text search in normalized data
-      if (query.search_text) {
-        sql += ` AND (normalized_data::text ILIKE $${paramIndex} OR enrichment_data::text ILIKE $${paramIndex})`;
-        params.push(`%${query.search_text}%`);
-        paramIndex++;
-      }
-
-      // Threat indicator search
-      if (query.threat_indicators && query.threat_indicators.length > 0) {
-        sql += ` AND threat_indicators @> $${paramIndex}`;
-        params.push(JSON.stringify(query.threat_indicators));
-        paramIndex++;
-      }
-
-      sql += ` ORDER BY timestamp DESC`;
-
-      // Pagination
-      const limit = query.limit || 100;
-      const offset = query.offset || 0;
-      sql += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(limit, offset);
-
-      const _result = await db.query(sql, params);
-
-      // Get total count for pagination
-      const countSql = sql.replace('SELECT *', 'SELECT COUNT(*)').split('ORDER BY')[0];
-      const countResult = await db.query(countSql, params.slice(0, -2));
-      const total = parseInt(countResult.rows[0].count);
-
-      const events = result.rows.map(row => ({
-        ...row,
-        threat_indicators: JSON.parse(row.threat_indicators),
-        related_events: JSON.parse(row.related_events),
-        enrichment_data: JSON.parse(row.enrichment_data),
-        raw_event_data: JSON.parse(row.raw_event_data),
-        normalized_data: JSON.parse(row.normalized_data)
-      }));
-
-      return {
-        events,
-        total,
-        limit,
-        offset,
-        has_more: offset + limit < total
-      };
-    } catch (error) {
-      logger.error('Failed to search threat lake events', { error, tenantId, query });
-      throw new Error('Failed to search threat lake events');
     }
-  }
 
   // Correlation Rule Management
   async createCorrelationRule(rule: Omit<CorrelationRule, 'id' | 'created_at' | 'updated_at' | 'trigger_count'>): Promise<CorrelationRule> {
-    try {
-      const id = crypto.randomUUID();
-      const now = new Date();
+      try {
+        const id = crypto.randomUUID();
+        const now = new Date();
 
-      const correlationRule: CorrelationRule = {
-        ...rule,
-        id,
-        created_at: now,
-        updated_at: now,
-        trigger_count: 0
-      };
+        const correlationRule: CorrelationRule = {
+          ...rule,
+          id,
+          created_at: now,
+          updated_at: now,
+          trigger_count: 0
+        };
 
-      await db.query(`
-        INSERT INTO correlation_rules (
-          id, tenant_id, name, description, rule_logic, severity, enabled,
-          time_window_minutes, threshold_count, created_by, created_at, updated_at, trigger_count
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      `, [
-        correlationRule.id,
-        correlationRule.tenant_id,
-        correlationRule.name,
-        correlationRule.description,
-        JSON.stringify(correlationRule.rule_logic),
-        correlationRule.severity,
-        correlationRule.enabled,
-        correlationRule.time_window_minutes,
-        correlationRule.threshold_count,
-        correlationRule.created_by,
-        correlationRule.created_at,
-        correlationRule.updated_at,
-        correlationRule.trigger_count
-      ]);
+        const sql = await getClient();
+        await sql`
+          INSERT INTO correlation_rules (
+            id, tenant_id, name, description, rule_logic, severity, enabled,
+            time_window_minutes, threshold_count, created_by, created_at, updated_at, trigger_count
+          ) VALUES (
+            ${correlationRule.id}, ${correlationRule.tenant_id}, ${correlationRule.name},
+            ${correlationRule.description ?? null}, ${JSON.stringify(correlationRule.rule_logic)},
+            ${correlationRule.severity}, ${correlationRule.enabled}, ${correlationRule.time_window_minutes},
+            ${correlationRule.threshold_count}, ${correlationRule.created_by},
+            ${correlationRule.created_at}, ${correlationRule.updated_at}, ${correlationRule.trigger_count}
+          )
+        `;
 
-      await AuditLogger.logEvent({
-        event: AuditEventType.DATA_ACCESS,
-        resourceType: AuditResourceType.SYSTEM,
-        resourceId: correlationRule.id,
-        tenantId: correlationRule.tenant_id,
-        details: { name: correlationRule.name, severity: correlationRule.severity }
-      });
-
-      return correlationRule;
-    } catch (error) {
-      logger.error('Failed to create correlation rule', { error, rule });
-      throw new Error('Failed to create correlation rule');
+        return correlationRule;
+      } catch (error) {
+        logger.error('Failed to create correlation rule', { error, rule });
+        throw new Error('Failed to create correlation rule');
+      }
     }
-  }
 
-  async getCorrelationRules(_tenantId: string): Promise<CorrelationRule[]> {
-    try {
-      const _result = await db.query(`
-        SELECT * FROM correlation_rules 
-        WHERE tenant_id = $1 
-        ORDER BY created_at DESC
-      `, [tenantId]);
-
-      return result.rows.map(row => ({
-        ...row,
-        rule_logic: JSON.parse(row.rule_logic)
-      }));
-    } catch (error) {
-      logger.error('Failed to get correlation rules', { error, tenantId });
-      throw new Error('Failed to get correlation rules');
+  async getCorrelationRules(tenantId: string): Promise<CorrelationRule[]> {
+      try {
+        const sql = await getClient();
+        const rows = await sql`
+          SELECT * FROM correlation_rules 
+          WHERE tenant_id = ${tenantId} 
+          ORDER BY created_at DESC
+        `;
+        return rows.map((row: any) => ({
+          ...row,
+          rule_logic: typeof row.rule_logic === 'string' ? JSON.parse(row.rule_logic) : row.rule_logic
+        }));
+      } catch (error) {
+        logger.error('Failed to get correlation rules', { error, tenantId });
+        throw new Error('Failed to get correlation rules');
+      }
     }
-  }
 
   // Threat Intelligence Management
   async createThreatIntelFeed(feed: Omit<ThreatIntelligenceFeed, 'id' | 'created_at' | 'updated_at' | 'indicators_count'>): Promise<ThreatIntelligenceFeed> {
-    try {
-      const id = crypto.randomUUID();
-      const now = new Date();
+      try {
+        const id = crypto.randomUUID();
+        const now = new Date();
 
-      const threatFeed: ThreatIntelligenceFeed = {
-        ...feed,
-        id,
-        created_at: now,
-        updated_at: now,
-        indicators_count: 0
-      };
+        const threatFeed: ThreatIntelligenceFeed = {
+          ...feed,
+          id,
+          created_at: now,
+          updated_at: now,
+          indicators_count: 0
+        };
 
-      await db.query(`
-        INSERT INTO threat_intelligence_feeds (
-          id, tenant_id, name, feed_type, source_url, api_key_encrypted,
-          update_frequency_hours, enabled, last_sync_status, indicators_count, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      `, [
-        threatFeed.id,
-        threatFeed.tenant_id,
-        threatFeed.name,
-        threatFeed.feed_type,
-        threatFeed.source_url,
-        threatFeed.api_key_encrypted,
-        threatFeed.update_frequency_hours,
-        threatFeed.enabled,
-        threatFeed.last_sync_status,
-        threatFeed.indicators_count,
-        threatFeed.created_at,
-        threatFeed.updated_at
-      ]);
+        const sql = await getClient();
+        await sql`
+          INSERT INTO threat_intelligence_feeds (
+            id, tenant_id, name, feed_type, source_url, api_key_encrypted,
+            update_frequency_hours, enabled, last_sync_status, indicators_count, created_at, updated_at
+          ) VALUES (
+            ${threatFeed.id}, ${threatFeed.tenant_id}, ${threatFeed.name}, ${threatFeed.feed_type},
+            ${threatFeed.source_url ?? null}, ${threatFeed.api_key_encrypted ?? null},
+            ${threatFeed.update_frequency_hours}, ${threatFeed.enabled}, ${threatFeed.last_sync_status},
+            ${threatFeed.indicators_count}, ${threatFeed.created_at}, ${threatFeed.updated_at}
+          )
+        `;
 
-      return threatFeed;
-    } catch (error) {
-      logger.error('Failed to create threat intelligence feed', { error, feed });
-      throw new Error('Failed to create threat intelligence feed');
+        return threatFeed;
+      } catch (error) {
+        logger.error('Failed to create threat intelligence feed', { error, feed });
+        throw new Error('Failed to create threat intelligence feed');
+      }
     }
-  }
 
-  async getThreatIntelFeeds(_tenantId: string): Promise<ThreatIntelligenceFeed[]> {
-    try {
-      const _result = await db.query(`
-        SELECT * FROM threat_intelligence_feeds 
-        WHERE tenant_id = $1 
-        ORDER BY created_at DESC
-      `, [tenantId]);
-
-      return result.rows;
-    } catch (error) {
-      logger.error('Failed to get threat intelligence feeds', { error, tenantId });
-      throw new Error('Failed to get threat intelligence feeds');
+  async getThreatIntelFeeds(tenantId: string): Promise<ThreatIntelligenceFeed[]> {
+      try {
+        const sql = await getClient();
+        const rows = await sql`
+          SELECT * FROM threat_intelligence_feeds 
+          WHERE tenant_id = ${tenantId} 
+          ORDER BY created_at DESC
+        `;
+        return rows as ThreatIntelligenceFeed[];
+      } catch (error) {
+        logger.error('Failed to get threat intelligence feeds', { error, tenantId });
+        throw new Error('Failed to get threat intelligence feeds');
+      }
     }
-  }
 
   // Analytics and Reporting
   async getThreatAnalytics(tenantId: string, timeRange: TimeRange): Promise<ThreatAnalytics> {
-    try {
-      const { start_time, end_time } = timeRange;
+      try {
+        const { start_time, end_time } = timeRange;
+        const sql = await getClient();
 
-      // Get event counts by severity
-      const severityResult = await db.query(`
-        SELECT severity, COUNT(*) as count
-        FROM threat_lake_events 
-        WHERE tenant_id = $1 AND timestamp >= $2 AND timestamp <= $3
-        GROUP BY severity
-      `, [tenantId, start_time, end_time]);
+        const severityRows = await sql`
+          SELECT severity, COUNT(*) as count
+          FROM threat_lake_events 
+          WHERE tenant_id = ${tenantId} AND timestamp >= ${start_time} AND timestamp <= ${end_time}
+          GROUP BY severity
+        `;
 
-      // Get event counts by category
-      const categoryResult = await db.query(`
-        SELECT event_category, COUNT(*) as count
-        FROM threat_lake_events 
-        WHERE tenant_id = $1 AND timestamp >= $2 AND timestamp <= $3
-        GROUP BY event_category
-      `, [tenantId, start_time, end_time]);
+        const categoryRows = await sql`
+          SELECT event_category, COUNT(*) as count
+          FROM threat_lake_events 
+          WHERE tenant_id = ${tenantId} AND timestamp >= ${start_time} AND timestamp <= ${end_time}
+          GROUP BY event_category
+        `;
 
-      // Get correlation statistics
-      const correlationResult = await db.query(`
-        SELECT status, COUNT(*) as count
-        FROM event_correlations 
-        WHERE tenant_id = $1 AND created_at >= $2 AND created_at <= $3
-        GROUP BY status
-      `, [tenantId, start_time, end_time]);
+        const correlationRows = await sql`
+          SELECT status, COUNT(*) as count
+          FROM event_correlations 
+          WHERE tenant_id = ${tenantId} AND created_at >= ${start_time} AND created_at <= ${end_time}
+          GROUP BY status
+        `;
 
-      // Get top threat indicators
-      const indicatorResult = await db.query(`
-        SELECT 
-          ti.indicator_type,
-          ti.indicator_value,
-          ti.threat_type,
-          COUNT(tle.id) as event_count
-        FROM threat_indicators ti
-        JOIN threat_lake_events tle ON tle.threat_indicators @> jsonb_build_array(jsonb_build_object('indicator_id', ti.id))
-        WHERE ti.tenant_id = $1 AND tle.timestamp >= $2 AND tle.timestamp <= $3
-        GROUP BY ti.indicator_type, ti.indicator_value, ti.threat_type
-        ORDER BY event_count DESC
-        LIMIT 10
-      `, [tenantId, start_time, end_time]);
+        const indicatorRows = await sql`
+          SELECT 
+            ti.indicator_type,
+            ti.indicator_value,
+            ti.threat_type,
+            COUNT(tle.id) as event_count
+          FROM threat_indicators ti
+          JOIN threat_lake_events tle ON tle.threat_indicators @> jsonb_build_array(jsonb_build_object('indicator_id', ti.id))
+          WHERE ti.tenant_id = ${tenantId} AND tle.timestamp >= ${start_time} AND tle.timestamp <= ${end_time}
+          GROUP BY ti.indicator_type, ti.indicator_value, ti.threat_type
+          ORDER BY event_count DESC
+          LIMIT 10
+        `;
 
-      return {
-        severity_distribution: severityResult.rows,
-        category_distribution: categoryResult.rows,
-        correlation_status: correlationResult.rows,
-        top_threat_indicators: indicatorResult.rows,
-        time_range: timeRange
-      };
-    } catch (error) {
-      logger.error('Failed to get threat analytics', { error, tenantId, timeRange });
-      throw new Error('Failed to get threat analytics');
+        return {
+          severity_distribution: severityRows as any[],
+          category_distribution: categoryRows as any[],
+          correlation_status: correlationRows as any[],
+          top_threat_indicators: indicatorRows as any[],
+          time_range: timeRange
+        };
+      } catch (error) {
+        logger.error('Failed to get threat analytics', { error, tenantId, timeRange });
+        throw new Error('Failed to get threat analytics');
+      }
     }
-  }
 
   // Data Retention Management
   async createRetentionPolicy(policy: Omit<DataRetentionPolicy, 'id' | 'created_at' | 'updated_at'>): Promise<DataRetentionPolicy> {
-    try {
-      const id = crypto.randomUUID();
-      const now = new Date();
+      try {
+        const id = crypto.randomUUID();
+        const now = new Date();
 
-      const retentionPolicy: DataRetentionPolicy = {
-        ...policy,
-        id,
-        created_at: now,
-        updated_at: now
-      };
+        const retentionPolicy: DataRetentionPolicy = { ...policy, id, created_at: now, updated_at: now };
 
-      await db.query(`
-        INSERT INTO data_retention_policies (
-          id, tenant_id, policy_name, event_category, severity, retention_days,
-          archive_after_days, delete_after_days, compression_enabled, enabled, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      `, [
-        retentionPolicy.id,
-        retentionPolicy.tenant_id,
-        retentionPolicy.policy_name,
-        retentionPolicy.event_category,
-        retentionPolicy.severity,
-        retentionPolicy.retention_days,
-        retentionPolicy.archive_after_days,
-        retentionPolicy.delete_after_days,
-        retentionPolicy.compression_enabled,
-        retentionPolicy.enabled,
-        retentionPolicy.created_at,
-        retentionPolicy.updated_at
-      ]);
-
-      return retentionPolicy;
-    } catch (error) {
-      logger.error('Failed to create retention policy', { error, policy });
-      throw new Error('Failed to create retention policy');
-    }
-  }
-
-  async applyRetentionPolicies(_tenantId: string): Promise<RetentionResult> {
-    try {
-      const policies = await db.query(`
-        SELECT * FROM data_retention_policies 
-        WHERE tenant_id = $1 AND enabled = true
-      `, [tenantId]);
-
-      const totalArchived = 0;
-      let totalDeleted = 0;
-
-      for (const policy of policies.rows) {
-        const archiveDate = new Date();
-        archiveDate.setDate(archiveDate.getDate() - policy.archive_after_days);
-
-        const deleteDate = new Date();
-        deleteDate.setDate(deleteDate.getDate() - policy.delete_after_days);
-
-        // Archive old events (implementation would depend on storage strategy)
-        // For now, we'll just mark them as archived in metadata
-
-        // Delete very old events
-        let deleteQuery = `
-          DELETE FROM threat_lake_events 
-          WHERE tenant_id = $1 AND timestamp < $2
+        const sql = await getClient();
+        await sql`
+          INSERT INTO data_retention_policies (
+            id, tenant_id, policy_name, event_category, severity, retention_days,
+            archive_after_days, delete_after_days, compression_enabled, enabled, created_at, updated_at
+          ) VALUES (
+            ${retentionPolicy.id}, ${retentionPolicy.tenant_id}, ${retentionPolicy.policy_name},
+            ${retentionPolicy.event_category ?? null}, ${retentionPolicy.severity ?? null},
+            ${retentionPolicy.retention_days}, ${retentionPolicy.archive_after_days ?? null},
+            ${retentionPolicy.delete_after_days}, ${retentionPolicy.compression_enabled},
+            ${retentionPolicy.enabled}, ${retentionPolicy.created_at}, ${retentionPolicy.updated_at}
+          )
         `;
-        const deleteParams = [tenantId, deleteDate];
 
-        if (policy.event_category) {
-          deleteQuery += ` AND event_category = $3`;
-          deleteParams.push(policy.event_category);
-        }
-
-        if (policy.severity) {
-          deleteQuery += ` AND severity = $${deleteParams.length + 1}`;
-          deleteParams.push(policy.severity);
-        }
-
-        const deleteResult = await db.query(deleteQuery, deleteParams);
-        totalDeleted += deleteResult.rowCount || 0;
+        return retentionPolicy;
+      } catch (error) {
+        logger.error('Failed to create retention policy', { error, policy });
+        throw new Error('Failed to create retention policy');
       }
-
-      logger.info('Retention policies applied', {
-        tenantId,
-        totalArchived,
-        totalDeleted
-      });
-
-      return {
-        archived_count: totalArchived,
-        deleted_count: totalDeleted,
-        policies_applied: policies.rows.length
-      };
-    } catch (error) {
-      logger.error('Failed to apply retention policies', { error, tenantId });
-      throw new Error('Failed to apply retention policies');
     }
-  }
+
+  async applyRetentionPolicies(tenantId: string): Promise<RetentionResult> {
+      try {
+        const sql = await getClient();
+        const policies = await sql`
+          SELECT * FROM data_retention_policies 
+          WHERE tenant_id = ${tenantId} AND enabled = true
+        `;
+
+        let totalDeleted = 0;
+
+        for (const policy of policies) {
+          const deleteDate = new Date();
+          deleteDate.setDate(deleteDate.getDate() - (policy as any).delete_after_days);
+
+          let deleted: any[];
+          if ((policy as any).event_category && (policy as any).severity) {
+            deleted = await sql`
+              DELETE FROM threat_lake_events 
+              WHERE tenant_id = ${tenantId} AND timestamp < ${deleteDate}
+              AND event_category = ${(policy as any).event_category}
+              AND severity = ${(policy as any).severity}
+              RETURNING id
+            `;
+          } else if ((policy as any).event_category) {
+            deleted = await sql`
+              DELETE FROM threat_lake_events 
+              WHERE tenant_id = ${tenantId} AND timestamp < ${deleteDate}
+              AND event_category = ${(policy as any).event_category}
+              RETURNING id
+            `;
+          } else {
+            deleted = await sql`
+              DELETE FROM threat_lake_events 
+              WHERE tenant_id = ${tenantId} AND timestamp < ${deleteDate}
+              RETURNING id
+            `;
+          }
+          totalDeleted += deleted.length;
+        }
+
+        logger.info('Retention policies applied', { tenantId, totalDeleted });
+        return { archived_count: 0, deleted_count: totalDeleted, policies_applied: policies.length };
+      } catch (error) {
+        logger.error('Failed to apply retention policies', { error, tenantId });
+        throw new Error('Failed to apply retention policies');
+      }
+    }
 }
 
 // Correlation Engine for real-time event analysis
 class CorrelationEngine {
   async analyzeEvent(event: ThreatLakeEvent): Promise<void> {
     try {
-      // Get active correlation rules for the tenant
-      const rules = await db.query(`
-        SELECT * FROM correlation_rules 
-        WHERE tenant_id = $1 AND enabled = true
-      `, [event.tenant_id]);
+      const sql = await getClient();
+      const rules = await sql`
+        SELECT * FROM correlation_rules
+        WHERE tenant_id = ${event.tenant_id} AND enabled = true
+      `;
 
-      for (const rule of rules.rows) {
-        const ruleLogic: CorrelationRuleLogic = JSON.parse(rule.rule_logic);
+      for (const rule of rules) {
+        const ruleLogic: CorrelationRuleLogic = typeof (rule as any).rule_logic === 'string'
+          ? JSON.parse((rule as any).rule_logic)
+          : (rule as any).rule_logic;
 
-        // Check if event matches rule conditions
         if (await this.evaluateRule(event, ruleLogic)) {
           await this.createCorrelation(event, rule, ruleLogic);
         }
@@ -752,111 +647,73 @@ class CorrelationEngine {
   }
 
   private async evaluateRule(event: ThreatLakeEvent, ruleLogic: CorrelationRuleLogic): Promise<boolean> {
-    // Implement rule evaluation logic
-    // This is a simplified version - real implementation would be more sophisticated
-
     for (const condition of ruleLogic.conditions) {
       const fieldValue = this.getFieldValue(event, condition.field);
-
       if (!this.evaluateCondition(fieldValue, condition)) {
-        if (ruleLogic.operator === 'AND') {
-          return false;
-        }
+        if (ruleLogic.operator === 'AND') return false;
       } else {
-        if (ruleLogic.operator === 'OR') {
-          return true;
-        }
+        if (ruleLogic.operator === 'OR') return true;
       }
     }
-
     return ruleLogic.operator === 'AND';
   }
 
   private getFieldValue(event: ThreatLakeEvent, field: string): any {
-    // Extract field value from event using dot notation
     const parts = field.split('.');
     let value: any = event;
-
     for (const part of parts) {
-      if (value && typeof value === 'object') {
-        value = value[part];
-      } else {
-        return undefined;
-      }
+      if (value && typeof value === 'object') value = value[part];
+      else return undefined;
     }
-
     return value;
   }
 
   private evaluateCondition(fieldValue: any, condition: CorrelationCondition): boolean {
     switch (condition.operator) {
-      case 'equals':
-        return fieldValue === condition.value;
-      case 'contains':
-        return typeof fieldValue === 'string' && fieldValue.includes(condition.value);
-      case 'regex':
-        return typeof fieldValue === 'string' && new RegExp(condition.value).test(fieldValue);
-      case 'greater_than':
-        return typeof fieldValue === 'number' && fieldValue > condition.value;
-      case 'less_than':
-        return typeof fieldValue === 'number' && fieldValue < condition.value;
-      case 'in':
-        return Array.isArray(condition.value) && condition.value.includes(fieldValue);
-      case 'not_in':
-        return Array.isArray(condition.value) && !condition.value.includes(fieldValue);
-      default:
-        return false;
+      case 'equals': return fieldValue === condition.value;
+      case 'contains': return typeof fieldValue === 'string' && fieldValue.includes(condition.value);
+      case 'regex': return typeof fieldValue === 'string' && new RegExp(condition.value).test(fieldValue);
+      case 'greater_than': return typeof fieldValue === 'number' && fieldValue > condition.value;
+      case 'less_than': return typeof fieldValue === 'number' && fieldValue < condition.value;
+      case 'in': return Array.isArray(condition.value) && condition.value.includes(fieldValue);
+      case 'not_in': return Array.isArray(condition.value) && !condition.value.includes(fieldValue);
+      default: return false;
     }
   }
 
   private async createCorrelation(event: ThreatLakeEvent, rule: any, ruleLogic: CorrelationRuleLogic): Promise<void> {
     try {
       const correlationId = crypto.randomUUID();
-
-      // Find related events within time window
       const timeWindow = new Date(event.timestamp.getTime() - (rule.time_window_minutes * 60 * 1000));
+      const sql = await getClient();
 
-      const relatedEvents = await db.query(`
-        SELECT id FROM threat_lake_events 
-        WHERE tenant_id = $1 AND timestamp >= $2 AND timestamp <= $3 AND id != $4
+      const relatedEvents = await sql`
+        SELECT id FROM threat_lake_events
+        WHERE tenant_id = ${event.tenant_id} AND timestamp >= ${timeWindow} AND timestamp <= ${event.timestamp} AND id != ${event.id}
         LIMIT 100
-      `, [event.tenant_id, timeWindow, event.timestamp, event.id]);
+      `;
 
-      const eventIds = [event.id, ...relatedEvents.rows.map(row => row.id)];
+      const eventIds = [event.id, ...relatedEvents.map((r: any) => r.id)];
 
-      await db.query(`
+      await sql`
         INSERT INTO event_correlations (
           id, tenant_id, correlation_rule_id, correlation_id, event_ids, severity,
           confidence_score, threat_summary, recommended_actions, status, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      `, [
-        crypto.randomUUID(),
-        event.tenant_id,
-        rule.id,
-        correlationId,
-        JSON.stringify(eventIds),
-        rule.severity,
-        0.8, // Default confidence score
-        `Correlation detected: ${rule.name}`,
-        JSON.stringify([]),
-        CorrelationStatus.NEW,
-        new Date(),
-        new Date()
-      ]);
+        ) VALUES (
+          ${crypto.randomUUID()}, ${event.tenant_id}, ${rule.id}, ${correlationId},
+          ${JSON.stringify(eventIds)}, ${rule.severity}, ${0.8},
+          ${`Correlation detected: ${rule.name}`}, ${JSON.stringify([])},
+          ${CorrelationStatus.NEW}, ${new Date()}, ${new Date()}
+        )
+      `;
 
-      // Update rule trigger count
-      await db.query(`
-        UPDATE correlation_rules 
+      await sql`
+        UPDATE correlation_rules
         SET trigger_count = trigger_count + 1, last_triggered = NOW()
-        WHERE id = $1
-      `, [rule.id]);
+        WHERE id = ${rule.id}
+      `;
 
-      logger.info('Correlation created', {
-        correlationId,
-        ruleId: rule.id,
-        eventId: event.id,
-        tenantId: event.tenant_id
-      });
+      logger.info('Correlation created', { correlationId, ruleId: rule.id, eventId: event.id, tenantId: event.tenant_id });
     } catch (error) {
       logger.error('Failed to create correlation', { error, eventId: event.id, ruleId: rule.id });
     }
@@ -876,18 +733,14 @@ class EnrichmentEngine {
         network_context: undefined
       };
 
-      // Enrich with threat intelligence
       enrichmentData.threat_intelligence_matches = await this.getThreatIntelMatches(event);
 
-      // Add geolocation data for IP addresses
       if (event.normalized_data.source_ip) {
         enrichmentData.geolocation = await this.getGeolocationData(event.normalized_data.source_ip);
       }
 
-      // Add reputation scores
       enrichmentData.reputation_scores = await this.getReputationScores(event);
 
-      // Add asset context if asset_id is available
       if (event.asset_id) {
         enrichmentData.asset_context = await this.getAssetContext(event.asset_id);
       }
@@ -909,18 +762,17 @@ class EnrichmentEngine {
   private async getThreatIntelMatches(event: any): Promise<ThreatIntelMatch[]> {
     try {
       const matches: ThreatIntelMatch[] = [];
+      const sql = await getClient();
 
-      // Check for IP indicators
       if (event.normalized_data.source_ip) {
-        const ipMatches = await db.query(`
+        const ipMatches = await sql`
           SELECT ti.*, tif.name as feed_name
           FROM threat_indicators ti
           JOIN threat_intelligence_feeds tif ON ti.feed_id = tif.id
-          WHERE ti.tenant_id = $1 AND ti.indicator_type = 'ip' 
-          AND ti.indicator_value = $2 AND ti.is_active = true
-        `, [event.tenant_id, event.normalized_data.source_ip]);
-
-        matches.push(...ipMatches.rows.map(row => ({
+          WHERE ti.tenant_id = ${event.tenant_id} AND ti.indicator_type = 'ip'
+          AND ti.indicator_value = ${event.normalized_data.source_ip} AND ti.is_active = true
+        `;
+        matches.push(...ipMatches.map((row: any) => ({
           indicator_id: row.id,
           indicator_type: row.indicator_type,
           indicator_value: row.indicator_value,
@@ -930,17 +782,15 @@ class EnrichmentEngine {
         })));
       }
 
-      // Check for hash indicators
       if (event.normalized_data.hash) {
-        const hashMatches = await db.query(`
+        const hashMatches = await sql`
           SELECT ti.*, tif.name as feed_name
           FROM threat_indicators ti
           JOIN threat_intelligence_feeds tif ON ti.feed_id = tif.id
-          WHERE ti.tenant_id = $1 AND ti.indicator_type LIKE 'hash_%' 
-          AND ti.indicator_value = $2 AND ti.is_active = true
-        `, [event.tenant_id, event.normalized_data.hash]);
-
-        matches.push(...hashMatches.rows.map(row => ({
+          WHERE ti.tenant_id = ${event.tenant_id} AND ti.indicator_type LIKE 'hash_%'
+          AND ti.indicator_value = ${event.normalized_data.hash} AND ti.is_active = true
+        `;
+        matches.push(...hashMatches.map((row: any) => ({
           indicator_id: row.id,
           indicator_type: row.indicator_type,
           indicator_value: row.indicator_value,
@@ -958,28 +808,21 @@ class EnrichmentEngine {
   }
 
   private async getGeolocationData(_ip: string): Promise<GeolocationData | undefined> {
-    // This would integrate with a geolocation service
-    // For now, return undefined
+    // Geolocation service integration point
     return undefined;
   }
 
-  private async getReputationScores(event: any): Promise<ReputationScores | undefined> {
-    // This would integrate with reputation services
-    // For now, return undefined
+  private async getReputationScores(_event: any): Promise<ReputationScores | undefined> {
+    // Reputation service integration point
     return undefined;
   }
 
   private async getAssetContext(assetId: string): Promise<AssetContext | undefined> {
     try {
-      const _result = await db.query(`
-        SELECT * FROM assets WHERE id = $1
-      `, [assetId]);
-
-      if (result.rows.length === 0) {
-        return undefined;
-      }
-
-      const asset = result.rows[0];
+      const sql = await getClient();
+      const rows = await sql`SELECT * FROM assets WHERE id = ${assetId}`;
+      if (rows.length === 0) return undefined;
+      const asset = rows[0] as any;
       return {
         asset_id: asset.id,
         asset_name: asset.name,

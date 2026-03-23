@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS data_sources (
     tenant_id UUID NOT NULL,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(50) NOT NULL CHECK (type IN (
-        'edr_avast', 'edr_crowdstrike', 'edr_sentinelone', 'edr_generic',
-        'firewall_pfsense', 'firewall_fortinet', 'firewall_cisco',
+        'edr_avast', 'edr_crowdstrike', 'edr_sentinelone', 'edr_generic', 'edr_defender',
+        'firewall_pfsense', 'firewall_fortinet', 'firewall_cisco', 'firewall_sonicwall',
         'siem_splunk', 'siem_qradar', 'syslog'
     )),
     connection_config JSONB NOT NULL DEFAULT '{}',

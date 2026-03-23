@@ -101,136 +101,110 @@ export async function GET(request: NextRequest) {
 
 async function getThreatPredictions(tenantId: string, timeRange: TimeRange) {
   try {
-    const { db } = await import('@/lib/database');
-    
-    // Get ML model predictions (simplified implementation)
-    const modelsResult = await db.query(`
-      SELECT * FROM ml_models 
-      WHERE tenant_id = $1 AND enabled = true AND model_type = 'threat_classification'
+    const { getClient } = await import('@/lib/database');
+    const sql = await getClient();
+
+    const models = await sql`
+      SELECT * FROM ml_models
+      WHERE tenant_id = ${tenantId} AND enabled = true AND model_type = 'threat_classification'
       ORDER BY accuracy_score DESC NULLS LAST
       LIMIT 1
-    `, [tenantId]);
+    `;
 
-    if (modelsResult.rows.length === 0) {
-      return {
-        available: false,
-        message: 'No trained threat prediction models available'
-      };
+    if (models.length === 0) {
+      return { available: false, message: 'No trained threat prediction models available' };
     }
 
-    // In a real implementation, this would use the actual ML model
-    // For now, we'll return mock predictions based on historical data
-    const historicalResult = await db.query(`
-      SELECT 
+    const historical = await sql`
+      SELECT
         event_category,
         severity,
         COUNT(*) as historical_count,
         AVG(confidence_score) as avg_confidence
-      FROM threat_lake_events 
-      WHERE tenant_id = $1 
-      AND timestamp >= $2 - INTERVAL '7 days'
-      AND timestamp < $2
+      FROM threat_lake_events
+      WHERE tenant_id = ${tenantId}
+      AND timestamp >= ${timeRange.start_time}::timestamptz - INTERVAL '7 days'
+      AND timestamp < ${timeRange.start_time}
       GROUP BY event_category, severity
-    `, [tenantId, timeRange.start_time]);
+    `;
 
-    const predictions = historicalResult.rows.map(row => ({
+    const predictions = historical.map((row: any) => ({
       event_category: row.event_category,
       severity: row.severity,
-      predicted_count: Math.round(row.historical_count * 1.1), // Simple prediction
-      confidence: Math.min(row.avg_confidence * 0.8, 0.95),
+      predicted_count: Math.round(Number(row.historical_count) * 1.1),
+      confidence: Math.min(Number(row.avg_confidence) * 0.8, 0.95),
       prediction_window: '24h'
     }));
 
-    return {
-      available: true,
-      model_version: modelsResult.rows[0].model_version,
-      model_accuracy: modelsResult.rows[0].accuracy_score,
-      predictions
-    };
+    const model = models[0] as any;
+    return { available: true, model_version: model.model_version, model_accuracy: model.accuracy_score, predictions };
   } catch (error) {
     logger.error('Failed to get threat predictions', { error, tenantId });
-    return {
-      available: false,
-      error: 'Failed to generate predictions'
-    };
+    return { available: false, error: 'Failed to generate predictions' };
   }
 }
 
 async function getThreatTrends(tenantId: string, timeRange: TimeRange) {
   try {
-    const { db } = await import('@/lib/database');
-    
-    // Get hourly trends for the time period
-    const trendsResult = await db.query(`
-      SELECT 
+    const { getClient } = await import('@/lib/database');
+    const sql = await getClient();
+
+    const hourlyEvents = await sql`
+      SELECT
         date_trunc('hour', timestamp) as hour,
         severity,
         COUNT(*) as event_count,
         AVG(confidence_score) as avg_confidence
-      FROM threat_lake_events 
-      WHERE tenant_id = $1 
-      AND timestamp >= $2 
-      AND timestamp <= $3
+      FROM threat_lake_events
+      WHERE tenant_id = ${tenantId}
+      AND timestamp >= ${timeRange.start_time}
+      AND timestamp <= ${timeRange.end_time}
       GROUP BY hour, severity
       ORDER BY hour, severity
-    `, [tenantId, timeRange.start_time, timeRange.end_time]);
+    `;
 
-    // Calculate trend direction for each severity
-    const severityTrends = await db.query(`
+    const severityTrends = await sql`
       WITH hourly_counts AS (
-        SELECT 
+        SELECT
           date_trunc('hour', timestamp) as hour,
           severity,
           COUNT(*) as event_count
-        FROM threat_lake_events 
-        WHERE tenant_id = $1 
-        AND timestamp >= $2 
-        AND timestamp <= $3
+        FROM threat_lake_events
+        WHERE tenant_id = ${tenantId}
+        AND timestamp >= ${timeRange.start_time}
+        AND timestamp <= ${timeRange.end_time}
         GROUP BY hour, severity
-      ),
-      trend_calc AS (
-        SELECT 
-          severity,
-          AVG(event_count) as avg_count,
-          CASE 
-            WHEN COUNT(*) > 1 THEN
-              (COUNT(*) * SUM(EXTRACT(EPOCH FROM hour) * event_count) - SUM(EXTRACT(EPOCH FROM hour)) * SUM(event_count)) /
-              (COUNT(*) * SUM(POWER(EXTRACT(EPOCH FROM hour), 2)) - POWER(SUM(EXTRACT(EPOCH FROM hour)), 2))
-            ELSE 0
-          END as trend_slope
-        FROM hourly_counts
-        GROUP BY severity
       )
-      SELECT 
+      SELECT
         severity,
-        avg_count,
-        CASE 
-          WHEN trend_slope > 0.1 THEN 'increasing'
-          WHEN trend_slope < -0.1 THEN 'decreasing'
-          ELSE 'stable'
-        END as trend_direction,
-        ABS(trend_slope) as trend_strength
-      FROM trend_calc
-    `, [tenantId, timeRange.start_time, timeRange.end_time]);
+        AVG(event_count) as avg_count,
+        CASE
+          WHEN COUNT(*) > 1 THEN
+            (COUNT(*) * SUM(EXTRACT(EPOCH FROM hour) * event_count) - SUM(EXTRACT(EPOCH FROM hour)) * SUM(event_count)) /
+            NULLIF((COUNT(*) * SUM(POWER(EXTRACT(EPOCH FROM hour), 2)) - POWER(SUM(EXTRACT(EPOCH FROM hour)), 2)), 0)
+          ELSE 0
+        END as trend_slope
+      FROM hourly_counts
+      GROUP BY severity
+    `;
 
-    // Get correlation trends
-    const correlationTrends = await db.query(`
-      SELECT 
+    const correlationTrends = await sql`
+      SELECT
         date_trunc('hour', created_at) as hour,
         status,
         COUNT(*) as correlation_count
-      FROM event_correlations 
-      WHERE tenant_id = $1 
-      AND created_at >= $2 
-      AND created_at <= $3
+      FROM event_correlations
+      WHERE tenant_id = ${tenantId}
+      AND created_at >= ${timeRange.start_time}
+      AND created_at <= ${timeRange.end_time}
       GROUP BY hour, status
       ORDER BY hour, status
-    `, [tenantId, timeRange.start_time, timeRange.end_time]);
+    `;
 
     return {
-      hourly_events: trendsResult.rows,
-      severity_trends: severityTrends.rows,
-      correlation_trends: correlationTrends.rows,
+      hourly_events: hourlyEvents,
+      severity_trends: severityTrends,
+      correlation_trends: correlationTrends,
       analysis_period: {
         start: timeRange.start_time,
         end: timeRange.end_time,
@@ -239,8 +213,6 @@ async function getThreatTrends(tenantId: string, timeRange: TimeRange) {
     };
   } catch (error) {
     logger.error('Failed to get threat trends', { error, tenantId });
-    return {
-      error: 'Failed to calculate trends'
-    };
+    return { error: 'Failed to calculate trends' };
   }
 }

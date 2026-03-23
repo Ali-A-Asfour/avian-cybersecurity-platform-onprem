@@ -1,56 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authMiddleware } from '@/middleware/auth.middleware';
+import { tenantMiddleware } from '@/middleware/tenant.middleware';
+import { threatLakeService } from '@/services/threat-lake.service';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: authResult.error }, { status: 401 });
+    }
+
+    const tenantResult = await tenantMiddleware(request, authResult.user!);
+    if (!tenantResult.success) {
+      return NextResponse.json({ error: tenantResult.error }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { query, limit = 100 } = body;
+    const { query, limit = 100, offset = 0, start_time, end_time, severity, event_category } = body;
 
-    if (!query) {
-      return NextResponse.json(
-        { error: 'Query is required' },
-        { status: 400 }
-      );
+    if (!query && !severity && !event_category) {
+      return NextResponse.json({ error: 'At least one search parameter is required' }, { status: 400 });
     }
 
-    // Mock query execution - in real implementation, this would query the threat lake
-    const mockResults = [];
-    const numResults = Math.min(limit, Math.floor(Math.random() * 50) + 10);
-
-    for (let i = 0; i < numResults; i++) {
-      const severities = ['low', 'medium', 'high', 'critical'];
-      const eventTypes = ['malware_detection', 'suspicious_login', 'network_anomaly', 'data_exfiltration'];
-      const sourceTypes = ['edr_avast', 'firewall_pfsense', 'siem_splunk'];
-
-      mockResults.push({
-        id: `event-${i}`,
-        timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
-        event_type: eventTypes[Math.floor(Math.random() * eventTypes.length)],
-        severity: severities[Math.floor(Math.random() * severities.length)],
-        source_type: sourceTypes[Math.floor(Math.random() * sourceTypes.length)],
-        title: `Security Event ${i + 1}`,
-        description: `Detailed description of security event ${i + 1} matching query: ${query}`,
-        metadata: {
-          source_ip: `192.168.1.${Math.floor(Math.random() * 255)}`,
-          user: Math.random() > 0.5 ? `user${Math.floor(Math.random() * 100)}` : undefined,
-          process: Math.random() > 0.7 ? `process${Math.floor(Math.random() * 10)}.exe` : undefined
-        }
-      });
-    }
-
-    // Sort by timestamp (newest first)
-    mockResults.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const startTime = Date.now();
+    const result = await threatLakeService.searchEvents(tenantResult.tenant.id, {
+      search_text: query || undefined,
+      severity: severity || undefined,
+      event_category: event_category || undefined,
+      start_time: start_time ? new Date(start_time) : undefined,
+      end_time: end_time ? new Date(end_time) : undefined,
+      limit: Math.min(limit, 500),
+      offset,
+    });
 
     return NextResponse.json({
       success: true,
-      results: mockResults,
-      total: mockResults.length,
-      query_time_ms: Math.floor(Math.random() * 1000) + 100
+      results: result.events,
+      total: result.total,
+      has_more: result.has_more,
+      query_time_ms: Date.now() - startTime,
     });
   } catch (error) {
-    console.error('Failed to execute query:', error);
-    return NextResponse.json(
-      { error: 'Failed to execute query' },
-      { status: 500 }
-    );
+    logger.error('Failed to execute threat lake query', { error });
+    return NextResponse.json({ error: 'Failed to execute query' }, { status: 500 });
   }
 }
