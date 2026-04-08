@@ -109,15 +109,9 @@ export class AssetService {
    */
   async getAssetsByTenant(tenantId: string): Promise<Asset[]> {
     try {
-      // Generate tenant-specific mock data
-      const mockAssets: Asset[] = this.generateTenantSpecificAssets(tenantId);
-
-      logger.info('Assets retrieved for tenant', {
-        tenantId,
-        assetCount: mockAssets.length
-      });
-
-      return mockAssets;
+      // No assets in DB yet — return empty list
+      logger.info('Assets retrieved for tenant', { tenantId, assetCount: 0 });
+      return [];
     } catch (error) {
       logger.error('Failed to get assets for tenant', { error, tenantId });
       throw new Error('Failed to get assets for tenant');

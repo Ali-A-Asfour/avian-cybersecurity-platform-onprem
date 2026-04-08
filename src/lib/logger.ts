@@ -187,22 +187,34 @@ class Logger {
   }
 
   /**
-   * Send log entry to remote logging service
+   * Send log entry to Loki via push API
    */
   private async outputToRemote(entry: LogEntry): Promise<void> {
     try {
       if (this.config.remoteEndpoint) {
-        await fetch(this.config.remoteEndpoint, {
+        const levelName = LogLevel[entry.level].toLowerCase();
+        const labels = {
+          app: 'avian-platform',
+          level: levelName,
+          category: String(entry.context?.category ?? 'app'),
+          ...(entry.context?.tenantId ? { tenant: String(entry.context.tenantId) } : {}),
+        };
+
+        const labelStr = '{' + Object.entries(labels).map(([k, v]) => `${k}="${v}"`).join(',') + '}';
+        const logLine = JSON.stringify(entry);
+        const tsNano = String(Date.now() * 1_000_000);
+
+        await fetch(`${this.config.remoteEndpoint}/loki/api/v1/push`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(entry),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            streams: [{ stream: labels, values: [[tsNano, logLine]] }],
+          }),
         });
       }
     } catch (error) {
-      // Fallback to console if remote logging fails
-      console.error('Failed to send log to remote endpoint:', error);
+      // Fallback to console if Loki is unreachable
+      console.error('Failed to send log to Loki:', error);
     }
   }
 
@@ -304,8 +316,9 @@ class Logger {
 export const logger = new Logger({
   level: process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO,
   enableConsole: true,
-  enableFile: process.env.NODE_ENV === 'production',
-  enableRemote: false, // Enable when remote logging endpoint is configured
+  enableFile: false,
+  enableRemote: !!process.env.LOKI_URL,
+  remoteEndpoint: process.env.LOKI_URL,
 });
 
 // Utility functions for common logging patterns

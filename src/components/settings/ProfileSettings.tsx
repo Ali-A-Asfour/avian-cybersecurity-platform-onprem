@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { MFASettings } from './MFASettings';
 
 interface ProfileData {
   name: string;
@@ -359,37 +360,7 @@ export function ProfileSettings({ className }: ProfileSettingsProps) {
       </Card>
 
       {/* Multi-Factor Authentication */}
-      <Card className="p-6">
-        <h3 className="text-base font-medium text-neutral-900 dark:text-neutral-100 mb-4">
-          Multi-Factor Authentication
-        </h3>
-        
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              Enable MFA
-            </p>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Add an extra layer of security to your account
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleToggleMFA}
-            className={cn(
-              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-              mfaEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-            )}
-          >
-            <span
-              className={cn(
-                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                mfaEnabled ? 'translate-x-5' : 'translate-x-0'
-              )}
-            />
-          </button>
-        </div>
-      </Card>
+      <MFASettings mfaEnabled={mfaEnabled} />
     </div>
   );
 }

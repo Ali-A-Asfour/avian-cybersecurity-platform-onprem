@@ -351,7 +351,7 @@ export class TenantService {
       .from(tenants)
       .where(whereClause);
 
-    // Get tenants
+    // Get tenants with real user counts
     const tenantList = await db
       .select()
       .from(tenants)
@@ -360,10 +360,21 @@ export class TenantService {
       .limit(limit)
       .offset(offset);
 
+    // Get user counts per tenant in one query
+    const userCounts = await db
+      .select({ tenantId: users.tenant_id, count: count() })
+      .from(users)
+      .groupBy(users.tenant_id);
+
+    const userCountMap = new Map(userCounts.map(r => [r.tenantId, r.count]));
+
     return {
       tenants: tenantList.map(tenant => ({
         ...tenant,
         logo_url: tenant.logo_url || undefined,
+        users_count: userCountMap.get(tenant.id) || 0,
+        data_sources_count: 0,
+        events_today: 0,
       })) as Tenant[],
       total: totalCount,
       page,

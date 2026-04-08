@@ -393,6 +393,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if MFA is enabled — if so, return a short-lived MFA token instead of a full session
+    const mfaCheckResult = await (async () => {
+      try {
+        const postgres = (await import('postgres')).default;
+        const c = postgres(process.env.DATABASE_URL!, { max: 1, ssl: false, idle_timeout: 5 });
+        const r = await c`SELECT mfa_enabled FROM users WHERE id = ${user.id}`;
+        await c.end();
+        return r[0]?.mfa_enabled ?? false;
+      } catch { return false; }
+    })();
+
+    if (mfaCheckResult) {
+      // Issue a short-lived token only valid for the MFA step (5 minutes)
+      const { generateToken } = await import('@/lib/jwt');
+      const mfaToken = generateToken(
+        { userId: user.id, email: user.email, role: user.role, tenantId: user.tenant_id },
+        false
+      );
+      // Override expiry to 5 min by re-signing with short expiry via jwt directly
+      const jwt = (await import('jsonwebtoken')).default;
+      const shortToken = jwt.sign(
+        { userId: user.id, email: user.email, role: user.role, tenantId: user.tenant_id },
+        process.env.JWT_SECRET!,
+        { expiresIn: '5m' }
+      );
+      return NextResponse.json({ success: true, mfa_required: true, mfa_token: shortToken });
+    }
+
     // Password is valid - create session
     const { token, expiresAt, sessionId } = await createSession(
       user.id,

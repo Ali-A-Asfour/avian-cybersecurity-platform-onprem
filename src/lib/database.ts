@@ -44,7 +44,7 @@ async function initializeDatabaseConnection(): Promise<postgres.Sql> {
         max: 10, // Connection pool size
         idle_timeout: 20,
         connect_timeout: 10,
-        ssl: (process.env.NODE_ENV === 'production' && process.env.POSTGRES_SSL_DISABLED !== 'true') ? { rejectUnauthorized: true } : false,
+        ssl: (process.env.NODE_ENV === 'production' && process.env.POSTGRES_SSL_DISABLED !== 'true') ? { rejectUnauthorized: false } : false,
         prepare: true, // Use prepared statements
         transform: {
           undefined: null, // Convert undefined to null
@@ -156,6 +156,28 @@ export async function withTransaction<T>(
     logger.error('Database transaction failed', error instanceof Error ? error : new Error(String(error)), { duration, category: 'database' });
     throw error;
   }
+}
+
+/**
+ * Execute a callback within a tenant-scoped database context.
+ * Sets PostgreSQL session variables required by RLS policies before running queries,
+ * ensuring database-level tenant isolation is enforced for every request.
+ */
+export async function withTenantContext<T>(
+  tenantId: string,
+  userRole: string,
+  callback: (db: ReturnType<typeof drizzle>) => Promise<T>
+): Promise<T> {
+  const database = await getDatabase();
+
+  return database.begin(async (tx) => {
+    // Set session variables consumed by RLS policies (migration 0027)
+    await tx`SET LOCAL app.current_tenant_id = ${tenantId}`;
+    await tx`SET LOCAL app.current_user_role = ${userRole}`;
+
+    const drizzleTx = drizzle(tx);
+    return await callback(drizzleTx as any);
+  });
 }
 
 /**

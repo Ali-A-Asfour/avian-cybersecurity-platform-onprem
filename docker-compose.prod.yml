@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Nginx reverse proxy with SSL
   nginx:
@@ -19,7 +17,7 @@ services:
       - avian-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -153,6 +151,37 @@ services:
           cpus: '0.25'
     # Security: Redis not exposed to host
 
+  # Log aggregation
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: avian-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - avian-network
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # Log visualization
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: avian-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-changeme}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - avian-network
+    restart: unless-stopped
+
   # Backup service
   backup:
     image: postgres:16-alpine
@@ -188,6 +217,10 @@ volumes:
   app-logs:
     driver: local
   app-uploads:
+    driver: local
+  loki-data:
+    driver: local
+  grafana-data:
     driver: local
 
 networks:

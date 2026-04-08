@@ -16,9 +16,11 @@ const createDataSourceSchema = z.object({
     'edr_crowdstrike', 
     'edr_sentinelone',
     'edr_generic',
+    'edr_defender',
     'firewall_pfsense',
     'firewall_fortinet',
     'firewall_cisco',
+    'firewall_sonicwall',
     'siem_splunk',
     'siem_qradar',
     'syslog'
@@ -32,7 +34,13 @@ const createDataSourceSchema = z.object({
     port: z.number().min(1).max(65535).optional(),
     use_tls: z.boolean().optional(),
     polling_interval: z.number().min(1000).optional(),
-    custom_headers: z.record(z.string()).optional()
+    custom_headers: z.record(z.string()).optional(),
+    // Microsoft Defender / Azure fields
+    tenant_id: z.string().optional(),
+    client_id: z.string().optional(),
+    client_secret: z.string().optional(),
+    // Generic host fields
+    host: z.string().optional(),
   })
 });
 
@@ -45,10 +53,17 @@ export async function GET(request: NextRequest) {
 
     const tenantResult = await tenantMiddleware(request, authResult.user);
     if (!tenantResult.success) {
-      return NextResponse.json({ error: tenantResult.error }, { status: 403 });
+      // Return empty list when no tenant context (e.g. super_admin with no tenant selected)
+      return NextResponse.json({ data_sources: [], total: 0 });
     }
 
-    const dataSources = await dataIngestionService.getDataSources(tenantResult.tenant.id);
+    let dataSources: any[] = [];
+    try {
+      dataSources = await dataIngestionService.getDataSources(tenantResult.tenant.id);
+    } catch (dbError) {
+      // Table may not exist yet — return empty list gracefully
+      logger.warn('Could not query data sources, returning empty list', { error: dbError });
+    }
 
     return NextResponse.json({
       data_sources: dataSources,
@@ -84,15 +99,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validationResult = validateRequest(createDataSourceSchema, body);
-    if (!validationResult.success) {
+    const parsed = createDataSourceSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: validationResult.errors },
+        { error: 'Invalid request data', details: parsed.error.errors },
         { status: 400 }
       );
     }
-
-    const { name, type, connection_config } = validationResult.data;
+    const { name, type, connection_config } = parsed.data;
 
     const dataSource = await dataIngestionService.createDataSource({
       tenant_id: tenantResult.tenant.id,

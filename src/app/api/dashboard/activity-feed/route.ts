@@ -1,35 +1,43 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { authMiddleware } from '@/middleware/auth.middleware';
+import { getDb } from '@/lib/database';
+import { tickets } from '@/../database/schemas/main';
+import { alerts } from '@/../database/schemas/tenant';
+import { eq, desc, count } from 'drizzle-orm';
 
-export async function GET() {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 180));
+export async function GET(request: NextRequest) {
+  try {
+    const authResult = await authMiddleware(request);
+    if (!authResult.success) {
+      return NextResponse.json({ success: false, error: authResult.error }, { status: 401 });
+    }
 
-    const activityFeedData = {
-        activities: [
-            {
-                id: 'activity-1',
-                timestamp: new Date(Date.now() - 3 * 60 * 1000).toISOString(), // 3 minutes ago
-                description: 'High-severity phishing attempt blocked on user@company.com',
-                type: 'alert' as const,
-                icon: 'shield-alert'
-            },
-            {
-                id: 'activity-2',
-                timestamp: new Date(Date.now() - 8 * 60 * 1000).toISOString(), // 8 minutes ago
-                description: 'New device WS-156 successfully enrolled with AVIAN agent',
-                type: 'device' as const,
-                icon: 'monitor'
-            },
-            {
-                id: 'activity-3',
-                timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
-                description: 'Microsoft 365 integration sync completed successfully',
-                type: 'integration' as const,
-                icon: 'refresh-cw'
-            }
-        ],
-        timestamp: new Date().toISOString()
-    };
+    const tenantId = authResult.user!.tenant_id;
+    const db = await getDb();
 
-    return NextResponse.json(activityFeedData);
+    // Get recent alerts as activity
+    const recentAlerts = await db
+      .select()
+      .from(alerts)
+      .where(eq(alerts.tenant_id, tenantId))
+      .orderBy(desc(alerts.created_at))
+      .limit(10);
+
+    const activities = recentAlerts.map((alert: any) => ({
+      id: alert.id,
+      timestamp: alert.created_at,
+      description: alert.title || alert.message || 'Security alert',
+      type: 'alert' as const,
+      severity: alert.severity,
+      icon: 'shield-alert',
+    }));
+
+    return NextResponse.json({
+      activities,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Activity feed API error:', error);
+    return NextResponse.json({ activities: [], timestamp: new Date().toISOString() });
+  }
 }

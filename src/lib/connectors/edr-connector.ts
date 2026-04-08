@@ -157,6 +157,23 @@ export abstract class BaseEDRConnector {
       };
 
       await dataIngestionService.ingestSecurityEvent(securityEvent);
+
+      // Create alert in the alerts system
+      if (this.dataSource.type === 'edr_defender' && edrEvent.threat?.name) {
+        const { AlertManager } = await import('@/services/alerts-incidents/AlertManager');
+        await AlertManager.ingestEDRAlert(this.dataSource.tenant_id, {
+          incidentId: edrEvent.raw_data?.incidentId || edrEvent.id,
+          alertId: edrEvent.id,
+          severity: edrEvent.severity,
+          title: edrEvent.threat.name,
+          description: this.generateDescription(edrEvent),
+          threatName: edrEvent.threat.name,
+          affectedDevice: edrEvent.endpoint.hostname,
+          affectedUser: edrEvent.endpoint.user || '',
+          detectedAt: new Date(edrEvent.timestamp),
+          metadata: { source: 'microsoft_defender', raw: edrEvent.raw_data },
+        });
+      }
     } catch (error) {
       logger.error('Failed to process EDR event', { 
         error, 
@@ -552,10 +569,113 @@ export class GenericEDRConnector extends BaseEDRConnector {
   }
 }
 
-export function createEDRConnector(dataSource: DataSource): BaseEDRConnector {
+export class DefenderEDRConnector extends BaseEDRConnector {
+  private accessToken: string | null = null;
+  private tokenExpiry: Date | null = null;
+
+  async authenticate(): Promise<boolean> {
+    try {
+      const { tenant_id, client_id, client_secret } = this.dataSource.connection_config;
+
+      if (!tenant_id || !client_id || !client_secret) {
+        throw new Error('Missing Defender credentials: tenant_id, client_id, client_secret required');
+      }
+
+      const response = await fetch(
+        `https://login.microsoftonline.com/${tenant_id}/oauth2/v2.0/token`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id,
+            client_secret,
+            scope: 'https://api.securitycenter.microsoft.com/.default',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Defender auth failed: ${err}`);
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.tokenExpiry = new Date(Date.now() + (data.expires_in - 60) * 1000);
+
+      logger.info('Defender authentication successful', { dataSourceId: this.dataSource.id });
+      return true;
+    } catch (error) {
+      logger.error('Defender authentication failed', { error, dataSourceId: this.dataSource.id });
+      return false;
+    }
+  }
+
+  private async ensureToken(): Promise<string> {
+    if (!this.accessToken || !this.tokenExpiry || new Date() >= this.tokenExpiry) {
+      await this.authenticate();
+    }
+    if (!this.accessToken) throw new Error('No access token available');
+    return this.accessToken;
+  }
+
+  async fetchEvents(since?: Date): Promise<EDREvent[]> {
+    try {
+      const token = await this.ensureToken();
+      const sinceFilter = since ? `&$filter=lastUpdateTime ge ${since.toISOString()}` : '';
+
+      const response = await fetch(
+        `https://api.securitycenter.microsoft.com/api/alerts?$top=100${sinceFilter}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) throw new Error(`Failed to fetch Defender alerts: ${response.statusText}`);
+
+      const data = await response.json();
+      return (data.value || []).map((alert: any) => this.transformDefenderAlert(alert));
+    } catch (error) {
+      logger.error('Failed to fetch Defender events', { error, dataSourceId: this.dataSource.id });
+      return [];
+    }
+  }
+
+  private transformDefenderAlert(alert: any): EDREvent {
+    return {
+      id: alert.id,
+      timestamp: alert.alertCreationTime || new Date().toISOString(),
+      event_type: alert.category || 'alert',
+      severity: alert.severity?.toLowerCase() || 'medium',
+      endpoint: {
+        hostname: alert.computerDnsName || 'unknown',
+        ip_address: alert.evidence?.[0]?.ipAddress || '0.0.0.0',
+        os: 'windows',
+        user: alert.relatedUser?.userName,
+      },
+      threat: {
+        name: alert.title,
+        category: alert.category || 'unknown',
+        confidence: alert.confidence ? alert.confidence / 100 : 0.5,
+        indicators: [],
+      },
+      raw_data: alert,
+    };
+  }
+
+  async testConnection(): Promise<{ success: boolean; message: string }> {
+    const success = await this.authenticate();
+    return success
+      ? { success: true, message: 'Connected to Microsoft Defender successfully' }
+      : { success: false, message: 'Failed to authenticate with Microsoft Defender' };
+  }
+}
+
+function createEDRConnector(dataSource: DataSource): BaseEDRConnector {
   switch (dataSource.type) {
     case 'edr_avast':
       return new AvastEDRConnector(dataSource);
+    case 'edr_defender':
+      return new DefenderEDRConnector(dataSource);
     case 'edr_crowdstrike':
     case 'edr_sentinelone':
     case 'edr_generic':

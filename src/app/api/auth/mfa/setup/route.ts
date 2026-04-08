@@ -1,45 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserService } from '../../../../../services/user.service';
+import { authenticator } from 'otplib';
+import { authMiddleware } from '@/middleware/auth.middleware';
+import { getClient } from '@/lib/database';
+import { logger } from '@/lib/logger';
 
-
+// POST /api/auth/mfa/setup — generate secret + QR code URL for the user
 export async function POST(request: NextRequest) {
+  const authResult = await authMiddleware(request);
+  if (!authResult.success) {
+    return NextResponse.json({ error: authResult.error }, { status: 401 });
+  }
+
   try {
-    // Apply authentication middleware
-    const authResult = await authMiddleware(request);
-    if (!authResult.success || !authResult.user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: authResult.error || 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
-    }
+    const secret = authenticator.generateSecret();
+    const otpauthUrl = authenticator.keyuri(authResult.user!.email, 'AVIAN Platform', secret);
 
-    const user = authResult.user;
+    // Store secret temporarily (not enabled yet — enabled after verification)
+    const sql = await getClient();
+    await sql`
+      UPDATE users SET mfa_secret = ${secret}, updated_at = NOW()
+      WHERE id = ${authResult.user!.user_id}
+    `;
 
-    // Setup MFA for user
-    const _result = await UserService.setupMFA(user.user_id);
+    logger.info('MFA setup initiated', { userId: authResult.user!.user_id });
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-    });
+    return NextResponse.json({ secret, otpauth_url: otpauthUrl });
   } catch (error) {
-    console.error('MFA setup error:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'MFA_SETUP_FAILED',
-          message: error instanceof Error ? error.message : 'MFA setup failed',
-        },
-      },
-      { status: 500 }
-    );
+    logger.error('MFA setup failed', { error });
+    return NextResponse.json({ error: 'Failed to set up MFA' }, { status: 500 });
   }
 }

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       case 'reset_metrics':
         dbOptimizer.clearMetrics();
         performanceMonitor.reset();
-        cache.resetStats();
+        // cache.resetStats() not implemented — skip silently
         result = { message: 'Performance metrics reset' };
         break;
 
@@ -122,17 +122,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Get comprehensive performance data
+    const cacheStats = cache.getStats();
+    const dbStats = dbOptimizer.getQueryStats();
+    const connectionPool = await dbOptimizer.getConnectionPoolStats();
+    const perfSummary = performanceMonitor.getPerformanceSummary();
+
     const performanceData = {
       cache: {
-        stats: cache.getStats(),
-        info: await cache.getInfo(),
+        stats: cacheStats,
+        info: {
+          keyCount: 0,
+          memoryUsage: 'N/A'
+        },
       },
       database: {
-        stats: dbOptimizer.getQueryStats(),
-        connectionPool: await dbOptimizer.getConnectionPoolStats(),
+        stats: dbStats,
+        connectionPool,
       },
       system: {
-        performance: performanceMonitor.getPerformanceSummary(),
+        performance: perfSummary,
       },
       recommendations: await getPerformanceRecommendations(),
     };

@@ -1,59 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { AuthenticationService } from '../../../../../services/auth.service';
-import { rateLimit } from '../../../../../middleware/auth.middleware';
+import { authenticator } from 'otplib';
+import { getClient } from '@/lib/database';
+import { createSession, setAuthCookie } from '@/lib/jwt';
+import { verifyToken } from '@/lib/jwt';
+import { logger } from '@/lib/logger';
 
-// Request validation schema
-const verifyMFASchema = z.object({
-  user_id: z.string().uuid('Invalid user ID'),
-  code: z.string().length(6, 'MFA code must be 6 digits'),
-});
-
+// POST /api/auth/mfa/verify — verify TOTP code after password login, return real session token
 export async function POST(request: NextRequest) {
   try {
-    // Apply rate limiting
-    const rateLimitResult = await rateLimit(10, 900)(request); // 10 attempts per 15 minutes
-    if (rateLimitResult) {
-      return rateLimitResult;
+    const { code, mfa_token } = await request.json();
+
+    if (!code || !mfa_token) {
+      return NextResponse.json({ error: 'Code and mfa_token are required' }, { status: 400 });
     }
 
-    // Parse and validate request body
-    const body = await request.json();
-    const validatedData = verifyMFASchema.parse(body);
+    // Verify the short-lived MFA token issued at password login
+    const tokenResult = verifyToken(mfa_token);
+    if (!tokenResult.valid || !tokenResult.payload) {
+      return NextResponse.json({ error: 'Invalid or expired MFA session. Please log in again.' }, { status: 401 });
+    }
 
-    // Verify MFA code
-    const _result = await AuthenticationService.verifyMFA(validatedData);
+    const { userId, email, role, tenantId } = tokenResult.payload;
 
-    return NextResponse.json({
+    // Get user's MFA secret
+    const sql = await getClient();
+    const rows = await sql`
+      SELECT mfa_secret, mfa_enabled, is_active FROM users WHERE id = ${userId}
+    `;
+
+    if (rows.length === 0 || !rows[0].is_active) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    if (!rows[0].mfa_enabled || !rows[0].mfa_secret) {
+      return NextResponse.json({ error: 'MFA not enabled for this account' }, { status: 400 });
+    }
+
+    const isValid = authenticator.verify({ token: code, secret: rows[0].mfa_secret });
+    if (!isValid) {
+      logger.warn('Invalid MFA code attempt', { userId });
+      return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+    }
+
+    // MFA passed — issue real session token
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
+    const { token, expiresAt, sessionId } = await createSession(userId, email, role, tenantId, ipAddress, userAgent);
+
+    await sql`UPDATE users SET last_login = NOW() WHERE id = ${userId}`;
+
+    logger.info('MFA verification successful', { userId });
+
+    const response = NextResponse.json({
       success: true,
-      data: result,
+      token,
+      user: { id: userId, email, role, tenantId },
+      session: { expiresAt: expiresAt.toISOString() },
     });
+
+    response.headers.set('Set-Cookie', setAuthCookie(token));
+    return response;
   } catch (error) {
-    console.error('MFA verification error:', error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request data',
-            details: error.issues,
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'MFA_VERIFICATION_FAILED',
-          message: error instanceof Error ? error.message : 'MFA verification failed',
-        },
-      },
-      { status: 401 }
-    );
+    logger.error('MFA verification failed', { error });
+    return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
   }
 }

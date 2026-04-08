@@ -24,6 +24,9 @@ export function DataSourceList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'sources' | 'monitoring' | 'flow'>('sources');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newSource, setNewSource] = useState({ name: '', type: 'edr_defender', tenantId: '', clientId: '', clientSecret: '', host: '', port: '' });
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     fetchDataSources();
@@ -32,26 +35,13 @@ export function DataSourceList() {
   const fetchDataSources = async () => {
     try {
       setLoading(true);
-
-      // Use mock data for development
-      const { mockDataSources } = await import('@/lib/dev-mode');
-      const { delay } = await import('@/lib/mock-data');
-      await delay(500); // Simulate loading
-
-      // Convert mock data to expected format with company info
-      const mockDataSourcesWithCompany = mockDataSources.map((ds, index) => ({
-        id: ds.id,
-        name: ds.name,
-        type: ds.type.toLowerCase(),
-        status: ds.status === 'connected' ? 'active' : ds.status === 'warning' ? 'error' : 'inactive',
-        last_heartbeat: ds.lastSync,
-        events_processed: ds.eventsToday,
-        created_at: new Date().toISOString(),
-        company: ['Acme Corp', 'TechStart Inc', 'Global Solutions'][index % 3],
-        location: ['New York, NY', 'San Francisco, CA', 'Austin, TX'][index % 3]
-      }));
-
-      setDataSources(mockDataSourcesWithCompany);
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch('/api/data-sources', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch data sources');
+      const data = await response.json();
+      setDataSources(data.data_sources || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -61,24 +51,46 @@ export function DataSourceList() {
 
   const testConnection = async (id: string) => {
     try {
-      // Use mock data for development
-      const { delay } = await import('@/lib/mock-data');
-      await delay(1000); // Simulate connection test
-
-      // Simulate random success/failure
-      const success = Math.random() > 0.2; // 80% success rate
-
-      if (success) {
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch(`/api/data-sources/${id}/test`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (response.ok) {
         alert('Connection test successful!');
       } else {
-        alert('Connection test failed: Timeout connecting to data source');
+        alert('Connection test failed');
       }
     } catch (error) {
       alert('Connection test failed');
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const handleAddDataSource = async () => {
+    try {
+      setAdding(true);
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch('/api/data-sources', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newSource.name,
+          type: newSource.type,
+          connection_config: newSource.type === 'edr_defender'
+            ? { tenant_id: newSource.tenantId, client_id: newSource.clientId, client_secret: newSource.clientSecret }
+            : { host: newSource.host, port: parseInt(newSource.port) || 443 },
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to add data source');
+      setShowAddModal(false);
+      setNewSource({ name: '', type: 'edr_defender', host: '', port: '' });
+      fetchDataSources();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add data source');
+    } finally {
+      setAdding(false);
+    }
+  }; = (status: string) => {
     // Map data source status to standard status types
     const statusMapping = {
       active: 'resolved' as const,      // Green - working properly
@@ -242,7 +254,7 @@ export function DataSourceList() {
           {dataSources.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-gray-500 mb-4">No data sources configured</div>
-              <Button onClick={() => window.location.href = '/data-sources/new'}>
+              <Button onClick={() => setShowAddModal(true)}>
                 Add Your First Data Source
               </Button>
             </div>
@@ -282,29 +294,28 @@ export function DataSourceList() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="border rounded-lg p-4">
               <h4 className="font-medium mb-2">EDR Systems</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Avast EDR</li>
-                <li>• CrowdStrike Falcon</li>
-                <li>• SentinelOne</li>
-                <li>• Generic EDR (API)</li>
+              <ul className="text-sm space-y-1">
+                <li className="text-gray-700">• Microsoft Defender</li>
+                <li className="text-gray-400">• CrowdStrike Falcon <span className="text-xs italic">— coming soon</span></li>
+                <li className="text-gray-400">• SentinelOne <span className="text-xs italic">— coming soon</span></li>
+                <li className="text-gray-400">• Avast EDR <span className="text-xs italic">— coming soon</span></li>
               </ul>
             </div>
             <div className="border rounded-lg p-4">
               <h4 className="font-medium mb-2">Firewalls</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• pfSense</li>
-                <li>• Fortinet FortiGate</li>
-                <li>• Cisco ASA</li>
-                <li>• Syslog (Generic)</li>
+              <ul className="text-sm space-y-1">
+                <li className="text-gray-700">• SonicWall</li>
+                <li className="text-gray-400">• Fortinet FortiGate <span className="text-xs italic">— coming soon</span></li>
+                <li className="text-gray-400">• Cisco ASA <span className="text-xs italic">— coming soon</span></li>
+                <li className="text-gray-400">• pfSense <span className="text-xs italic">— coming soon</span></li>
               </ul>
             </div>
             <div className="border rounded-lg p-4">
               <h4 className="font-medium mb-2">SIEM Systems</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Splunk</li>
-                <li>• IBM QRadar</li>
-                <li>• Generic SIEM (API)</li>
-                <li>• Custom Integrations</li>
+              <ul className="text-sm space-y-1">
+                <li className="text-gray-400">• Splunk <span className="text-xs italic">— coming soon</span></li>
+                <li className="text-gray-400">• IBM QRadar <span className="text-xs italic">— coming soon</span></li>
+                <li className="text-gray-400">• Microsoft Sentinel <span className="text-xs italic">— coming soon</span></li>
               </ul>
             </div>
           </div>
@@ -320,7 +331,7 @@ export function DataSourceList() {
           <h2 className="text-2xl font-bold">Data Ingestion Management</h2>
           <p className="text-gray-600">Manage security data sources, monitoring, and flow visualization</p>
         </div>
-        <Button onClick={() => window.location.href = '/data-sources/new'}>
+        <Button onClick={() => setShowAddModal(true)}>
           Add Data Source
         </Button>
       </div>
@@ -329,17 +340,16 @@ export function DataSourceList() {
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           {[
-            { id: 'sources', name: 'Data Sources', description: 'Manage connections' },
-            { id: 'monitoring', name: 'Monitoring', description: 'Real-time status' },
-            { id: 'flow', name: 'Data Flow', description: 'Visualization & troubleshooting' }
+            { id: 'sources', name: 'Data Sources' },
+            { id: 'monitoring', name: 'Monitoring' },
+            { id: 'flow', name: 'Data Flow' }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
                 ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
               {tab.name}
             </button>
@@ -347,68 +357,77 @@ export function DataSourceList() {
         </nav>
       </div>
 
-      {/* Tab Content */}
       {renderTabContent()}
-    </div>
-  );
 
-  if (loading) {
-    return (
-      <Card className="p-6">
-        <div className="flex items-center justify-center h-32">
-          <div className="text-gray-500">Loading data sources...</div>
+      {/* Add Data Source Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Add Data Source</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={newSource.name}
+                  onChange={e => setNewSource({ ...newSource, name: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600"
+                  placeholder="e.g. Client Defender"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <select
+                  value={newSource.type}
+                  onChange={e => setNewSource({ ...newSource, type: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600"
+                >
+                  <option value="edr_defender">Microsoft Defender</option>
+                  <option value="firewall_sonicwall">SonicWall Firewall</option>
+                </select>
+              </div>
+              {newSource.type === 'edr_defender' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Azure Tenant ID</label>
+                    <input type="text" value={newSource.tenantId} onChange={e => setNewSource({ ...newSource, tenantId: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Application (Client) ID</label>
+                    <input type="text" value={newSource.clientId} onChange={e => setNewSource({ ...newSource, clientId: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Client Secret</label>
+                    <input type="password" value={newSource.clientSecret} onChange={e => setNewSource({ ...newSource, clientSecret: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600" placeholder="Your app client secret value" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Host / IP Address</label>
+                    <input type="text" value={newSource.host} onChange={e => setNewSource({ ...newSource, host: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600" placeholder="e.g. 192.168.1.1" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Port</label>
+                    <input type="number" value={newSource.port} onChange={e => setNewSource({ ...newSource, port: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600" placeholder="443" />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleAddDataSource} disabled={adding || !newSource.name} className="flex-1">
+                {adding ? 'Adding...' : 'Add Data Source'}
+              </Button>
+            </div>
+          </div>
         </div>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="p-6">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">Error: {error}</div>
-          <Button onClick={fetchDataSources}>Retry</Button>
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Data Ingestion Management</h2>
-          <p className="text-gray-600">Manage security data sources, monitoring, and flow visualization</p>
-        </div>
-        <Button onClick={() => window.location.href = '/data-sources/new'}>
-          Add Data Source
-        </Button>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { id: 'sources', name: 'Data Sources', description: 'Manage connections' },
-            { id: 'monitoring', name: 'Monitoring', description: 'Real-time status' },
-            { id: 'flow', name: 'Data Flow', description: 'Visualization & troubleshooting' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-            >
-              {tab.name}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      {renderTabContent()}
+      )}
     </div>
   );
 }

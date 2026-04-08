@@ -102,9 +102,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Normalize domain - strip protocol and trailing slashes
+    const normalizedDomain = domain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').toLowerCase();
+
     // Validate domain format (basic validation)
     const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9.-]{1,61}[a-zA-Z0-9]$/;
-    if (!domainRegex.test(domain)) {
+    if (!domainRegex.test(normalizedDomain)) {
       return NextResponse.json(
         { 
           success: false, 
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
     const tenant = await TenantService.createTenant(
       {
         name,
-        domain,
+        domain: normalizedDomain,
         logo_url,
         theme_color,
         settings,

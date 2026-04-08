@@ -33,8 +33,7 @@ export default function AlertsIncidentsPage() {
     const router = useRouter();
     const { isAuthenticated, loading: authLoading } = useAuthContext();
     const [activeTab, setActiveTab] = useState<TabType>('all-alerts');
-    const [demoMode, setDemoMode] = useState(false);
-    const [demoModeChecked, setDemoModeChecked] = useState(false);
+    const demoMode = false;
     const { user, loading } = useAuth();
 
     // Redirect to login if not authenticated
@@ -52,33 +51,7 @@ export default function AlertsIncidentsPage() {
         }
     }, [user, loading, router]);
 
-    // Check if we should use demo mode by testing API connectivity
-    useEffect(() => {
-        const checkDemoMode = async () => {
-            try {
-                const response = await api.get('/api/alerts-incidents/alerts?queue=all&page=1&limit=1');
-                if (!response.ok) {
-                    // If production API fails, enable demo mode
-                    setDemoMode(true);
-                } else {
-                    // Check if the response indicates we should use demo mode
-                    const data = await response.json();
-                    // If the production API returns empty data or indicates demo mode should be used,
-                    // enable demo mode for a better user experience
-                    if (!data.success || (data.data && data.data.alerts && data.data.alerts.length === 0)) {
-                        setDemoMode(true);
-                    }
-                }
-            } catch (error) {
-                // If API is unreachable, enable demo mode
-                setDemoMode(true);
-            } finally {
-                setDemoModeChecked(true);
-            }
-        };
 
-        checkDemoMode();
-    }, []);
 
     // Handle URL tab parameter
     React.useEffect(() => {
@@ -96,7 +69,7 @@ export default function AlertsIncidentsPage() {
         return null;
     }
 
-    if (loading || !demoModeChecked) {
+    if (loading) {
         return (
             <ClientLayout>
                 <div className="flex items-center justify-center h-64">
@@ -121,14 +94,7 @@ export default function AlertsIncidentsPage() {
         );
     }
 
-    // In demo mode, use mock user data
-    const effectiveUser = demoMode ? {
-        id: 'demo-user-123',
-        tenantId: 'demo-tenant-123',
-        role: 'security_analyst' as const,
-        name: 'Demo Analyst',
-        email: 'demo@avian.com'
-    } : user;
+    const effectiveUser = user;
 
     if (!demoMode && !user) {
         return (
@@ -220,28 +186,6 @@ export default function AlertsIncidentsPage() {
     return (
         <ClientLayout>
             <div className="p-6 space-y-6">
-                {/* Demo Mode Notice */}
-                {demoMode && (
-                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                            <div className="text-blue-600 dark:text-blue-400 mt-0.5">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                    Demo Mode Active
-                                </h3>
-                                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                                    Database connection unavailable. Using mock data to demonstrate the SOC workflow.
-                                    All interactions are simulated for testing purposes.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Page Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

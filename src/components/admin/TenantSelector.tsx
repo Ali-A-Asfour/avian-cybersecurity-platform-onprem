@@ -119,14 +119,14 @@ export function TenantSelector({ onTenantSelect, selectedTenant }: TenantSelecto
         const apiTenants = tenantsArray.map((tenant: any) => ({
           id: tenant.id,
           name: tenant.name,
-          industry: 'Technology', // Default values for display
+          industry: tenant.industry || 'Technology',
           size: 'Enterprise',
           status: tenant.is_active ? 'active' : 'inactive',
           created_at: tenant.created_at,
-          data_sources_count: Math.floor(Math.random() * 10) + 1, // Mock data
-          users_count: Math.floor(Math.random() * 100) + 10, // Mock data
-          events_today: Math.floor(Math.random() * 500000) + 50000, // Mock data
-          location: 'Various Locations',
+          data_sources_count: tenant.data_sources_count || 0,
+          users_count: tenant.users_count || 0,
+          events_today: tenant.events_today || 0,
+          location: tenant.location || 'Various Locations',
           subscription_tier: 'Enterprise'
         }));
         

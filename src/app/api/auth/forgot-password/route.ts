@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/database';
+import { getDb } from '@/lib/database';
 import { users } from '../../../../../database/schemas/main';
 import { passwordResetTokens } from '../../../../../database/schemas/password-reset';
 import { eq, and, gt } from 'drizzle-orm';
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Find user by email
+    const db = await getDb();
     const userResults = await db
       .select()
       .from(users)

@@ -1,290 +1,468 @@
-# Beta Testing Setup Guide - Skip Email for Now
+# AVIAN Platform - Beta Testing Setup Guide
 
-## ✅ What's Ready for Beta Testing
-
-All 7 required features are complete and ready for testing:
-
-1. ✅ **Password Reset Flow** - Working (uses console logging instead of email)
-2. ✅ **Account Lockout** - Working (5 failed attempts = 15min lockout)
-3. ✅ **Session Management** - Working (24-hour sessions)
-4. ✅ **Session Timeout Warning** - Working (5-minute warning modal)
-5. ✅ **Alert Acknowledgment** - Working (acknowledge button, filters)
-6. ✅ **Basic Ticketing System** - Working (full ticketing workflow)
-7. ✅ **Notification System** - Working (console logging, SMS optional)
+**Date**: February 2, 2026  
+**Server**: 192.168.1.116 (Ubuntu 24.04.03)  
+**Status**: Preparing for Beta Testing
 
 ---
 
-## 🚀 Quick Setup (No Email Required)
+## Current Status Overview
 
-### 1. Environment Configuration
+### ✅ Completed Components
 
-Create `.env.local` with minimal configuration:
+1. **Core Platform Deployment**
+   - Docker containers running (web, postgres, redis)
+   - HTTPS enabled with self-signed certificates
+   - Database schema fully deployed
+   - Authentication system working
+   - Multi-tenant architecture functional
 
+2. **Working Features**
+   - User authentication (login/logout)
+   - User management (create, edit, delete users)
+   - Tenant management (create, switch tenants)
+   - Role-based access control (Super Admin, Tenant Admin, Security Analyst, IT Helpdesk)
+   - Dashboard with metrics
+   - Help desk ticketing system
+   - Client/tenant selector (fixed and working)
+   - Incident resolution modal (fixed)
+
+3. **Remote Access**
+   - SSH access configured: `ssh avian@209.227.150.115`
+   - SSH tunneling for HTTPS: `ssh -L 8443:localhost:443 avian@209.227.150.115`
+   - Access platform at: `https://localhost:8443`
+
+4. **Demo Data**
+   - 3 tenants configured: ESR, Test/Default Organization, Third tenant
+   - Demo alerts distributed across tenants
+   - Demo users for testing
+
+---
+
+## ❌ Missing/Incomplete Components for Beta
+
+### 1. Microsoft Intune/Defender Integration (CRITICAL)
+
+**Current State**: Placeholder credentials, not connected to real Microsoft services
+
+**What's Needed**:
+- [ ] Azure AD App Registration
+- [ ] API permissions granted
+- [ ] Client credentials configured
+- [ ] Test connection to Microsoft Graph API
+- [ ] Verify data collection from real tenant
+
+**Impact**: Asset inventory showing mock data instead of real devices
+
+**Priority**: HIGH - Core feature for cybersecurity platform
+
+---
+
+### 2. Email Alert Integration ⏭️ SKIPPED FOR BETA
+
+**Current State**: Code implemented but not configured
+
+**Decision**: SKIPPED - Not needed for beta testing
+
+**Reason**: 
+- Adds complexity without immediate value
+- Microsoft Defender alerts work via EDR integration
+- API/webhook alerts still functional
+- Can be added post-beta if needed
+
+**Impact**: 
+- ✅ No impact on core functionality
+- ❌ Cannot receive SonicWall alerts via email
+
+**Priority**: LOW - Deferred to post-beta
+
+---
+
+### 3. Background Workers (IMPORTANT)
+
+**Current State**: Code exists but not running as scheduled tasks
+
+**What's Needed**:
+- [ ] Set up systemd timers for workers
+- [ ] Configure EDR polling worker (every 15 minutes)
+- [ ] Configure metrics aggregation worker (daily)
+- [ ] ~~Configure email alert worker~~ - SKIPPED FOR BETA
+- [ ] Test worker execution and logging
+
+**See**: `BACKGROUND_WORKERS_SETUP.md` for detailed setup guide
+
+**Priority**: HIGH - Required for automated data collection
+
+---
+
+### 4. SSL/TLS Certificates (IMPORTANT)
+
+**Current State**: Self-signed certificates (browser warnings)
+
+**What's Needed**:
+- [ ] Decide: Use Let's Encrypt or purchase commercial certificate
+- [ ] Configure domain name (if using Let's Encrypt)
+- [ ] Install proper SSL certificate
+- [ ] Update nginx configuration
+- [ ] Test HTTPS without browser warnings
+
+**Priority**: MEDIUM - Better for beta testers, not blocking
+
+---
+
+### 5. Monitoring and Logging (RECOMMENDED)
+
+**Current State**: Basic logging to console/files
+
+**What's Needed**:
+- [ ] Set up log rotation
+- [ ] Configure log aggregation (optional)
+- [ ] Set up basic health monitoring
+- [ ] Create alerting for critical errors
+- [ ] Document log locations
+
+**Priority**: MEDIUM - Helpful for troubleshooting during beta
+
+---
+
+### 6. Backup and Recovery (RECOMMENDED)
+
+**Current State**: No automated backups
+
+**What's Needed**:
+- [ ] Set up automated database backups
+- [ ] Configure backup retention policy
+- [ ] Test database restore procedure
+- [ ] Document backup/restore process
+- [ ] Set up backup monitoring
+
+**Priority**: MEDIUM - Important for data protection
+
+---
+
+### 7. Performance Optimization (OPTIONAL)
+
+**Current State**: Default configuration
+
+**What's Needed**:
+- [ ] Optimize PostgreSQL configuration for workload
+- [ ] Configure Redis memory limits
+- [ ] Set up connection pooling
+- [ ] Enable query caching where appropriate
+- [ ] Load testing
+
+**Priority**: LOW - Can optimize based on beta feedback
+
+---
+
+### 8. Documentation (IMPORTANT)
+
+**Current State**: Technical docs exist, user docs minimal
+
+**What's Needed**:
+- [ ] Beta tester onboarding guide
+- [ ] User manual for each role
+- [ ] Known issues/limitations document
+- [ ] Feedback collection process
+- [ ] FAQ document
+
+**Priority**: HIGH - Critical for beta testers
+
+---
+
+### 9. Security Hardening (IMPORTANT)
+
+**Current State**: Basic security in place
+
+**What's Needed**:
+- [ ] Review and harden firewall rules
+- [ ] Disable unnecessary services
+- [ ] Configure fail2ban for SSH protection
+- [ ] Set up security update automation
+- [ ] Review Docker security settings
+- [ ] Implement rate limiting on API endpoints
+- [ ] Security audit
+
+**Priority**: HIGH - Important before external access
+
+---
+
+### 10. Testing and QA (CRITICAL)
+
+**Current State**: Basic manual testing done
+
+**What's Needed**:
+- [ ] End-to-end testing of all workflows
+- [ ] Cross-browser testing
+- [ ] Mobile responsiveness testing
+- [ ] Load testing with multiple users
+- [ ] Security testing
+- [ ] Create test scenarios for beta testers
+
+**Priority**: HIGH - Must verify before beta
+
+---
+
+## Recommended Beta Testing Phases
+
+### Phase 1: Internal Testing (1-2 weeks)
+**Goal**: Verify core functionality with controlled users
+
+**Participants**: 2-3 internal users
+**Focus Areas**:
+- Authentication and user management
+- Tenant switching
+- Alert viewing and management
+- Help desk ticketing
+- Basic workflows
+
+**Success Criteria**:
+- No critical bugs
+- All core features functional
+- Performance acceptable
+
+---
+
+### Phase 2: Limited Beta (2-4 weeks)
+**Goal**: Test with real users and real data
+
+**Participants**: 5-10 external beta testers
+**Focus Areas**:
+- Real Microsoft Intune/Defender integration
+- Real alert data
+- Multi-tenant scenarios
+- User experience feedback
+- Performance under load
+
+**Success Criteria**:
+- Positive user feedback
+- No data loss incidents
+- Acceptable performance
+- Clear improvement roadmap
+
+---
+
+### Phase 3: Extended Beta (4-8 weeks)
+**Goal**: Prepare for production release
+
+**Participants**: 20-50 beta testers
+**Focus Areas**:
+- Scale testing
+- Edge cases
+- Integration scenarios
+- Documentation completeness
+- Support process
+
+**Success Criteria**:
+- <5 critical bugs
+- >80% user satisfaction
+- Documentation complete
+- Support process validated
+
+---
+
+## Quick Start: Minimum Viable Beta
+
+If you want to start beta testing ASAP with minimal setup:
+
+### Must-Have (Blocking)
+1. ✅ Platform deployed and accessible
+2. ✅ Authentication working
+3. ✅ Core features functional
+4. ❌ **Microsoft Intune/Defender connected** (if asset management is core feature)
+5. ❌ **Background workers running**
+6. ❌ **Beta tester documentation**
+
+### Nice-to-Have (Non-blocking)
+- Proper SSL certificate
+- Email alert integration
+- Automated backups
+- Advanced monitoring
+
+### Estimated Time to Beta-Ready
+- **With Microsoft Integration**: 2-3 days
+- **Without Microsoft Integration** (mock data only): 1 day
+
+---
+
+## Next Steps - Priority Order
+
+### Immediate (Today/Tomorrow)
+1. **Decide on Microsoft Integration**
+   - If YES: Set up Azure AD app registration (2-3 hours)
+   - If NO: Document that beta uses mock data
+
+2. **Set Up Background Workers** (2-3 hours)
+   - Create systemd services or cron jobs
+   - Test worker execution
+   - Verify logging
+
+3. **Create Beta Tester Documentation** (3-4 hours)
+   - Onboarding guide
+   - Feature overview
+   - Known limitations
+   - How to provide feedback
+
+### Short-term (This Week)
+4. **Security Hardening** (4-6 hours)
+   - Firewall review
+   - fail2ban setup
+   - Security audit
+
+5. **Testing and QA** (1-2 days)
+   - End-to-end testing
+   - Create test scenarios
+   - Document bugs
+
+6. **Set Up Monitoring** (2-3 hours)
+   - Log rotation
+   - Basic health checks
+   - Error alerting
+
+### Medium-term (Next Week)
+7. **SSL Certificate** (2-4 hours)
+   - Decide on approach
+   - Implement
+   - Test
+
+8. **Backup System** (3-4 hours)
+   - Automated backups
+   - Test restore
+   - Document process
+
+9. **Email Integration** (if needed) (2-3 hours)
+   - Configure IMAP
+   - Test alert parsing
+
+---
+
+## Beta Testing Checklist
+
+Use this checklist to track readiness:
+
+### Technical Readiness
+- [ ] Platform accessible remotely
+- [ ] All core features working
+- [ ] Microsoft integration configured (or documented as mock)
+- [ ] Background workers running
+- [ ] Logs accessible and rotating
+- [ ] Basic monitoring in place
+- [ ] Backup system configured
+- [ ] Security hardening complete
+
+### Documentation Readiness
+- [ ] Beta tester onboarding guide
+- [ ] User manual for each role
+- [ ] Known issues document
+- [ ] Feedback collection process
+- [ ] Support contact information
+
+### Process Readiness
+- [ ] Beta tester selection criteria
+- [ ] Onboarding process defined
+- [ ] Feedback collection method
+- [ ] Bug reporting process
+- [ ] Communication plan
+- [ ] Exit criteria defined
+
+---
+
+## Contact and Support
+
+**Platform Access**:
+- External: SSH tunnel to `209.227.150.115`
+- Internal: `https://192.168.1.116`
+
+**Credentials**:
+- Super Admin: `admin@avian.local` / `admin123`
+- Security Analyst: `analyst@avian.local` / `analyst123`
+
+**Support**:
+- Technical issues: [Your contact]
+- Feature requests: [Your contact]
+- Security concerns: [Your contact]
+
+---
+
+## Risk Assessment
+
+### High Risk Items
+1. **No Microsoft Integration**: Asset inventory will be mock data only
+2. **Self-signed SSL**: Browser warnings may confuse users
+3. **No automated backups**: Risk of data loss
+4. **Limited testing**: May have undiscovered bugs
+
+### Mitigation Strategies
+1. Clearly document mock data limitations
+2. Provide SSL certificate installation instructions
+3. Implement manual backup process initially
+4. Start with small beta group, expand gradually
+
+---
+
+## Success Metrics for Beta
+
+### Technical Metrics
+- Uptime: >99%
+- Response time: <2 seconds for most operations
+- Error rate: <1% of requests
+- Zero data loss incidents
+
+### User Metrics
+- User satisfaction: >70%
+- Feature completion rate: >80%
+- Support tickets: <5 per user per week
+- User retention: >80% through beta period
+
+### Business Metrics
+- Feedback quality: Actionable insights collected
+- Bug discovery: Critical bugs identified and fixed
+- Feature validation: Core features validated by users
+- Readiness assessment: Clear go/no-go for production
+
+---
+
+## Appendix: Quick Reference Commands
+
+### Check Platform Status
 ```bash
-# Database
-DATABASE_URL="your-database-url"
-
-# Authentication
-JWT_SECRET="your-jwt-secret-here"
-NEXTAUTH_SECRET="your-nextauth-secret-here"
-
-# Application
-NODE_ENV="development"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-
-# Notifications (console logging only for now)
-EMAIL_ENABLED="false"
-SMS_ENABLED="false"
-
-# Optional: Enable SMS for critical alerts
-# SMS_ENABLED="true"
-# TWILIO_ACCOUNT_SID="your-twilio-sid"
-# TWILIO_AUTH_TOKEN="your-twilio-token"
-# TWILIO_PHONE_NUMBER="+15551234567"
+ssh avian@209.227.150.115
+docker ps
+docker logs avian-web
+docker logs avian-postgres
+docker logs avian-redis
 ```
 
-### 2. Database Setup
-
-Run the migration to create notification tables:
+### Access Platform
 ```bash
-npm run db:push
+# From your Mac
+ssh -L 8443:localhost:443 avian@209.227.150.115
+# Then open: https://localhost:8443
 ```
 
-### 3. Start the Application
-
+### View Logs
 ```bash
-npm run dev
+docker logs -f avian-web
+docker logs -f avian-postgres
+docker logs -f avian-redis
 ```
 
----
-
-## 📱 Optional: SMS Setup (Recommended for Critical Alerts)
-
-If you want SMS notifications for critical alerts:
-
-### 1. Create Free Twilio Account
-- Go to https://www.twilio.com/try-twilio
-- Sign up (no credit card required)
-- Get $15 free credit
-
-### 2. Get Credentials
-- Go to https://console.twilio.com/
-- Copy Account SID
-- Copy Auth Token  
-- Get a phone number
-
-### 3. Update Environment
+### Restart Services
 ```bash
-SMS_ENABLED="true"
-TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-TWILIO_AUTH_TOKEN="your-auth-token"
-TWILIO_PHONE_NUMBER="+15551234567"
+docker-compose -f docker-compose.prod.yml restart
 ```
 
-### 4. Verify Your Phone
-- In Twilio console, add your phone number as verified
-- This allows SMS delivery during trial period
-
----
-
-## 🧪 Testing Features
-
-### 1. Password Reset (Console Logging)
-1. Go to `/forgot-password`
-2. Enter email address
-3. Check server console for "reset link"
-4. Copy the reset link from console
-5. Visit the link to reset password
-
-**Expected**: Console shows email content instead of sending actual email
-
-### 2. Account Lockout
-1. Go to `/login`
-2. Enter wrong password 5 times
-3. Account gets locked for 15 minutes
-4. Try logging in - should show lockout message
-
-**Expected**: Clear lockout message, automatic unlock after 15 minutes
-
-### 3. Session Timeout Warning
-1. Log in successfully
-2. Wait for session to approach expiration (or modify JWT expiration for testing)
-3. Warning modal appears 5 minutes before expiration
-4. Can extend session or logout
-
-**Expected**: Beautiful modal with countdown timer
-
-### 4. Alert Acknowledgment
-1. Go to `/alerts`
-2. See list of alerts with "Acknowledge" buttons
-3. Click acknowledge on an alert
-4. Alert shows green "Ack" badge
-5. Use filters to show acknowledged/unacknowledged
-
-**Expected**: Acknowledgment status tracked, filters work
-
-### 5. Notification System
-1. Create a test alert (via API or database)
-2. Check server console for notification logs
-3. Go to `/settings/notifications` to configure preferences
-4. Create another alert
-5. Verify notification respects preferences
-
-**Expected**: Console shows email/SMS content, preferences respected
-
-### 6. Ticketing System
-1. Go to `/tickets` or `/help-desk/tickets/new`
-2. Create a new ticket
-3. Assign to a user
-4. Add comments
-5. Update status
-
-**Expected**: Full ticketing workflow works
-
----
-
-## 📊 What You'll See in Console
-
-### Password Reset
-```
-📧 Email would be sent (EMAIL_ENABLED=false):
-To: user@example.com
-Subject: AVIAN Security - Password Reset Request
----
-Reset Link: http://localhost:3000/reset-password?token=abc123...
+### Database Backup (Manual)
+```bash
+docker exec avian-postgres pg_dump -U avian avian > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
-### Alert Notifications
-```
-📧 Email would be sent (EMAIL_ENABLED=false):
-To: analyst@example.com
-Subject: 🚨 CRITICAL ALERT: Firewall Offline
----
-
-📱 SMS NOTIFICATION (Development Mode)
-============================================================
-To: +15551234567
-Message: CRITICAL SECURITY ALERT
-
-Firewall Offline
-
-Severity: critical
-
-Firewall device is not responding to health checks
-
-Immediate action required. Log in to AVIAN to investigate.
-============================================================
-```
-
-### Ticket Notifications
-```
-📧 Email would be sent (EMAIL_ENABLED=false):
-To: technician@example.com
-Subject: Ticket #TKT-1234 Assigned to You
----
+### Database Restore
+```bash
+docker exec -i avian-postgres psql -U avian avian < backup_file.sql
 ```
 
 ---
 
-## 🎯 Beta Testing Focus Areas
-
-### Core Functionality
-- [ ] User login/logout works
-- [ ] Password reset flow (check console for links)
-- [ ] Account lockout after 5 failed attempts
-- [ ] Session timeout warning appears
-- [ ] Alert acknowledgment works
-- [ ] Ticket creation and management
-- [ ] Notification preferences can be configured
-
-### User Experience
-- [ ] UI is intuitive and responsive
-- [ ] Dark mode works properly
-- [ ] Error messages are clear
-- [ ] Loading states work
-- [ ] Forms validate properly
-
-### Security
-- [ ] Cannot access pages without login
-- [ ] Session expires properly
-- [ ] Account lockout prevents brute force
-- [ ] Password reset tokens work once
-- [ ] Users can only see their own data
-
-### Performance
-- [ ] Pages load quickly
-- [ ] No console errors
-- [ ] Database queries are efficient
-- [ ] Notifications don't slow down alert creation
-
----
-
-## 🔧 Troubleshooting
-
-### "Email service not configured" Messages
-**This is expected!** Email is disabled for now. The system logs what would be sent instead of actually sending emails.
-
-### SMS Not Working
-1. Check `SMS_ENABLED="true"` in environment
-2. Verify Twilio credentials are correct
-3. Make sure phone number is verified in Twilio console (trial accounts)
-4. Check Twilio console for error messages
-
-### Database Connection Issues
-1. Verify `DATABASE_URL` is correct
-2. Make sure database is running
-3. Run `npm run db:push` to create tables
-
-### Session Issues
-1. Clear browser cookies
-2. Check `JWT_SECRET` is set
-3. Restart the application
-
----
-
-## 📈 Success Metrics
-
-### Ready for Production When:
-- [ ] All core features tested and working
-- [ ] No critical bugs found
-- [ ] User feedback is positive
-- [ ] Performance is acceptable
-- [ ] Security testing passed
-
-### Optional Enhancements (Post-Beta):
-- [ ] Configure email service for actual email delivery
-- [ ] Add phone number verification for SMS
-- [ ] Implement quiet hours for SMS
-- [ ] Add notification history UI
-- [ ] Create weekly reports
-- [ ] Add more notification types
-
----
-
-## 📞 Support
-
-### If You Need Help:
-1. Check server console for error messages
-2. Check browser console for JavaScript errors
-3. Verify environment variables are set correctly
-4. Make sure database migration ran successfully
-
-### Common Issues:
-- **"useAuth must be used within AuthProvider"** - Clear cookies and refresh
-- **Database connection errors** - Check DATABASE_URL and database status
-- **JWT errors** - Make sure JWT_SECRET is set and restart app
-- **Notification not showing** - Check user preferences and console logs
-
----
-
-## 🎉 You're Ready!
-
-The system is now ready for beta testing without requiring email service configuration. Users will see console logs instead of receiving actual emails, which is perfect for testing the notification logic and user experience.
-
-When you're ready to add email later, just:
-1. Choose an email provider (SendGrid, Mailgun, AWS SES)
-2. Get API credentials
-3. Set `EMAIL_ENABLED="true"`
-4. Configure the email service
-
-**Happy testing!** 🚀
+**Last Updated**: February 2, 2026  
+**Next Review**: After completing immediate priorities

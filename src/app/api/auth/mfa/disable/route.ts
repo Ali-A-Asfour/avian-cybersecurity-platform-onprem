@@ -1,45 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { UserService } from '../../../../../services/user.service';
+import { authMiddleware } from '@/middleware/auth.middleware';
+import { getClient } from '@/lib/database';
+import { verifyPassword } from '@/lib/password';
+import { logger } from '@/lib/logger';
 
-
+// POST /api/auth/mfa/disable — requires password confirmation
 export async function POST(request: NextRequest) {
+  const authResult = await authMiddleware(request);
+  if (!authResult.success) {
+    return NextResponse.json({ error: authResult.error }, { status: 401 });
+  }
+
   try {
-    // Apply authentication middleware
-    const authResult = await authMiddleware(request);
-    if (!authResult.success || !authResult.user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: authResult.error || 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
+    const { password } = await request.json();
+    if (!password) {
+      return NextResponse.json({ error: 'Password is required to disable MFA' }, { status: 400 });
     }
 
-    const user = authResult.user;
+    const sql = await getClient();
+    const rows = await sql`
+      SELECT password_hash FROM users WHERE id = ${authResult.user!.user_id}
+    `;
 
-    // Disable MFA for user
-    await UserService.disableMFA(user.user_id);
+    if (rows.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'MFA disabled successfully' },
-    });
+    const isValid = await verifyPassword(password, rows[0].password_hash);
+    if (!isValid) {
+      return NextResponse.json({ error: 'Incorrect password' }, { status: 400 });
+    }
+
+    await sql`
+      UPDATE users SET mfa_enabled = false, mfa_secret = NULL, updated_at = NOW()
+      WHERE id = ${authResult.user!.user_id}
+    `;
+
+    logger.info('MFA disabled', { userId: authResult.user!.user_id });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('MFA disable error:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'MFA_DISABLE_FAILED',
-          message: error instanceof Error ? error.message : 'MFA disable failed',
-        },
-      },
-      { status: 500 }
-    );
+    logger.error('MFA disable failed', { error });
+    return NextResponse.json({ error: 'Failed to disable MFA' }, { status: 500 });
   }
 }

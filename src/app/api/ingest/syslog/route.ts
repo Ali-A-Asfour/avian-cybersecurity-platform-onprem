@@ -22,20 +22,21 @@ const syslogIngestionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // This endpoint is for internal syslog server use
-    // Authentication is handled via API key or internal service token
+    // Validate API key against environment variable
     const apiKey = request.headers.get('x-api-key');
-    const internalToken = request.headers.get('x-internal-token');
+    const validApiKey = process.env.SYSLOG_API_KEY;
 
-    if (!apiKey && !internalToken) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    if (!validApiKey) {
+      logger.error('SYSLOG_API_KEY not configured');
+      return NextResponse.json({ error: 'Service not configured' }, { status: 503 });
     }
 
-    // TODO: Validate API key or internal token
-    // For now, we'll accept any key for internal services
+    if (!apiKey || apiKey !== validApiKey) {
+      logger.warn('Invalid syslog API key attempt', {
+        ip: request.headers.get('x-forwarded-for') || 'unknown'
+      });
+      return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+    }
 
     const body = await request.json();
     const validationResult = validateRequest(syslogIngestionSchema, body);

@@ -1,69 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { UserService } from '../../../../../services/user.service';
+import { authenticator } from 'otplib';
+import { authMiddleware } from '@/middleware/auth.middleware';
+import { getClient } from '@/lib/database';
+import { logger } from '@/lib/logger';
 
-
-// Request validation schema
-const enableMFASchema = z.object({
-  verification_code: z.string().length(6, 'Verification code must be 6 digits'),
-});
-
+// POST /api/auth/mfa/enable — verify code then flip mfa_enabled = true
 export async function POST(request: NextRequest) {
+  const authResult = await authMiddleware(request);
+  if (!authResult.success) {
+    return NextResponse.json({ error: authResult.error }, { status: 401 });
+  }
+
   try {
-    // Apply authentication middleware
-    const authResult = await authMiddleware(request);
-    if (!authResult.success || !authResult.user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'UNAUTHORIZED',
-            message: authResult.error || 'Authentication required',
-          },
-        },
-        { status: 401 }
-      );
+    const { code } = await request.json();
+    if (!code) {
+      return NextResponse.json({ error: 'Verification code is required' }, { status: 400 });
     }
 
-    const user = authResult.user;
+    const sql = await getClient();
+    const rows = await sql`
+      SELECT mfa_secret FROM users WHERE id = ${authResult.user!.user_id}
+    `;
 
-    // Parse and validate request body
-    const body = await request.json();
-    const validatedData = enableMFASchema.parse(body);
+    if (rows.length === 0 || !rows[0].mfa_secret) {
+      return NextResponse.json({ error: 'MFA not set up. Call /api/auth/mfa/setup first.' }, { status: 400 });
+    }
 
-    // Enable MFA for user
-    await UserService.enableMFA(user.user_id, validatedData.verification_code);
+    const isValid = authenticator.verify({ token: code, secret: rows[0].mfa_secret });
+    if (!isValid) {
+      return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: 'MFA enabled successfully' },
-    });
+    await sql`
+      UPDATE users SET mfa_enabled = true, updated_at = NOW()
+      WHERE id = ${authResult.user!.user_id}
+    `;
+
+    logger.info('MFA enabled', { userId: authResult.user!.user_id });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('MFA enable error:', error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Invalid request data',
-            details: error.issues,
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'MFA_ENABLE_FAILED',
-          message: error instanceof Error ? error.message : 'MFA enable failed',
-        },
-      },
-      { status: 500 }
-    );
+    logger.error('MFA enable failed', { error });
+    return NextResponse.json({ error: 'Failed to enable MFA' }, { status: 500 });
   }
 }

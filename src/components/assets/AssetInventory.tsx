@@ -43,46 +43,19 @@ export function AssetInventory({ tenantId }: AssetInventoryProps) {
 
   const fetchAssets = async () => {
     try {
-      // Use mock data for development
-      const { mockAssets } = await import('@/lib/dev-mode');
-      const { delay } = await import('@/lib/mock-data');
-      await delay(500); // Simulate loading
-
-      // Convert mock data to expected format
-      const mockAssetData = mockAssets.map(asset => ({
-        id: asset.id,
-        name: asset.hostname,
-        ip_address: '192.168.1.' + (Math.floor(Math.random() * 254) + 1),
-        asset_type: asset.type === 'Workstation' ? 'workstation' : asset.type === 'Server' ? 'server' : 'laptop',
-        description: `${asset.type} running ${asset.os}`,
-        os_info: {
-          name: asset.os,
-          version: asset.os.includes('Windows') ? '10.0.19042' : '20.04.3 LTS',
-          architecture: 'x64'
-        },
-        security_tools: [
-          { name: 'Windows Defender', version: '4.18.2111.5', status: 'active' },
-          { name: 'AVIAN Agent', version: '1.2.3', status: 'active' }
-        ],
-        vulnerabilities: Array.from({ length: Math.floor(Math.random() * 5) }, (_, i) => ({
-          id: `vuln-${i}`,
-          cve_id: `CVE-2024-${1000 + i}`,
-          severity: ['low', 'medium', 'high', 'critical'][Math.floor(Math.random() * 4)],
-          title: `Sample Vulnerability ${i + 1}`,
-          description: 'Mock vulnerability for demo purposes'
-        })),
-        compliance_status: ['completed', 'in_progress', 'non_compliant', 'not_started'][Math.floor(Math.random() * 4)],
-        risk_score: asset.riskScore,
-        last_scan: asset.lastSeen,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        tenant_id: 'demo-tenant'
-      }));
-
-      setAssets(mockAssetData);
-      setFilteredAssets(mockAssetData);
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch('/api/assets', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch assets');
+      const data = await response.json();
+      const assetList = data.data || [];
+      setAssets(assetList);
+      setFilteredAssets(assetList);
     } catch (error) {
-      setError('Failed to fetch assets');
+      // Don't show error — just show empty state
+      setAssets([]);
+      setFilteredAssets([]);
     }
   };
 
@@ -150,35 +123,32 @@ export function AssetInventory({ tenantId }: AssetInventoryProps) {
 
   const fetchInventoryReport = async () => {
     try {
-      // Use mock data for development
-      const { delay } = await import('@/lib/mock-data');
-      await delay(300); // Simulate loading
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch('/api/assets', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const assetList: any[] = data.data || [];
+        const compliant = assetList.filter((a: any) => a.compliance_status === 'completed' || a.compliance_status === 'compliant').length;
+        const criticalVulns = assetList.reduce((sum: number, a: any) => {
+          const vulns = a.vulnerabilities || [];
+          return sum + vulns.filter((v: any) => v.severity === 'critical').length;
+        }, 0);
+        const toolsSet = new Set<string>();
+        assetList.forEach((a: any) => (a.security_tools || []).forEach((t: any) => toolsSet.add(t.name)));
 
-      const mockReport = {
-        total_assets: 150,
-        compliance_summary: {
-          completed: 120,
-          in_progress: 20,
-          non_compliant: 8,
-          not_started: 2
-        },
-        vulnerabilities: {
-          critical: 5,
-          high: 15,
-          medium: 35,
-          low: 45
-        },
-        security_tools: {
-          'Windows Defender': 140,
-          'AVIAN Agent': 150,
-          'CrowdStrike': 25,
-          'Symantec': 10
-        }
-      };
-
-      setInventoryReport(mockReport);
+        setInventoryReport({
+          total_assets: assetList.length,
+          compliance_summary: { completed: compliant },
+          vulnerabilities: { critical: criticalVulns },
+          security_tools: Object.fromEntries([...toolsSet].map(t => [t, 1]))
+        });
+      } else {
+        setInventoryReport({ total_assets: 0, compliance_summary: { completed: 0 }, vulnerabilities: { critical: 0 }, security_tools: {} });
+      }
     } catch (error) {
-      console.error('Failed to fetch inventory report:', error);
+      setInventoryReport({ total_assets: 0, compliance_summary: { completed: 0 }, vulnerabilities: { critical: 0 }, security_tools: {} });
     } finally {
       setLoading(false);
     }

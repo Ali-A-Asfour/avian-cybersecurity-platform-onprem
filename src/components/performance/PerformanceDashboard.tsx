@@ -74,83 +74,14 @@ export function PerformanceDashboard() {
   const fetchPerformanceData = async () => {
     try {
       setError(null);
-
-      // Use mock data for development
-      const { delay } = await import('@/lib/dev-mode');
-      await delay(500); // Simulate loading
-
-      // Mock performance data
-      const mockData: PerformanceData = {
-        cache: {
-          stats: {
-            hits: 8500,
-            misses: 1200,
-            sets: 2400,
-            deletes: 350,
-            hitRate: 0.876
-          },
-          info: {
-            keyCount: 15420,
-            memoryUsage: '245MB'
-          }
-        },
-        database: {
-          stats: {
-            totalQueries: 45230,
-            avgDuration: 125,
-            cacheHitRate: 0.82,
-            slowQueries: 23,
-            queries: [
-              { key: 'SELECT * FROM alerts WHERE...', count: 1250, avgDuration: 85, cacheHitRate: 0.95, slowCount: 2 },
-              { key: 'SELECT * FROM tickets WHERE...', count: 980, avgDuration: 120, cacheHitRate: 0.88, slowCount: 5 },
-              { key: 'SELECT * FROM assets WHERE...', count: 750, avgDuration: 95, cacheHitRate: 0.92, slowCount: 1 },
-              { key: 'UPDATE alerts SET status...', count: 450, avgDuration: 180, cacheHitRate: 0.65, slowCount: 8 },
-              { key: 'INSERT INTO audit_logs...', count: 2100, avgDuration: 45, cacheHitRate: 0.0, slowCount: 0 }
-            ]
-          },
-          connectionPool: {
-            active: 8,
-            idle: 12,
-            total: 20,
-            waiting: 0
-          }
-        },
-        system: {
-          performance: {
-            isRunning: true,
-            totalRequests: 125000,
-            activeRequests: 12,
-            avgResponseTime: 245,
-            errorRate: 0.002,
-            requestsPerMinute: 85
-          }
-        },
-        recommendations: [
-          {
-            category: 'cache',
-            priority: 'medium',
-            title: 'Increase Cache TTL for Static Data',
-            description: 'User profile and configuration data could benefit from longer cache expiration times.',
-            action: 'Update cache configuration to extend TTL for user-related data from 1 hour to 4 hours.'
-          },
-          {
-            category: 'database',
-            priority: 'high',
-            title: 'Optimize Slow Alert Queries',
-            description: 'Several alert-related queries are taking longer than expected.',
-            action: 'Add composite index on (tenant_id, status, created_at) for alerts table.'
-          },
-          {
-            category: 'system',
-            priority: 'low',
-            title: 'Monitor Memory Usage',
-            description: 'Memory usage is within normal range but trending upward.',
-            action: 'Set up alerts for memory usage above 80% threshold.'
-          }
-        ]
-      };
-
-      setData(mockData);
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch('/api/performance/optimize', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch performance data');
+      const json = await response.json();
+      if (!json.success) throw new Error(json.error?.message || 'Failed to fetch performance data');
+      setData(json.data);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch performance data');
@@ -162,15 +93,16 @@ export function PerformanceDashboard() {
     try {
       setOptimizing(action);
       setError(null);
-
-      // Use mock data for development
-      const { delay } = await import('@/lib/dev-mode');
-      await delay(2000); // Simulate optimization time
-
-      // Simulate successful optimization
-      console.log(`Mock optimization executed: ${action}`, options);
-
-      // Refresh data after optimization
+      const authToken = localStorage.getItem('auth-token');
+      const response = await fetch('/api/performance/optimize', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, options })
+      });
+      if (!response.ok) throw new Error('Optimization failed');
       await fetchPerformanceData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Optimization failed');

@@ -83,8 +83,8 @@ export function Header({ sidebarCollapsed, onSidebarToggle, currentUser }: Heade
           {/* Tenant Switcher - Only show for super admin */}
           {currentUser.role === UserRole.SUPER_ADMIN && <TenantSwitcher />}
 
-          {/* Demo Tenant Switcher - Show for cross-tenant roles (helpdesk analyst, security analyst) and super admin */}
-          {[UserRole.SUPER_ADMIN, UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(currentUser.role) && (
+          {/* Demo Tenant Switcher - Show for cross-tenant roles only (not super admin who has real switcher) */}
+          {[UserRole.IT_HELPDESK_ANALYST, UserRole.SECURITY_ANALYST].includes(currentUser.role) && (
             <DemoTenantSwitcher userRole={currentUser.role} />
           )}
 
